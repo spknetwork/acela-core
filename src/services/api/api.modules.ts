@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
-import { UsersService } from './users.service';
+import { ApiService, UsersService } from './api.services';
+
+@Module({
+  providers: [ApiService]
+})
+export class ApiModule {}
 
 @Module({
   providers: [UsersService],

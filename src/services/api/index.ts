@@ -6,12 +6,12 @@ import { AcelaCore } from '..'
 // import { createSchema, createYoga } from 'graphql-yoga'
 // import { JSONResolver} from "graphql-scalars"
 // import { CoreService } from '../../services'
-import { GatewayApiController } from './controller'
+import { AppController } from './app.controller'
 // import { Resolvers } from './graphql/resolvers'
 // import { Schema } from './graphql/schema'
 
 export const ipfsContainer: {  } = {} as any
-export const indexerContainer: { self: CoreService  } = {} as any
+export const indexerContainer: { self: AcelaCore  } = {} as any
 
 // export const schema = createSchema({
 //   typeDefs: /* GraphQL */ Schema,
@@ -26,7 +26,7 @@ export const indexerContainer: { self: CoreService  } = {} as any
 
 @Module({
   imports: [],
-  controllers: [GatewayApiController],
+  controllers: [AppController],
   providers: [],
 })
 class ControllerModule {}

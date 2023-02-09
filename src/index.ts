@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from './services/api/app.module';
 
 async function startup(): Promise<void> {
   console.log(`startup`)

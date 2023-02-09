@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Collection, Db, MongoClient } from 'mongodb'
-import {MONGODB_URL} from '../services/db'
+import { MongoClient } from 'mongodb';
+import { MONGODB_URL } from '../db';
+
+@Injectable()
+export class ApiService {}
 
 export type User = any;
 
@@ -12,8 +15,8 @@ export class UsersService {
     const mongo = new MongoClient(url)
     await mongo.connect()
     console.log(`Connected successfully to mongo at ${MONGODB_URL}`)
-    const db = mongo.db('acela-core-db')
-    const collAcelaUsers = db.collection('acelaUsers')
+    const db = mongo.db('acela-core')
+    const collAcelaUsers = db.collection('users')
     const query = { user_name: username };
     const acelaUser = await collAcelaUsers.findOne(query);
     console.log(acelaUser)
