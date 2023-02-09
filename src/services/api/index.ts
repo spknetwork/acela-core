@@ -1,5 +1,6 @@
 import { Injectable, Module, NestMiddleware } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
+import { AcelaCore } from '..'
 
 // import { buildSchema, GraphQLScalarType } from 'graphql'
 // import { createSchema, createYoga } from 'graphql-yoga'
@@ -35,7 +36,7 @@ class ControllerModule {}
  */
 export class IndexerApiModule {
   constructor(
-    private readonly selfInput:  CoreService,
+    private readonly selfInput:  AcelaCore,
     private readonly listenPort: number,
   ) {
     indexerContainer.self = selfInput;
