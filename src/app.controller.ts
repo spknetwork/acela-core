@@ -1,7 +1,7 @@
 import { Controller, Get, Request, Post, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { LocalAuthGuard } from './auth/local-auth.guard';
-import { AuthService } from './auth/auth.service';
+import { JwtAuthGuard } from './services/api/auth/jwt-auth.guard';
+import { LocalAuthGuard } from './services/api/auth/local-auth.guard';
+import { AuthService } from './services/api/auth/auth.service';
 
 @Controller()
 export class AppController {
@@ -17,5 +17,15 @@ export class AppController {
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  @Post('register')
+  async register(@Request() req) {
+    return this.authService.register(req.body.username, req.body.password);
+  }
+
+  @Post('verifyPosting')
+  async verifyPosting(@Request() req) {
+    return this.authService.verifyPosting(req.body.username, req.body.private_posting_key);
   }
 }
