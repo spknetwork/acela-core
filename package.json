@@ -1,6 +1,6 @@
 {
-  "name": "video-encoder",
-  "version": "1.0.0",
+  "name": "acela-core",
+  "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
   "dependencies": {
