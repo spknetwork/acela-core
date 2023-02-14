@@ -1,3 +1,3 @@
-# JS Typescript Template
+# Acela Backend Core
 
-A scaffold for new typescript projects.  Includes generic dev, lint, test, and build scripts.
+Backend core for decentralized video applications on HIVE. 
