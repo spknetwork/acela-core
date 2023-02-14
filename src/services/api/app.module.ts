@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AppService } from '../../app.services';
+import { AppService } from './app.services';
 import { ApiModule, UsersModule } from './api.modules';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';

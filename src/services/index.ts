@@ -1,17 +1,24 @@
 import { Db, MongoClient, Collection } from 'mongodb'
+import { MONGODB_URL } from './db';
 
 
 export class AcelaCore {
     db: Db;
-    authDb: Collection;
+    usersDb: Collection;
+    commitLog: Collection;
+    unionDb: Db;
+    delegatedAuthority: any;
 
 
     async start() {
-        const connection = new MongoClient(process.env.CORE_MONGODB_URL)
+        const connection = new MongoClient(MONGODB_URL)
         await connection.connect();
 
         this.db = connection.db('acela-core')
-        this.authDb = this.db.collection('auth')
-        
+        this.usersDb = this.db.collection('users')
+        this.commitLog = this.db.collection('commit-log')
+
+        this.unionDb = connection.db('spk-union-indexer')
+        this.delegatedAuthority = this.unionDb.collection('delegated-authority')
     }
 }

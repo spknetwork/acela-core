@@ -7,43 +7,26 @@ import { AcelaCore } from '..'
 // import { JSONResolver} from "graphql-scalars"
 // import { CoreService } from '../../services'
 import { AppController } from './app.controller'
-// import { Resolvers } from './graphql/resolvers'
-// import { Schema } from './graphql/schema'
+import { AppModule } from './app.module'
 
-export const ipfsContainer: {  } = {} as any
-export const indexerContainer: { self: AcelaCore  } = {} as any
 
-// export const schema = createSchema({
-//   typeDefs: /* GraphQL */ Schema,
-//   resolvers: {
-//     Query: Resolvers,
-//     // JSON: JSONResolver
-//   },
-//   resolverValidationOptions: {
-//     requireResolversForAllFields: 'warn',
-//   }
-// })
+export const appContainer: { self: AcelaCore  } = {} as any
 
-@Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [],
-})
-class ControllerModule {}
+
 
 /**
  * see api requirements here https://github.com/3speaknetwork/research/discussions/3
  */
-export class IndexerApiModule {
+export class ApiModule {
   constructor(
     private readonly selfInput:  AcelaCore,
     private readonly listenPort: number,
   ) {
-    indexerContainer.self = selfInput;
+    appContainer.self = selfInput;
   }
 
   public async listen() {
-    const app = await NestFactory.create(ControllerModule, {
+    const app = await NestFactory.create(AppModule, {
       cors: true,
     })
 
