@@ -7,7 +7,8 @@ export class AcelaCore {
     usersDb: Collection;
     commitLog: Collection;
     unionDb: Db;
-    delegatedAuthority: any;
+    delegatedAuthority: Collection;
+    linkedAccountsDb: Collection;
 
 
     async start() {
@@ -16,6 +17,7 @@ export class AcelaCore {
 
         this.db = connection.db('acela-core')
         this.usersDb = this.db.collection('users')
+        this.linkedAccountsDb = this.db.collection('linked_accounts')
         this.commitLog = this.db.collection('commit-log')
 
         this.unionDb = connection.db('spk-union-indexer')

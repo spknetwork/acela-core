@@ -35,6 +35,15 @@ export class AppController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Post(`/hive/linkaccount`)
+  async linkAccount(@Body() data: any, @Request() req: any) {
+    const {user_id} = req.user;
+    console.log(user_id)
+    console.log('user data', req.user.user_id)
+    console.log(data)
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Post(`/hive/vote`)
   async votePost(@Body() data: any) {
     
