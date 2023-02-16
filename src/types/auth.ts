@@ -2,23 +2,35 @@ import { ObjectId } from "mongodb"
 
 
 export interface UserAccountLink {
-    status: "UNVERIFIED" | "VERIFIED"
-    user_id: ObjectId
+    status: "unverified" | "verified"
+    user_id: string
     account: string
     network: "HIVE" | string
+    challenge?: string
 }
 
 export interface UserAccount {
     status: "unverified" | "verified" | "active"
-    email_verification: "unverified" | "verified"
+    email_status: "unverified" | "verified"
    
     created_at: Date
     updated_at: Date
     last_login_at: Date
 
     
-    userStatus: string
-    emailVerified: boolean
-    enabled: boolean
-    passwordResetRequested: boolean
+    // userStatus: string
+    // emailVerified: boolean
+    // enabled: boolean
+    // passwordResetRequested: boolean
+
+    password_reset_at: Date
+}
+
+export interface HiveAccountCreation {
+    status: 'requested' | 'created' | 'released'
+    username: string
+    keys_requested: boolean
+    created_by: string
+    requested_at: Date
+    created_at: Date
 }

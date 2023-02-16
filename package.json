@@ -5,14 +5,19 @@
   "main": "dist/index.js",
   "dependencies": {
     "@hiveio/dhive": "^1.2.5",
+    "@hiveio/hive-js": "^2.0.5",
     "@nestjs/common": "^9.3.1",
     "@nestjs/core": "^9.3.1",
     "@nestjs/jwt": "^10.0.1",
     "@nestjs/platform-express": "^9.3.1",
     "@types/supertest": "^2.0.12",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
     "cli-progress": "^3.11.2",
     "dotenv": "^16.0.3",
     "it-pushable": "^3.1.2",
+    "mailgun-js": "^0.22.0",
     "moment": "^2.29.4",
     "mongodb": "^4.13.0",
     "mongoose": "^6.8.3",
@@ -21,7 +26,8 @@
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@nestjs/passport": "^9.0.1",

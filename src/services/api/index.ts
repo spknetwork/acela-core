@@ -1,4 +1,4 @@
-import { Injectable, Module, NestMiddleware } from '@nestjs/common'
+import { Injectable, Module, NestMiddleware, ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { AcelaCore } from '..'
 
@@ -54,6 +54,8 @@ export class ApiModule {
     // Pass it into a server to hook into request handlers.
 
     app.enableShutdownHooks()
+
+    app.useGlobalPipes(new ValidationPipe());
 
     await app.listen(this.listenPort)
   }

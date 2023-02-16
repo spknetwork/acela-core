@@ -12,7 +12,7 @@ export type User = any;
 export class UsersService {
     
   async findOne(username: string): Promise<User | undefined> {
-    const query = { user_name: username };
+    const query = { email: username };
     const acelaUser = await appContainer.self.usersDb.findOne(query);
     console.log(acelaUser)
 

@@ -1,4 +1,5 @@
 import { Db, MongoClient, Collection } from 'mongodb'
+import { HiveAccountCreation } from '../types/auth';
 import { MONGODB_URL } from './db';
 
 
@@ -9,6 +10,7 @@ export class AcelaCore {
     unionDb: Db;
     delegatedAuthority: Collection;
     linkedAccountsDb: Collection;
+    hiveAccountsDb: Collection<HiveAccountCreation>;
 
 
     async start() {
@@ -18,6 +20,7 @@ export class AcelaCore {
         this.db = connection.db('acela-core')
         this.usersDb = this.db.collection('users')
         this.linkedAccountsDb = this.db.collection('linked_accounts')
+        this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive_accounts')
         this.commitLog = this.db.collection('commit-log')
 
         this.unionDb = connection.db('spk-union-indexer')
