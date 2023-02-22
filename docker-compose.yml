@@ -1,0 +1,42 @@
+version: "3.9"
+services:
+  acela-core: # name of the service
+    build: .
+    image: acela-core # the image to use
+    container_name: acela-core # what to label the container for docker ps
+    restart: always # restart if failed, until we stop it ourselves
+    #external_links:
+      #- mongo
+    networks:
+      - acela-core
+    environment:
+      MONGO_HOST: mongo:27017
+      IPFS_HOST: ipfs:5001
+    volumes:
+      - ./data/video-encoder:/root/.spk-encoder
+  tusd:
+    image: tusproject/tusd:v1.9
+    command: -upload-dir=/data/ -base-path=/files -host=127.0.0.1 -port=1080 -behind-proxy -hooks-http http://acela-core:13050/api/upload/tus-callback
+    volumes:
+      - tusd:/data
+    networks:
+      - acela-core
+    ports:
+      - 1080:1080
+  mongo:
+    container_name: mongo_acela
+    image: mongo:latest
+    restart: always
+    #ports:
+    #  - 27027:27017
+    networks:
+      - acela-core
+    volumes:
+      - ./data/mongodb:/data/db
+
+volumes:
+  tusd:
+
+networks:
+  acela-core:
+    driver: bridge
