@@ -7,6 +7,8 @@ services:
     restart: always # restart if failed, until we stop it ourselves
     #external_links:
       #- mongo
+    ports:
+      - 4569:4569
     networks:
       - acela-core
     environment:
