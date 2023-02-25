@@ -17,6 +17,8 @@ interface PinAllocate {
 
     added_at: Date
     verified_at: Date
+
+    reported_size?: number
 }
 
 interface Pin {
