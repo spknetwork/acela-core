@@ -20,7 +20,7 @@ services:
       - ./data/video-encoder:/root/.spk-encoder
   tusd:
     image: tusproject/tusd:v1.9
-    command: -upload-dir=/data/ -base-path=/files -host=127.0.0.1 -port=1080 -behind-proxy -hooks-http http://acela-core:13050/api/upload/tus-callback
+    command: -upload-dir=/data/ -base-path=/files -host=127.0.0.1 -port=1080 -behind-proxy -max-size 5000000000 -hooks-http http://acela-core:4569/api/upload/tus-callback
     volumes:
       - tusd:/data
     networks:
@@ -31,8 +31,8 @@ services:
     container_name: mongo_acela
     image: mongo:latest
     restart: always
-    #ports:
-    #  - 27027:27017
+    ports:
+      - 27417:27017
     networks:
       - acela-core
     volumes:
