@@ -6,6 +6,7 @@ export interface UserAccountLink {
     user_id: string
     account: string
     network: "HIVE" | string
+    type: "native" | "hive_keychain" | "hive_auth"
     challenge?: string
 }
 

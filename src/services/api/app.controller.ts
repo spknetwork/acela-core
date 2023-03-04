@@ -11,6 +11,7 @@ import {v4 as uuid} from 'uuid'
 import Mailgun from 'mailgun-js'
 import Crypto from 'crypto'
 import { IsEmail, IsNotEmpty, isString } from 'class-validator';
+import { RequireHiveVerify } from './utils';
 
 
 const mg = new Mailgun({
@@ -18,16 +19,7 @@ const mg = new Mailgun({
 });
 
 
-@Injectable()
-export class RequireHiveVerify implements CanActivate {
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
 
-
-    return true;
-  }
-}
 
 async function createAccountWithAuthority(newAccountname, authorityAccountname) {
   const owner = {
@@ -146,7 +138,7 @@ export class AppController {
       created_by: req.user.user_id,
     })
     if (existingAcocunt) {
-      return new HttpException(
+      throw new HttpException(
         { reason: 'You have already created the maximum of 1 free Hive account' },
         HttpStatus.BAD_REQUEST,
       )
@@ -170,9 +162,9 @@ export class AppController {
         created_at: new Date(),
       })
 
-      return accountCreation
+      throw accountCreation
     } else {
-      return new HttpException(
+      throw new HttpException(
         { reason: 'Hive account with the requested name already exists' },
         HttpStatus.BAD_REQUEST,
       )
@@ -237,7 +229,7 @@ export class AppController {
         challenge: linkedAccount.challenge,
       }
     } else {
-      return new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST)
+      throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST)
     }
   }
 
@@ -277,10 +269,10 @@ export class AppController {
           }
         })
       } else {
-        return new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST)
+        throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST)
       }
     } else {
-      return new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST)
+      throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST)
     }
   }
 

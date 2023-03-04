@@ -15,6 +15,7 @@ export class AcelaCore {
     hiveAccountsDb: Collection<HiveAccountCreation>;
     healthChecks: HealthCheckCore;
     voter: VoterCore;
+    uploadsDb: any;
 
 
     async start() {
@@ -28,6 +29,7 @@ export class AcelaCore {
         this.linkedAccountsDb = this.db.collection('linked_accounts')
         this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive_accounts')
         this.commitLog = this.db.collection('commit-log')
+        this.uploadsDb = this.db.collection('uploads')
 
         this.unionDb = connection2.db('spk-union-indexer')
         this.delegatedAuthority = this.unionDb.collection('delegated-authority')
