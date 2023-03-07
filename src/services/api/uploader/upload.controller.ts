@@ -59,12 +59,38 @@ export class UploadController {
     // console.log(body, appContainer.self.uploadsDb, req.user)
   }
 
+
+  @Post('update_post')
+  async postUpdate(@Body() body) {
+    console.log(body)
+    
+    const uploadedInfo = await appContainer.self.uploadsDb.findOne({
+      id: body.id
+    })
+
+    if(uploadedInfo.created_by === body.id) {
+      const updatedInfo = await appContainer.self.uploadsDb.findOneAndUpdate({
+        id: body.id
+      }, {
+        $set: {
+  
+        }
+      })
+
+      console.log(uploadedInfo)
+      
+    } else {
+      throw new HttpException({ reason: "You do not have access to edit the requested post"}, HttpStatus.BAD_REQUEST)
+    }
+    
+  }
+
   @Post('tus-callback')
   async tusdCallback(@Body() body) {
+    console.log('TUSD CALLBACK HAPPENING', body)
     if(body.Upload.MetaData.authorization === "TESTING") {
       throw new HttpException({ error: 'Test authorization used' }, HttpStatus.BAD_REQUEST)
     }
     // console.log(req)
-    console.log('TUSD CALLBACK HAPPENING', body)
   }
 }

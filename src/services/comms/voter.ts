@@ -10,29 +10,29 @@ export class VoterCore {
     }
     
     async voteRound() {
-        const posts = await this.self.unionDb.collection('posts')
+        // const posts = await this.self.unionDb.collection('posts')
 
-        const lastDayPosts = posts.find({
-            created_at: {$gt: moment().subtract('1', 'day').toDate()},
-            "json_metadata.app": {$regex: "3speak"},
-            // parent_permlink: ""
-        })
-        console.log(lastDayPosts)
+        // const lastDayPosts = posts.find({
+        //     created_at: {$gt: moment().subtract('1', 'day').toDate()},
+        //     "json_metadata.app": {$regex: "3speak"},
+        //     // parent_permlink: ""
+        // })
+        // console.log(lastDayPosts)
 
-        for await(let post of lastDayPosts) {
-            console.log(post)
-            try {
-                const voteOp = await HiveClient.broadcast.vote({
-                    voter: process.env.VOTER_ACCOUNT,
-                    author: post.author,
-                    permlink: post.permlink,
-                    weight: 1_000
-                }, PrivateKey.fromString(process.env.VOTER_ACCOUNT_POSTING))
-                console.log(voteOp)
-            } catch {
+        // for await(let post of lastDayPosts) {
+        //     console.log(post)
+        //     try {
+        //         // const voteOp = await HiveClient.broadcast.vote({
+        //         //     voter: process.env.VOTER_ACCOUNT,
+        //         //     author: post.author,
+        //         //     permlink: post.permlink,
+        //         //     weight: 1_000
+        //         // }, PrivateKey.fromString(process.env.VOTER_ACCOUNT_POSTING))
+        //         // console.log(voteOp)
+        //     } catch {
 
-            }
-        }
+        //     }
+        // }
     }
 
     async start() {
