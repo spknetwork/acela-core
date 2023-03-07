@@ -13,6 +13,20 @@ export class HiveuserController {
     if (value === undefined || value === null) {
       return res.status(404).send({ message: 'No such hive user found.' });
     }
+    const isValidUser = await this.hiveuserService.isValidUser(username);
+    if (!isValidUser) {
+      return res.status(404).send({ message: `User - ${username} - is banned` });
+    }
+    return res.send(value);
+  }
+
+  @Get('/getMemo/:username')
+  async getMemo(@Param('username') username: string, @Res() res: Response) {
+    const value = await this.hiveuserService.findOne(username);
+    console.log(value);
+    if (value === undefined || value === null) {
+      return res.status(404).send({ message: 'No such hive user found.' });
+    }
     return res.send(value);
   }
 }

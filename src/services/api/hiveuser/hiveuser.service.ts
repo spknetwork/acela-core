@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-// import { appContainer } from '..';
+import { appContainer } from '..';
 import { Client } from '@hiveio/dhive'
 
 export type User = any
@@ -15,5 +15,17 @@ export class HiveuserService {
     ])
     var users = await client.database.getAccounts([hiveusername])
     return users[0]
+  }
+
+  async isValidUser(hiveusername: string): Promise<boolean> {
+    const query = { userid: hiveusername };
+    const hiveUser = await appContainer.self.hiveUserForDAppsDb.findOne(query);
+    if (hiveUser === undefined || hiveUser === null) {
+      return false;
+    }
+    if (hiveUser.banned === true) {
+      return false;
+    }
+    return true;
   }
 }
