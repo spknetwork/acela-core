@@ -54,4 +54,8 @@ export class HiveuserService {
     });
     return hive.memo.encode(process.env.HIVE_PRIVATE_KEY, publicKey, `#${access_token}`)
   }
+
+  validateAccessToken(access_token: string): any {
+    return this.jwtService.verify(access_token)
+  }
 }

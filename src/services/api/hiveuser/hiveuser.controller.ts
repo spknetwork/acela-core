@@ -33,8 +33,12 @@ export class HiveuserController {
   // @UseGuards(AuthGuard('jwt'))
   @Get('/getUInfo/:username')
   async verifyToken(
+    @Headers() headers,
     @Param('username') username: string,
   ) {
+    const token = headers['authorization'].replace("Bearer ", "");
+    const result = this.hiveuserService.validateAccessToken(token);
+    console.log(result);
     return { hello: "world" };
   }
 }
