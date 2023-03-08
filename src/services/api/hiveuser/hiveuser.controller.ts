@@ -1,5 +1,6 @@
-import { Controller, Get, Headers, HttpException, HttpStatus, Param, Res } from '@nestjs/common'
+import { Controller, Get, Headers, HttpException, HttpStatus, Param, UseGuards } from '@nestjs/common'
 import { HiveuserService } from './hiveuser.service'
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('/api/v1/hiveuser')
 export class HiveuserController {
@@ -29,20 +30,11 @@ export class HiveuserController {
     return { access_token: encryptedToken };
   }
 
-  @Get('/verifyToken/:username')
+  // @UseGuards(AuthGuard('jwt'))
+  @Get('/getUInfo/:username')
   async verifyToken(
-    @Headers() headers: Record<string, string>,
     @Param('username') username: string,
   ) {
-    const hiveUserInfo = await this.hiveuserService.findOne(username)
-    console.log(hiveUserInfo)
-    if (hiveUserInfo === undefined || hiveUserInfo === null) {
-      throw new HttpException(`No such hive user found with name - ${username}`, HttpStatus.NOT_FOUND)
-    }
-    const isValidUser = await this.hiveuserService.isValidUser(username)
-    if (!isValidUser) {
-      throw new HttpException(`Hive user - ${username} - is banned`, HttpStatus.FORBIDDEN)
-    }
-    return "";
+    return { hello: "world" };
   }
 }
