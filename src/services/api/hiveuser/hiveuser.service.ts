@@ -66,6 +66,9 @@ export class HiveuserService {
     var dataToSign = { userid: hiveusername, network: 'hive', banned: false }
     var access_token = this.jwtService.sign(dataToSign)
     const publicKey = user.posting.key_auths[0][0]
-    return hive.encode(process.env.HIVE_PRIVATE_KEY, publicKey, `#${access_token}`)
+    hive.api.setOptions({
+      useAppbaseApi: true,
+    });
+    return hive.memo.encode(process.env.HIVE_PRIVATE_KEY, publicKey, `#${access_token}`)
   }
 }
