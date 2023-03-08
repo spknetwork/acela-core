@@ -26,10 +26,10 @@ export class HiveuserService {
   async isValidUser(hiveusername: string): Promise<boolean> {
     const query = { userid: hiveusername };
     try {
-    const hiveUser = await appContainer.self.hiveUserForDAppsDb.findOne(query);
+    const hiveUser = await appContainer.self.userForDAppsDb.findOne(query);
     if (hiveUser === undefined || hiveUser === null) {
-      await appContainer.self.hiveUserForDAppsDb.insertOne({
-        userid: hiveusername,
+      await appContainer.self.userForDAppsDb.insertOne({
+        username: hiveusername,
         network: 'hive',
         banned: false,
       })
@@ -43,23 +43,6 @@ export class HiveuserService {
       console.error(err);
       return false;
     }
-  }
-
-  async isValidContentCreator(hiveusername: string): Promise<boolean> {
-    const query = { username: hiveusername, network: 'hive' };
-    const hiveUser = await appContainer.self.contentCreatorDb.findOne(query);
-    if (hiveUser === undefined || hiveUser === null) {
-      await appContainer.self.contentCreatorDb.insertOne({
-        username: hiveusername,
-        network: 'hive',
-        banned: false,
-      })
-      return true;
-    }
-    if (hiveUser.banned === true) {
-      return false;
-    }
-    return true;
   }
 
   getEncodedMemo(hiveusername: string, user: User): string {

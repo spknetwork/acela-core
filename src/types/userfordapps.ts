@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb'
 
-export interface ContentCreator {
+export interface UserForDApps {
   username: string
   network: string
   banned: boolean
@@ -14,5 +14,5 @@ export interface ContentCreator {
   warning_pending?: boolean
   warning?: string
   upvote_eligible?: boolean
-  reducedUpvote?: boolean
+  reduced_upvote?: boolean
 }

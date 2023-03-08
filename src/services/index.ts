@@ -1,7 +1,6 @@
 import { Db, MongoClient, Collection } from 'mongodb'
 import { HiveAccountCreation } from '../types/auth';
-import { HiveUserForDApps } from '../types/hiveuser';
-import { ContentCreator } from '../types/contentcreator';
+import { UserForDApps } from '../types/userfordapps';
 import { VoterCore } from './comms/voter';
 import { MONGODB_URL } from './db';
 import { HealthCheckCore } from './health';
@@ -16,8 +15,7 @@ export class AcelaCore {
     delegatedAuthority: Collection;
     linkedAccountsDb: Collection;
     hiveAccountsDb: Collection<HiveAccountCreation>;
-    hiveUserForDAppsDb: Collection<HiveUserForDApps>;
-    contentCreatorDb: Collection<ContentCreator>;
+    userForDAppsDb: Collection<UserForDApps>;
     healthChecks: HealthCheckCore;
     voter: VoterCore;
     uploadsDb: any;
@@ -33,8 +31,7 @@ export class AcelaCore {
         this.usersDb = this.db.collection('users')
         this.linkedAccountsDb = this.db.collection('linked_accounts')
         this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive-accounts')
-        this.hiveUserForDAppsDb = this.db.collection<HiveUserForDApps>('hive-user-for-dapps')
-        this.contentCreatorDb = this.db.collection<ContentCreator>('content-creator');
+        this.userForDAppsDb = this.db.collection<UserForDApps>('user-for-dapps')
         this.commitLog = this.db.collection('commit-log')
         this.uploadsDb = this.db.collection('uploads')
 
