@@ -1,5 +1,7 @@
 import { PrivateKey } from "@hiveio/dhive";
 import moment from "moment";
+import NodeSchedule from 'node-schedule'
+import { Logger } from "@nestjs/common";
 import { AcelaCore } from "..";
 import { HiveClient } from "../../utils";
 
@@ -36,6 +38,10 @@ export class VoterCore {
     }
 
     async start() {
-
+        this.self.lockService.registerHandle('auto-voter', () => {
+            Logger.debug('Registering autovoter')
+            //This will get called when the service is getting registered
+            NodeSchedule.scheduleJob('*/15 * * * *', this.voteRound)
+        })
     }
 }

@@ -1,10 +1,12 @@
 import { Db, MongoClient, Collection } from 'mongodb'
 import { HiveAccountCreation } from '../types/auth';
+import { CommsCore } from './comms';
 import { VoterCore } from './comms/voter';
 import { MONGODB_URL } from './db';
 import { HealthCheckCore } from './health';
 import { LockService } from './lock-service';
 import { StorageEngine } from './storage-engine';
+import { VideoService } from './video-service';
 
 
 export class AcelaCore {
@@ -21,6 +23,8 @@ export class AcelaCore {
     storageEngine: StorageEngine;
     locksDb: Collection;
     lockService: LockService;
+    comms: CommsCore;
+    videoService: VideoService;
 
 
     async start() {
@@ -52,10 +56,18 @@ export class AcelaCore {
 
         this.voter = new VoterCore(this)
 
-        await this.voter.voteRound()
+        await this.voter.start()
         
         this.storageEngine = new StorageEngine(this)
 
         await this.storageEngine.start()
+
+        this.comms = new CommsCore(this)
+
+        await this.comms.start()
+
+        this.videoService = new VideoService(this)
+
+        await this.videoService.start();
     }
 }
