@@ -48,9 +48,9 @@ export class UploadController {
     const id = uuid();
 
     await appContainer.self.uploadsDb.insertOne({
-        id: uuid(),
-        expires: moment().add('1', 'day').toDate(),
-        created_by: req.user.sub
+      id,
+      expires: moment().add('1', 'day').toDate(),
+      created_by: req.user.sub
     })
 
     return {
@@ -58,13 +58,72 @@ export class UploadController {
     }
     // console.log(body, appContainer.self.uploadsDb, req.user)
   }
+  @UseGuards(AuthGuard('jwt'))
+  @Post('start_encode')
+  async startEncode(@Body() body) {
+    const uploadJob = await appContainer.self.uploadsDb.findOne({
+      id: body.upload_id
+    })
+    if(uploadJob) {
+      await appContainer.self.uploadsDb.findOneAndUpdate({
+        _id: uploadJob._id
+      }, {
+        $set: {
+          // encode_status: "ready"
+          ipfs_status: "ready"
+        }
+      })
+    }
+    console.log(body)
+    console.log('uploadJob', uploadJob)
+    return {
+      // id
+    }
+  }
+
+
+  @Post('update_post')
+  async postUpdate(@Body() body) {
+    console.log(body)
+    
+    const uploadedInfo = await appContainer.self.uploadsDb.findOne({
+      id: body.id
+    })
+
+    if(uploadedInfo.created_by === body.id) {
+      const updatedInfo = await appContainer.self.uploadsDb.findOneAndUpdate({
+        id: body.id
+      }, {
+        $set: {
+          // file_path: body.Upload.Storage.Path,
+          // file_name: body.Upload.ID
+        }
+      })
+
+      console.log(uploadedInfo)
+      
+    } else {
+      throw new HttpException({ reason: "You do not have access to edit the requested post"}, HttpStatus.BAD_REQUEST)
+    }
+    
+  }
 
   @Post('tus-callback')
   async tusdCallback(@Body() body) {
+    console.log('TUSD CALLBACK HAPPENING', body)
     if(body.Upload.MetaData.authorization === "TESTING") {
       throw new HttpException({ error: 'Test authorization used' }, HttpStatus.BAD_REQUEST)
     }
+    if(body.Upload.Storage) {
+      await appContainer.self.uploadsDb.findOneAndUpdate({
+        id: body.Upload.MetaData.upload_id
+      }, {
+        $set: {
+          file_path: body.Upload.Storage.Path,
+          file_name: body.Upload.ID
+        }
+      })
+    }
     // console.log(req)
-    console.log('TUSD CALLBACK HAPPENING', body)
   }
 }

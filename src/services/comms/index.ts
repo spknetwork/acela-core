@@ -1,18 +1,35 @@
+import NodeSchedule from 'node-schedule'
 import { AcelaCore } from "..";
-import { VoterCore } from "./voter";
+
+
+
 
 
 export class CommsCore {
     self: AcelaCore;
-    voter: VoterCore;
     constructor(self: AcelaCore) {
         this.self = self;
+
+        this.syncPosts = this.syncPosts.bind(this)
     }
 
 
-    async start() {
-        this.voter = new VoterCore(this.self)
+    async syncPosts() {
+        console.log("Syncing Posts")
+        const posts = await (this.self.commitLog.find({
 
-        this.voter.voteRound()
+        }, {
+            // sort: {
+                
+            // }
+        }).toArray())
+        console.log(posts)
+    }
+
+    async start() {
+        this.self.lockService.registerHandle('post-sync', () => {
+            console.log('registered post-sync')
+            NodeSchedule.scheduleJob('* * * * *', this.syncPosts)
+        })
     }
 }
