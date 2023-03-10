@@ -35,23 +35,22 @@ export class AcelaCore {
         await connection.connect();
         const connection2 = new MongoClient(process.env.INDEXER_MONGODB_URL)
         await connection2.connect();
-
-        this.db = connection.db('acela-core')
-        this.usersDb = this.db.collection('users')
-        this.linkedAccountsDb = this.db.collection('linked_accounts')
-        this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive-accounts')
-        this.userForDAppsDb = this.db.collection<UserForDApps>('user-for-dapps')
-        this.commitLog = this.db.collection('commit-log')
-        this.uploadsDb = this.db.collection('uploads')
-        this.locksDb = this.db.collection('locks')
-
-        this.unionDb = connection2.db('spk-union-indexer')
-        this.delegatedAuthority = this.unionDb.collection('delegated-authority')
-
-
-        this.lockService = new LockService(this);
-
-        await this.lockService.start()
+        // try {
+            this.db = connection.db('acela-core')
+            this.usersDb = this.db.collection('users')
+            this.linkedAccountsDb = this.db.collection('linked_accounts')
+            this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive-accounts')
+            this.userForDAppsDb = this.db.collection<UserForDApps>('user-for-dapps')
+            this.commitLog = this.db.collection('commit-log')
+            this.uploadsDb = this.db.collection('uploads')
+            this.locksDb = this.db.collection('locks')
+            this.unionDb = connection2.db('spk-union-indexer')
+            this.delegatedAuthority = this.unionDb.collection('delegated-authority')
+            this.lockService = new LockService(this);
+            await this.lockService.start()
+        // } catch (err) {
+        //     console.log(err)
+        // }
 
         //TODO: Move to separate microservice in the future
         this.healthChecks = new HealthCheckCore(this)

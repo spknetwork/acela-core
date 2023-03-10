@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { appContainer } from '..';
+import { appContainer } from '..'
 import { Client } from '@hiveio/dhive'
 import { JwtService } from '@nestjs/jwt'
-import hive from "@hiveio/hive-js";
+import hive from '@hiveio/hive-js'
+import { UserForDApps } from '../../../types/userfordapps'
 
 import 'dotenv/config'
 
@@ -10,7 +11,7 @@ export type User = any
 
 @Injectable()
 export class HiveuserService {
-  constructor(private readonly jwtService: JwtService){}
+  constructor(private readonly jwtService: JwtService) {}
 
   async findOne(hiveusername: string): Promise<User | undefined> {
     const client = new Client([
@@ -24,25 +25,30 @@ export class HiveuserService {
   }
 
   async isValidUser(hiveusername: string): Promise<boolean> {
-    const query = { userid: hiveusername };
+    const query = { username: hiveusername, network: 'hive' }
     try {
-    const hiveUser = await appContainer.self.userForDAppsDb.findOne(query);
-    if (hiveUser === undefined || hiveUser === null) {
-      await appContainer.self.userForDAppsDb.insertOne({
-        username: hiveusername,
-        network: 'hive',
-        banned: false,
-      })
-      return true;
-    }
-    if (hiveUser.banned === true) {
-      return false;
-    }
-    return true;
+      const hiveUser = await appContainer.self.userForDAppsDb.findOne(query)
+      if (hiveUser === undefined || hiveUser === null) {
+        await appContainer.self.userForDAppsDb.insertOne({
+          username: hiveusername,
+          network: 'hive',
+          banned: false,
+        })
+        return true
+      }
+      if (hiveUser.banned === true) {
+        return false
+      }
+      return true
     } catch (err) {
-      console.error(err);
-      return false;
+      console.error(err)
+      return false
     }
+  }
+
+  async getUInfo(hiveusername: string): Promise<UserForDApps | null> {
+    const query = { username: hiveusername, network: 'hive' }
+    return await appContainer.self.userForDAppsDb.findOne(query);
   }
 
   getEncodedMemo(hiveusername: string, user: User): string {
@@ -51,8 +57,8 @@ export class HiveuserService {
     const publicKey = user.posting.key_auths[0][0]
     hive.api.setOptions({
       useAppbaseApi: true,
-    });
-    return hive.memo.encode(process.env.HIVE_PRIVATE_KEY, publicKey, `#${access_token}`)
+    })
+    return hive.memo.encode(process.env.VOTER_ACCOUNT_POSTING, publicKey, `#${access_token}`)
   }
 
   validateAccessToken(access_token: string): any {
