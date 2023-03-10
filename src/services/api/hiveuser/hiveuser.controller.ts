@@ -14,7 +14,7 @@ import { AuthGuard } from '@nestjs/passport'
 export class HiveuserController {
   constructor(private readonly hiveuserService: HiveuserService) {}
 
-  async getUserInfo(username: string): Promise<any> {
+  async getHiveUserInfo(username: string): Promise<any> {
     const hiveUserInfo = await this.hiveuserService.findOne(username)
     if (hiveUserInfo === undefined || hiveUserInfo === null) {
       throw new HttpException(
@@ -29,21 +29,20 @@ export class HiveuserController {
     return hiveUserInfo
   }
 
-  @Get('/getInfo/:username')
-  async getInfo(@Param('username') username: string) {
-    return await this.getUserInfo(username)
+  @Get('/getHiveInfo/:username')
+  async getHiveInfo(@Param('username') username: string) {
+    return await this.getHiveUserInfo(username)
   }
 
   @Get('/getMemo/:username')
   async getMemo(@Param('username') username: string) {
-    const hiveUserInfo = await this.getUserInfo(username)
+    const hiveUserInfo = await this.getHiveUserInfo(username)
     var encryptedToken = this.hiveuserService.getEncodedMemo(username, hiveUserInfo)
     return { access_token: encryptedToken }
   }
 
-  // @UseGuards(AuthGuard('jwt'))
-  @Get('/getUInfo/:username')
-  async verifyToken(@Headers() headers, @Param('username') username: string) {
+  @Get('/getUserInfo/:username')
+  async getUserInfo(@Headers() headers, @Param('username') username: string) {
     const token = headers['authorization'].replace('Bearer ', '')
     const result = this.hiveuserService.validateAccessToken(token)
     if (!result) {
