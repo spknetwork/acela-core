@@ -25,6 +25,7 @@ export interface UploadLinks {
 
 export interface Video {
   owner: string
+  network: string // owner & network combination can help us find the right video
   title: string
   description: boolean
   beneficiaries: Array<Beneficiary>

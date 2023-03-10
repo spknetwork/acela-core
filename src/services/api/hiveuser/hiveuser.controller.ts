@@ -29,11 +29,13 @@ export class HiveuserController {
     return hiveUserInfo
   }
 
+  // This is a test service
   @Get('/getHiveInfo/:username')
   async getHiveInfo(@Param('username') username: string) {
     return await this.getHiveUserInfo(username)
   }
 
+  // Get Encoded memo of a JWT token
   @Get('/getMemo/:username')
   async getMemo(@Param('username') username: string) {
     const hiveUserInfo = await this.getHiveUserInfo(username)
@@ -41,8 +43,7 @@ export class HiveuserController {
     return { access_token: encryptedToken }
   }
 
-  @Get('/getUserInfo/:username')
-  async getUserInfo(@Headers() headers, @Param('username') username: string) {
+  async validateHeaderAndUserName(@Headers() headers, @Param('username') username: string): Promise<string> {
     const token = headers['authorization'].replace('Bearer ', '')
     const result = this.hiveuserService.validateAccessToken(token)
     if (!result) {
@@ -56,7 +57,19 @@ export class HiveuserController {
     if (!isValidUser) {
       throw new HttpException(`Hive user - ${username} - is banned`, HttpStatus.FORBIDDEN)
     }
-    const userInfo = await this.hiveuserService.getUInfo(userid)
-    return userInfo
+    return userid;
+  }
+
+  @Get('/getUserInfo/:username')
+  async getUserInfo(@Headers() headers, @Param('username') username: string) {
+    const userid = await this.validateHeaderAndUserName(headers, username)
+    return await this.hiveuserService.getUInfo(userid)
+  }
+
+  @Get('/videos/:username')
+  async getVideos(@Headers() headers, @Param('username') username: string) {
+    const userid = await this.validateHeaderAndUserName(headers, username)
+    const videos = await this.hiveuserService.getUInfo(userid)
+    return videos
   }
 }

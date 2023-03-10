@@ -4,6 +4,7 @@ import { Client } from '@hiveio/dhive'
 import { JwtService } from '@nestjs/jwt'
 import hive from '@hiveio/hive-js'
 import { UserForDApps } from '../../../types/userfordapps'
+import { Video } from '../../../types/video'
 
 import 'dotenv/config'
 
@@ -59,6 +60,13 @@ export class HiveuserService {
       useAppbaseApi: true,
     })
     return hive.memo.encode(process.env.VOTER_ACCOUNT_POSTING, publicKey, `#${access_token}`)
+  }
+
+  async getVideos(owner: string): Promise<Video[]> {
+    const query = { owner: owner, network: 'hive' }
+    const videos = await appContainer.self.videosDb.find(query);
+    const dbVideos = videos.map(v => v as Video).toArray();
+    return dbVideos;
   }
 
   validateAccessToken(access_token: string): any {

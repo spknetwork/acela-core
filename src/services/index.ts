@@ -8,6 +8,7 @@ import { HealthCheckCore } from './health';
 import { LockService } from './lock-service';
 import { StorageEngine } from './storage-engine';
 import { VideoService } from './video-service';
+import { Video } from '../types/video';
 
 
 
@@ -20,6 +21,7 @@ export class AcelaCore {
     linkedAccountsDb: Collection;
     hiveAccountsDb: Collection<HiveAccountCreation>;
     userForDAppsDb: Collection<UserForDApps>;
+    videosDb: Collection<Video>;
     healthChecks: HealthCheckCore;
     voter: VoterCore;
     uploadsDb: Collection<any>;
@@ -41,6 +43,7 @@ export class AcelaCore {
             this.linkedAccountsDb = this.db.collection('linked_accounts')
             this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive-accounts')
             this.userForDAppsDb = this.db.collection<UserForDApps>('user-for-dapps')
+            this.videosDb = this.db.collection<Video>('videos')
             this.commitLog = this.db.collection('commit-log')
             this.uploadsDb = this.db.collection('uploads')
             this.locksDb = this.db.collection('locks')
