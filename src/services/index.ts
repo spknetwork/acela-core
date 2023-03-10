@@ -25,6 +25,7 @@ export class AcelaCore {
     lockService: LockService;
     comms: CommsCore;
     videoService: VideoService;
+    localPosts: Collection;
 
 
     async start() {
@@ -37,8 +38,9 @@ export class AcelaCore {
         this.usersDb = this.db.collection('users')
         this.linkedAccountsDb = this.db.collection('linked_accounts')
         this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive_accounts')
-        this.commitLog = this.db.collection('commit-log')
+        this.commitLog = this.db.collection('commit_log')
         this.uploadsDb = this.db.collection('uploads')
+        this.localPosts = this.db.collection('local_posts')
         this.locksDb = this.db.collection('locks')
 
         this.unionDb = connection2.db('spk-union-indexer')

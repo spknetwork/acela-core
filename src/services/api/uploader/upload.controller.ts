@@ -11,19 +11,23 @@ import {
   Body,
   HttpException,
   HttpStatus,
+  Req,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { AuthGuard } from '@nestjs/passport'
 import moment from 'moment'
-import {v4 as uuid} from 'uuid'
+import {v4 as uuid, v5 as uuidv5} from 'uuid'
 import { appContainer } from '..'
 import { RequireHiveVerify, UserDetailsInterceptor } from '../utils'
+import { ipfsCluster } from '../../storage-engine'
 
 @Controller('/api/v1')
 export class UploadController {
   @Post('upload_thumbnail')
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
   async uploadThumbnail(
+    @Req() req, 
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -34,7 +38,54 @@ export class UploadController {
     )
     file: Express.Multer.File,
   ) {
-    console.log(file)
+    const {body, user} = req;
+    
+    // console.log(body)
+
+    /**
+     * TODO: do a bit more verification of user authority
+     */
+
+    const id = uuidv5(`thumbnail`, body.video_id)
+
+    const { cid } = await ipfsCluster.addData(file.buffer, {
+      replicationFactorMin: 1,
+      replicationFactorMax: 2,
+    })
+    // console.log(cid)
+
+    await appContainer.self.uploadsDb.findOneAndUpdate({
+      id: id
+    }, {
+      $set: {
+        video_id: body.video_id,
+        expires: null,
+        file_name: null,
+        file_path: null,
+        ipfs_status: 'done',
+        cid,
+        type: 'thumbnail'
+      }
+    }, {
+      upsert: true
+    });
+
+
+    await appContainer.self.localPosts.findOneAndUpdate({
+      id: body.video_id
+    }, {
+      $set: {
+        "upload_links.thumbnail": id, 
+      }
+    })
+    
+    console.log('uploadedFile', file.path)
+    console.log('uploadedFile', file)
+
+    return {
+      status: 'ok',
+      thumbnail_cid: cid
+    }
   }
 
   //Sequence matters
@@ -44,8 +95,48 @@ export class UploadController {
   async createUpload(@Request() req) {
     const body = req.body
 
-    console.log(body, req.headers, req.user)
+    // console.log(body, req.headers, req.user)
     const id = uuid();
+    const upload_id = uuid();
+
+    const localPost = await appContainer.self.localPosts.insertOne({
+      id,
+      owner: 'vaultec',
+      title: "test",
+      description: "Test description",
+      beneficiaries: [],
+      tags: [],
+      category: '',
+      community: '',
+      language: 'en',
+
+      //For videos only
+      video_details: {
+        duration: 0,
+      },
+
+      posting_options: {
+        publish_type: "immediate",// | "scheduled",
+        publish_date: null
+      },
+
+      status: "created",
+      created_by: 't',
+      created_at: new Date(),
+      updated_at: new Date(),
+      expires: moment().add('1', 'day').toDate(),
+
+      upload_links: {
+        video: id
+      },
+      network: "hive",
+      
+      __flags: [],
+      __v: '0.1'
+    })
+
+    // console.log(localPost)
+
 
     await appContainer.self.uploadsDb.insertOne({
       id,
@@ -54,7 +145,8 @@ export class UploadController {
     })
 
     return {
-        id
+      id,
+      upload_id
     }
     // console.log(body, appContainer.self.uploadsDb, req.user)
   }
@@ -74,8 +166,8 @@ export class UploadController {
         }
       })
     }
-    console.log(body)
-    console.log('uploadJob', uploadJob)
+    // console.log(body)
+    // console.log('uploadJob', uploadJob)
     return {
       // id
     }
@@ -83,8 +175,8 @@ export class UploadController {
 
 
   @Post('update_post')
-  async postUpdate(@Body() body) {
-    console.log(body)
+  async postUpdate(@Body() body, @Req() req) {
+    console.log(req)
     
     const uploadedInfo = await appContainer.self.uploadsDb.findOne({
       id: body.id
@@ -100,7 +192,7 @@ export class UploadController {
         }
       })
 
-      console.log(uploadedInfo)
+      // console.log(uploadedInfo)
       
     } else {
       throw new HttpException({ reason: "You do not have access to edit the requested post"}, HttpStatus.BAD_REQUEST)
@@ -110,7 +202,6 @@ export class UploadController {
 
   @Post('tus-callback')
   async tusdCallback(@Body() body) {
-    console.log('TUSD CALLBACK HAPPENING', body)
     if(body.Upload.MetaData.authorization === "TESTING") {
       throw new HttpException({ error: 'Test authorization used' }, HttpStatus.BAD_REQUEST)
     }

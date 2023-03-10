@@ -38,7 +38,7 @@ interface FileUpload {
   owner_type: "hive" | "did"
 }
 
-let cluster = new Cluster(process.env.IPFS_CLUSTER_URL, {
+export let ipfsCluster = new Cluster(process.env.IPFS_CLUSTER_URL, {
   headers: {},
 })
 
@@ -55,7 +55,7 @@ export class StorageEngine {
   async startIpfsUpload() {
     const fsPath = 'C:\\data\\0d5e9f83ae89c79a03e2297272dcc778'
 
-    const { cid } = await cluster.addData(fs.createReadStream(fsPath), {
+    const { cid } = await ipfsCluster.addData(fs.createReadStream(fsPath), {
       replicationFactorMin: 1,
       replicationFactorMax: 2,
     })
