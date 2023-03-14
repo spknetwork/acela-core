@@ -84,6 +84,18 @@ export class AppController {
   }
 
   @UseGuards(AuthGuard('local'))
+  @Get('/auth/login_singleton')
+  async loginSingleton(@Request() req) {
+    return this.authService.login(req.user)
+  }
+
+  @UseGuards(AuthGuard('local'))
+  @Post('/auth/login_singleton')
+  async loginSingletonPost(@Request() req) {
+    return this.authService.login(req.user)
+  }
+
+  @UseGuards(AuthGuard('local'))
   @Post('/auth/register')
   async register(@Request() req) {
     const password = req.body.password
@@ -109,6 +121,7 @@ export class AppController {
       email: req.body.email,
       email_code,
       password: hashedPassword,
+      type: "multi"
     })
     // return this.authService.login(req.user);
   }
@@ -116,7 +129,7 @@ export class AppController {
   @Get('/auth/verifyemail')
   async verifyEmail(@Request() req, @Response() res) {
     const verifyCode = req.query.code
-    console.log(verifyCode)
+    // console.log(verifyCode)
 
     await appContainer.self.usersDb.findOneAndUpdate(
       {
@@ -143,9 +156,9 @@ export class AppController {
         HttpStatus.BAD_REQUEST,
       )
     }
-    console.log(existingAcocunt)
+    // console.log(existingAcocunt)
     const output = await HiveClient.database.getAccounts([req.body.username])
-    console.log(output)
+    // console.log(output)
     if (output.length === 0) {
       const accountCreation = await createAccountWithAuthority(
         req.body.username,
@@ -175,7 +188,7 @@ export class AppController {
   @Post('/hive/post_comment')
   async postHiveComment(@Body() reqBody) {
     const { body, parent_author, parent_permlink, author } = reqBody
-    console.log(body)
+    // console.log(body)
 
     //TODO: Do validation of account ownership before doing operation
     return await HiveClient.broadcast.comment(
@@ -280,7 +293,7 @@ export class AppController {
   @UseGuards(RequireHiveVerify)
   @Post(`/hive/vote`)
   async votePost(@Body() data: any) {
-    console.log(data)
+    // console.log(data)
     const delegatedAuth = await appContainer.self.delegatedAuthority.findOne({
       // to: 'threespeak.beta',
       // from: 'vaultec'
@@ -296,7 +309,7 @@ export class AppController {
           },
           DHive.PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
         )
-        console.log(out)
+        // console.log(out)
         return out
       } catch (ex) {
         console.log(ex)
@@ -309,6 +322,5 @@ export class AppController {
         description: 'HIVE_MISSING_POSTING_AUTHORITY',
       })
     }
-    console.log(delegatedAuth)
   }
 }

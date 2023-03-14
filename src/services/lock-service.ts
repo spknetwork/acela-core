@@ -95,9 +95,7 @@ export class LockService {
     
     async registerSelf() {
         var dist1 = distance(Buffer.from('foo'), Buffer.from('bar'))
-        console.log(dist1)
         const nodes = await this.lockNodes.distinct('node_id')
-        console.log(nodes)
         const nodesClosest = nodes.map(e => {
             let distance = 0
             let i = 0
@@ -189,6 +187,16 @@ export class LockService {
         let key = new Ed25519Provider(Crypto.randomBytes(32))
         this.identity = new DID({ provider: key, resolver: KeyResolver.getResolver() })
         await this.identity.authenticate()
+
+        // console.log( await this.lockNodes.distinct('node_id'))
+        // const jwe = await this.identity.createJWE(Buffer.from(JSON.stringify({
+        //     hello: "world"
+        // })), [
+        //     ...await this.lockNodes.distinct('node_id'),
+        //     this.identity.id
+        // ])
+        // console.log(Buffer.from(await this.identity.decryptJWE(jwe)).toString())
+        // console.log(JSON.stringify(jwe, null, 2))
         
         await this.lockNodes.findOneAndUpdate({
             node_id: this.identity.id,

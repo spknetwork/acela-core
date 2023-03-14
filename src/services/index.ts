@@ -30,6 +30,7 @@ export class AcelaCore {
     lockService: LockService;
     comms: CommsCore;
     videoService: VideoService;
+    localPosts: Collection;
 
 
     async start() {
@@ -37,7 +38,6 @@ export class AcelaCore {
         await connection.connect();
         const connection2 = new MongoClient(process.env.INDEXER_MONGODB_URL)
         await connection2.connect();
-        // try {
             this.db = connection.db('acela-core')
             this.usersDb = this.db.collection('users')
             this.linkedAccountsDb = this.db.collection('linked_accounts')
@@ -46,14 +46,12 @@ export class AcelaCore {
             this.videosDb = this.db.collection<Video>('videos')
             this.commitLog = this.db.collection('commit-log')
             this.uploadsDb = this.db.collection('uploads')
+            this.localPosts = this.db.collection('local_posts')
             this.locksDb = this.db.collection('locks')
             this.unionDb = connection2.db('spk-union-indexer')
             this.delegatedAuthority = this.unionDb.collection('delegated-authority')
             this.lockService = new LockService(this);
             await this.lockService.start()
-        // } catch (err) {
-        //     console.log(err)
-        // }
 
         //TODO: Move to separate microservice in the future
         this.healthChecks = new HealthCheckCore(this)

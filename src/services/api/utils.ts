@@ -12,10 +12,10 @@ export class RequireHiveVerify implements CanActivate {
 
     
     const {body} = args[0]
-    console.log('RequireHiveVerify guard', {
-        body,
-        user: args[0].user
-    })
+    // console.log('RequireHiveVerify guard', {
+    //     body,
+    //     user: args[0].user
+    // })
     
     
     return true;
@@ -26,7 +26,7 @@ export class RequireHiveVerify implements CanActivate {
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-    console.log('Request...');
+    // console.log('Request...');
     next();
   }
 }
@@ -35,7 +35,7 @@ export class LoggerMiddleware implements NestMiddleware {
 @Injectable()
 export class UserDetailsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    console.log('Before...');
+    // console.log('Before...');
 
     const userAgent = context.switchToHttp().getRequest().headers['user-agent']
 
