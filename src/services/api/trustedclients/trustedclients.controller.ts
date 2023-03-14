@@ -1,7 +1,7 @@
 import {
   Controller,
   Get,
-
+  Headers,
   Param,
 } from '@nestjs/common'
 import { TrustedclientsService } from './trustedclients.service'
@@ -27,4 +27,9 @@ export class TrustedclientsController {
     var encryptedToken = this.trustedClientsService.getEncodedMemo(client, username)
     return { access_token: encryptedToken }
   }
+
+  // we don't need to add following services again here.
+  // we can get it from /api/v1/hiveuser
+  // - /getUserInfo/:username
+  // - /videos/:username
 }

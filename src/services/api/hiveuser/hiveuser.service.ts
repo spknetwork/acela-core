@@ -25,6 +25,23 @@ export class HiveuserService {
     return users[0]
   }
 
+  async validateHeaderAndUserName(headers: Map<String, String>, username: string): Promise<string> {
+    const token = headers['authorization'].replace('Bearer ', '')
+    const result = this.validateAccessToken(token)
+    if (!result) {
+      throw new HttpException(`Invalid token.`, HttpStatus.NOT_FOUND)
+    }
+    const userid = result.userid
+    if (username !== userid) {
+      throw new HttpException(`Invalid username.`, HttpStatus.NOT_FOUND)
+    }
+    const isValidUser = await this.isValidUser(username)
+    if (!isValidUser) {
+      throw new HttpException(`Hive user - ${username} - is banned`, HttpStatus.FORBIDDEN)
+    }
+    return userid;
+  }
+
   async getHiveUserInfo(username: string): Promise<any> {
     const hiveUserInfo = await this.findOne(username)
     if (hiveUserInfo === undefined || hiveUserInfo === null) {

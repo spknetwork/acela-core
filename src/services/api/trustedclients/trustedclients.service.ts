@@ -7,10 +7,6 @@ import 'dotenv/config'
 export class TrustedclientsService {
   constructor(private readonly jwtService: JwtService) {}
 
-  validateAccessToken(access_token: string): any {
-    return this.jwtService.verify(access_token)
-  }
-
   getEncodedMemo(client: string, username: string): string {
     const clients = process.env.TRUSTED_CLIENTS.split(',')
     const keys = process.env.TRUSTED_CLIENTS.split(',')

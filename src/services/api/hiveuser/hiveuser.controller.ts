@@ -26,32 +26,17 @@ export class HiveuserController {
     return { access_token: encryptedToken }
   }
 
-  async validateHeaderAndUserName(@Headers() headers, @Param('username') username: string): Promise<string> {
-    const token = headers['authorization'].replace('Bearer ', '')
-    const result = this.hiveuserService.validateAccessToken(token)
-    if (!result) {
-      throw new HttpException(`Invalid token.`, HttpStatus.NOT_FOUND)
-    }
-    const userid = result.userid
-    if (username !== userid) {
-      throw new HttpException(`Invalid username.`, HttpStatus.NOT_FOUND)
-    }
-    const isValidUser = await this.hiveuserService.isValidUser(username)
-    if (!isValidUser) {
-      throw new HttpException(`Hive user - ${username} - is banned`, HttpStatus.FORBIDDEN)
-    }
-    return userid;
-  }
-
+  // With this, we'll provide complete User info 
+  // from User schema
   @Get('/getUserInfo/:username')
   async getUserInfo(@Headers() headers, @Param('username') username: string) {
-    const userid = await this.validateHeaderAndUserName(headers, username)
+    const userid = await this.hiveuserService.validateHeaderAndUserName(headers, username)
     return await this.hiveuserService.getUInfo(userid)
   }
 
   @Get('/videos/:username')
   async getVideos(@Headers() headers, @Param('username') username: string) {
-    const userid = await this.validateHeaderAndUserName(headers, username)
+    const userid = await this.hiveuserService.validateHeaderAndUserName(headers, username)
     const videos = await this.hiveuserService.getUInfo(userid)
     return videos
   }
