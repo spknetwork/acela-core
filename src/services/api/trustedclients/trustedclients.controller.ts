@@ -1,8 +1,7 @@
 import {
   Controller,
   Get,
-  HttpException,
-  HttpStatus,
+
   Param,
 } from '@nestjs/common'
 import { TrustedclientsService } from './trustedclients.service'

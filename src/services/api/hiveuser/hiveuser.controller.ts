@@ -21,7 +21,7 @@ export class HiveuserController {
   // Get Encoded memo of a JWT token
   @Get('/getMemo/:username')
   async getMemo(@Param('username') username: string) {
-    const hiveUserInfo = await this..hiveuserService.getHiveUserInfo(username)
+    const hiveUserInfo = await this.hiveuserService.getHiveUserInfo(username)
     var encryptedToken = this.hiveuserService.getEncodedMemo(username, hiveUserInfo)
     return { access_token: encryptedToken }
   }

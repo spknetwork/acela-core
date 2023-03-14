@@ -31,6 +31,14 @@ export class TrustedclientsService {
     var dataToSign = { userid: username, network: 'hive', banned: false }
     var access_token = this.jwtService.sign(dataToSign)
     var encrypted_access_token = AES.encrypt(access_token, key).toString()
+
+    /*
+    // Code to decrypt the text for front-ends
+    var cryptoJs = require("crypto-js")
+    var AES = require("crypto-js/aes");
+    AES.decrypt(access_token, key).toString(cryptoJs.enc.Utf8);
+    */
+
     return encrypted_access_token
   }
 }
