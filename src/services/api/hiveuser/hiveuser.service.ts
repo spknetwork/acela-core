@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
 import { appContainer } from '..'
 import { Client } from '@hiveio/dhive'
 import { JwtService } from '@nestjs/jwt'
@@ -25,6 +25,21 @@ export class HiveuserService {
     return users[0]
   }
 
+  async getHiveUserInfo(username: string): Promise<any> {
+    const hiveUserInfo = await this.findOne(username)
+    if (hiveUserInfo === undefined || hiveUserInfo === null) {
+      throw new HttpException(
+        `No such hive user found with name - ${username}`,
+        HttpStatus.NOT_FOUND,
+      )
+    }
+    const isValidUser = await this.isValidUser(username)
+    if (!isValidUser) {
+      throw new HttpException(`Hive user - ${username} - is banned`, HttpStatus.FORBIDDEN)
+    }
+    return hiveUserInfo
+  }
+
   async isValidUser(hiveusername: string): Promise<boolean> {
     const query = { username: hiveusername, network: 'hive' }
     try {
@@ -49,7 +64,7 @@ export class HiveuserService {
 
   async getUInfo(hiveusername: string): Promise<UserForDApps | null> {
     const query = { username: hiveusername, network: 'hive' }
-    return await appContainer.self.userForDAppsDb.findOne(query);
+    return await appContainer.self.userForDAppsDb.findOne(query)
   }
 
   getEncodedMemo(hiveusername: string, user: User): string {
@@ -64,9 +79,9 @@ export class HiveuserService {
 
   async getVideos(owner: string): Promise<Video[]> {
     const query = { owner: owner, network: 'hive' }
-    const videos = await appContainer.self.videosDb.find(query);
-    const dbVideos = videos.map(v => v as Video).toArray();
-    return dbVideos;
+    const videos = await appContainer.self.videosDb.find(query)
+    const dbVideos = videos.map((v) => v as Video).toArray()
+    return dbVideos
   }
 
   validateAccessToken(access_token: string): any {
