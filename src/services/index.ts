@@ -1,5 +1,5 @@
 import { Db, MongoClient, Collection } from 'mongodb'
-import { HiveAccountCreation } from '../types/auth';
+import { AuthSession, HiveAccountCreation } from '../types/auth';
 import { CommsCore } from './comms';
 import { VoterCore } from './comms/voter';
 import { MONGODB_URL } from './db';
@@ -17,6 +17,7 @@ export class AcelaCore {
     delegatedAuthority: Collection;
     linkedAccountsDb: Collection;
     hiveAccountsDb: Collection<HiveAccountCreation>;
+    authSessions: Collection<AuthSession>
     healthChecks: HealthCheckCore;
     voter: VoterCore;
     uploadsDb: Collection<any>;
@@ -38,6 +39,7 @@ export class AcelaCore {
         this.usersDb = this.db.collection('users')
         this.linkedAccountsDb = this.db.collection('linked_accounts')
         this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive_accounts')
+        this.authSessions = this.db.collection('auth_sessions')
         this.commitLog = this.db.collection('commit_log')
         this.uploadsDb = this.db.collection('uploads')
         this.localPosts = this.db.collection('local_posts')

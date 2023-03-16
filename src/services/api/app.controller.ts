@@ -1,76 +1,114 @@
-import { Controller, Get, Request, Post, UseGuards, CanActivate, Injectable, ExecutionContext, Body, BadRequestException, Response, HttpException, HttpStatus } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Observable } from 'rxjs';
-import { appContainer } from '.';
-import { HiveClient } from '../../utils';
-import { AuthService } from './auth/auth.service';
+import {
+  Controller,
+  Get,
+  Request,
+  Post,
+  UseGuards,
+  CanActivate,
+  Injectable,
+  ExecutionContext,
+  Body,
+  BadRequestException,
+  Response,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common'
+import { AuthGuard } from '@nestjs/passport'
+import { Observable } from 'rxjs'
+import { appContainer } from '.'
+import { HiveClient } from '../../utils'
+import { AuthService } from './auth/auth.service'
 import * as DHive from '@hiveio/dhive'
 import hive from '@hiveio/hive-js'
 import bcrypt from 'bcryptjs'
-import {v4 as uuid} from 'uuid'
+import { v4 as uuid } from 'uuid'
 import Mailgun from 'mailgun-js'
 import Crypto from 'crypto'
-import { IsEmail, IsNotEmpty, isString } from 'class-validator';
-import { RequireHiveVerify } from './utils';
-
+import { IsEmail, IsNotEmpty, isString } from 'class-validator'
+import { RequireHiveVerify } from './utils'
+import { cryptoUtils } from '@hiveio/dhive'
+import moment from 'moment'
 
 const mg = new Mailgun({
-  apiKey: process.env.MAIL_GUN_SECRET, domain: process.env.MAIL_GUN_DOMAIN
-});
-
-
-
+  apiKey: process.env.MAIL_GUN_SECRET,
+  domain: process.env.MAIL_GUN_DOMAIN,
+})
 
 async function createAccountWithAuthority(newAccountname, authorityAccountname) {
   const owner = {
-      weight_threshold: 1,
-      account_auths: [[authorityAccountname, 1]],
-      key_auths: []
-  };
+    weight_threshold: 1,
+    account_auths: [[authorityAccountname, 1]],
+    key_auths: [],
+  }
   const active = {
-      weight_threshold: 1,
-      account_auths: [[authorityAccountname, 1]],
-      key_auths: []
-  };
+    weight_threshold: 1,
+    account_auths: [[authorityAccountname, 1]],
+    key_auths: [],
+  }
   const posting = {
-      weight_threshold: 1,
-      account_auths: [[authorityAccountname, 1]],
-      key_auths: []
-  };
-  const memo_key = "STM7C9FCSZ6ntNsrwkU5MCvAB7TV44bUF8J4pwWLWpGY5Z7Ba7Q6e"
+    weight_threshold: 1,
+    account_auths: [[authorityAccountname, 1]],
+    key_auths: [],
+  }
+  const memo_key = 'STM7C9FCSZ6ntNsrwkU5MCvAB7TV44bUF8J4pwWLWpGY5Z7Ba7Q6e'
 
   const accountData = {
-      creator: authorityAccountname,
-      new_account_name: newAccountname,
-      owner,
-      active,
-      posting,
-      memo_key,
-      json_metadata: JSON.stringify({
-          "beneficiaries": [
-              {
-                  "name": "spk.beneficiary",
-                  "weight": 500,
-                  "label": "provider"
-              }
-          ]
-      }),
-      extensions: []
-  };
+    creator: authorityAccountname,
+    new_account_name: newAccountname,
+    owner,
+    active,
+    posting,
+    memo_key,
+    json_metadata: JSON.stringify({
+      beneficiaries: [
+        {
+          name: 'spk.beneficiary',
+          weight: 500,
+          label: 'provider',
+        },
+      ],
+    }),
+    extensions: [],
+  }
 
-  const operations: DHive.Operation[] = [
-      ['create_claimed_account', accountData]
-  ]
+  const operations: DHive.Operation[] = [['create_claimed_account', accountData]]
 
   return await HiveClient.broadcast.sendOperations(
-      operations
-  , DHive.PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE))
+    operations,
+    DHive.PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE),
+  )
 }
 
+class LoginSingletonDt {
+  @IsNotEmpty()
+  username: string
+
+  @IsNotEmpty()
+  network: string
+
+  @IsNotEmpty()
+  authority_type: string
+
+  proof_payload: string
+  proof: string
+}
 
 class LinkAccountPost {
   @IsNotEmpty()
-  username: string;
+  username: string
+}
+
+function verifyHiveMessage(message, signature: string, account: DHive.ExtendedAccount): boolean {
+  for (let auth of account.posting.key_auths) {
+    const sigValidity = DHive.PublicKey.fromString(auth[0].toString()).verify(
+      Buffer.from(message),
+      DHive.Signature.fromBuffer(Buffer.from(signature, 'hex')),
+    )
+    if (sigValidity) {
+      return true
+    }
+  }
+  return false
 }
 
 @Controller('/api/v1')
@@ -83,16 +121,65 @@ export class AppController {
     return this.authService.login(req.user)
   }
 
-  @UseGuards(AuthGuard('local'))
-  @Get('/auth/login_singleton')
-  async loginSingleton(@Request() req) {
-    return this.authService.login(req.user)
+  // @UseGuards(AuthGuard('local'))
+  @Post('/auth/login_singleton')
+  async loginSingletonReturn(@Body() body: LoginSingletonDt) {
+    // console.log(req)
+    if (body.network === 'hive') {
+      const proof_payload = JSON.parse(body.proof_payload)
+      const [accountDetails] = await HiveClient.database.getAccounts([proof_payload.account])
+
+      if (
+        verifyHiveMessage(cryptoUtils.sha256(body.proof_payload), body.proof, accountDetails) ||
+        new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
+      ) {
+        const id = uuid()
+        const access_token = await this.authService.jwtService.sign({
+          id: id,
+          type: 'singleton',
+          sub: `singleton/${proof_payload.account}`,
+          username: proof_payload.account
+        })
+
+        await appContainer.self.authSessions.insertOne({
+          id: id,
+          type: "singleton",
+          sub: `singleton/${proof_payload.account}`,
+          date: new Date(),
+          expires: moment().add('1', 'month').toDate()
+        })
+
+        return {
+          access_token,
+        }
+      } else {
+        throw new HttpException(
+          {
+            reason: 'Invalid Signature',
+          },
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+    } else if (body.network === 'did') {
+      return {
+        access_token: null,
+      }
+    } else {
+      throw new HttpException(
+        {
+          reason: 'Unsupported network type',
+        },
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    // return this.authService.login(req.user)
   }
 
-  @UseGuards(AuthGuard('local'))
-  @Post('/auth/login_singleton')
-  async loginSingletonPost(@Request() req) {
-    return this.authService.login(req.user)
+  @UseGuards(AuthGuard('jwt'))
+  @Post('/auth/check')
+  async checkAuth(@Request() req) {
+    console.log('user details check', req.user)
   }
 
   @UseGuards(AuthGuard('local'))
@@ -121,7 +208,7 @@ export class AppController {
       email: req.body.email,
       email_code,
       password: hashedPassword,
-      type: "multi"
+      type: 'multi',
     })
     // return this.authService.login(req.user);
   }
@@ -256,7 +343,6 @@ export class AppController {
     const message = JSON.parse(decoded.substr(1))
     const pubKeys = hive.memo.getPubKeys(memo)
 
-    
     const [account] = await HiveClient.database.getAccounts([message.account])
     console.log(account[message.authority], pubKeys)
 
@@ -269,18 +355,21 @@ export class AppController {
     }
 
     const identityChallenge = await appContainer.self.linkedAccountsDb.findOne({
-      challenge: message.message
+      challenge: message.message,
     })
     console.log(signatureValid, account, message.message, identityChallenge)
-    if(signatureValid === true) {
-      if(identityChallenge.username === account.name) {
-        await appContainer.self.linkedAccountsDb.updateOne({
-          _id: identityChallenge._id
-        }, {
-          $set: {
-            status: 'verified'
-          }
-        })
+    if (signatureValid === true) {
+      if (identityChallenge.username === account.name) {
+        await appContainer.self.linkedAccountsDb.updateOne(
+          {
+            _id: identityChallenge._id,
+          },
+          {
+            $set: {
+              status: 'verified',
+            },
+          },
+        )
       } else {
         throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST)
       }
