@@ -49,6 +49,11 @@ export class UploadController {
     const id = uuidv5(`thumbnail`, body.video_id)
 
     const { cid } = await ipfsCluster.addData(file.buffer, {
+      metadata: {
+        key: `${body.video_id}/thumbnail`,
+        app: "3speak-beta",
+        message: "acela beta please ignore"
+      },
       replicationFactorMin: 1,
       replicationFactorMax: 2,
     })
@@ -94,6 +99,7 @@ export class UploadController {
   @Post('create_upload')
   async createUpload(@Request() req) {
     const body = req.body
+    const user = req.user
 
     // console.log(body, req.headers, req.user)
     const id = uuid();
@@ -101,14 +107,13 @@ export class UploadController {
 
     const localPost = await appContainer.self.localPosts.insertOne({
       id,
-      owner: 'vaultec',
-      title: "test",
-      description: "Test description",
+      owner: user.username,
+      title: body.title,
+      description: body.description,
       beneficiaries: [],
-      tags: [],
-      category: '',
-      community: '',
-      language: 'en',
+      tags: body.tags || [],
+      community: body.community, //'',
+      language: body.language || 'en', //'en',
 
       //For videos only
       video_details: {
@@ -121,7 +126,7 @@ export class UploadController {
       },
 
       status: "created",
-      created_by: 't',
+      created_by: user.sub,
       created_at: new Date(),
       updated_at: new Date(),
       expires: moment().add('1', 'day').toDate(),

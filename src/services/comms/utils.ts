@@ -98,7 +98,7 @@ export function buildJSONMetadata(video) {
 
   return {
     tags: processTags(video.tags),
-    app: '3speak/0.4.0-beta',
+    app: '3speak/0.4.0-beta1',
     type: '3speak/video',
     image: [imageUrl],
     video: {
@@ -145,7 +145,7 @@ export function renderTemplate(video) {
     .replace(/@@@description@@@/g, video.description)
 }
 
-async function buildCommentOptions(video) {
+export async function buildCommentOptions(video) {
     let benefactor_global = [
       [0, {beneficiaries: [{account: "threespeak.beta", weight: 100}, {account: 'spk.beneficiary', weight: 1000}]}]
     ];
@@ -194,6 +194,11 @@ async function buildCommentOptions(video) {
   
     // console.log(benefactor_global[0][1].beneficiaries)
   
+
+    ;(benefactor_global[0][1] as any).beneficiaries = (benefactor_global[0][1] as any).beneficiaries.sort((b, a) => {
+      return a.weight - b.weight
+    }) 
+
     return ['comment_options', {
       author: video.owner,
       permlink: video.permlink,
@@ -201,7 +206,7 @@ async function buildCommentOptions(video) {
       percent_hbd: video.rewardPowerup === true ? 0 : 10000,
       allow_votes: true,
       allow_curation_rewards: true,
-      extensions: [] //video.declineRewards ? [] //: benefactor_global
+      extensions: benefactor_global//[] video.declineRewards ? [] //: benefactor_global
     }]
   }
   
@@ -209,13 +214,12 @@ export function buildPublishCustomJson(video) {
   return [
     'custom_json',
     {
-      required_posting_auths: ['threespeak', video.owner],
+      required_posting_auths: ['threespeak.beta', video.owner],
       required_auths: [],
       id: '3speak-publish',
       json: JSON.stringify({
         author: video.owner,
         permlink: video.permlink,
-        category: video.category,
         language: video.language,
         duration: video.duration,
         title: video.title,

@@ -35,3 +35,11 @@ export interface HiveAccountCreation {
     requested_at: Date
     created_at: Date
 }
+
+export interface AuthSession {
+    id: string
+    expires: Date
+    date: Date
+    type: "singleton" | 'regular'
+    sub: string
+}
