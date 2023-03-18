@@ -1,10 +1,6 @@
 import { Db, MongoClient, Collection } from 'mongodb'
-<<<<<<< HEAD
-import { HiveAccountCreation } from '../types/auth';
-import { UserForDApps } from '../types/userfordapps';
-=======
 import { AuthSession, HiveAccountCreation } from '../types/auth';
->>>>>>> 9ec988d43553f2aa80ba02a01d9c5c2f6832fd61
+import { UserForDApps } from '../types/userfordapps';
 import { CommsCore } from './comms';
 import { VoterCore } from './comms/voter';
 import { MONGODB_URL } from './db';
@@ -24,12 +20,9 @@ export class AcelaCore {
     delegatedAuthority: Collection;
     linkedAccountsDb: Collection;
     hiveAccountsDb: Collection<HiveAccountCreation>;
-<<<<<<< HEAD
     userForDAppsDb: Collection<UserForDApps>;
-    videosDb: Collection<Video>;
-=======
     authSessions: Collection<AuthSession>
->>>>>>> 9ec988d43553f2aa80ba02a01d9c5c2f6832fd61
+    videosDb: Collection<Video>;
     healthChecks: HealthCheckCore;
     voter: VoterCore;
     uploadsDb: Collection<any>;
