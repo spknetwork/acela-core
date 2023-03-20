@@ -6,11 +6,16 @@ import { AuthModule } from './auth/auth.module';
 import { LocalStrategy } from './auth/auth.strategy';
 import { UploadController } from './uploader/upload.controller';
 import { HiveuserModule } from './hiveuser/hiveuser.module';
-import { TrustedclientsModule } from './trustedclients/trustedclients.module';
+import { HiveauthuserController } from './hiveauthuser/hiveauthuser.controller';
+import { HiveuserService } from './hiveuser/hiveuser.service'
+import { HiveauthuserModule } from './hiveauthuser/hiveauthuser.module';
+import { HiveauthuserService } from './hiveauthuser/hiveauthuser.service';
+import { HiveuserController } from './hiveuser/hiveuser.controller';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
-  imports: [ AuthModule, UsersModule, ApiModule, HiveuserModule, TrustedclientsModule],
-  controllers: [ AppController, UploadController ],
-  providers: [ AppService, AuthModule, LocalStrategy ],
+  imports: [ AuthModule, UsersModule, ApiModule, HiveauthuserModule, HiveuserModule],
+  controllers: [ AppController, UploadController, HiveuserController, HiveauthuserController ],
+  providers: [ JwtService, AppService, AuthModule, LocalStrategy, HiveuserService, HiveauthuserService ],
 })
 export class AppModule {}   

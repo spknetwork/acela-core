@@ -2,8 +2,6 @@ import {
   Controller,
   Get,
   Headers,
-  HttpException,
-  HttpStatus,
   Param,
 } from '@nestjs/common'
 import { HiveuserService } from './hiveuser.service'
