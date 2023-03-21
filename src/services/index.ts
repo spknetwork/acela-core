@@ -43,6 +43,7 @@ export class AcelaCore {
         this.usersDb = this.db.collection('users')
         this.linkedAccountsDb = this.db.collection('linked_accounts')
         this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive-accounts')
+        this.authSessions = this.db.collection('auth_sessions')
         this.userForDAppsDb = this.db.collection<UserForDApps>('user-for-dapps')
         this.commitLog = this.db.collection('commit-log')
         this.uploadsDb = this.db.collection('uploads')
