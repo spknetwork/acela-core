@@ -130,7 +130,7 @@ export class AppController {
       const [accountDetails] = await HiveClient.database.getAccounts([proof_payload.account])
 
       if (
-        verifyHiveMessage(cryptoUtils.sha256(body.proof_payload), body.proof, accountDetails) ||
+        verifyHiveMessage(cryptoUtils.sha256(body.proof_payload), body.proof, accountDetails) &&
         new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
       ) {
         const id = uuid()
