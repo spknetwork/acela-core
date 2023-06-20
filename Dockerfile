@@ -1,6 +1,7 @@
 FROM node:18.14.2-alpine
 WORKDIR /usr/app
 COPY package.json .
+RUN apk add git
 RUN npm install\
     && npm install typescript -g
 COPY . .
