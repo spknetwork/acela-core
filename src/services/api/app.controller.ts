@@ -28,13 +28,17 @@ import { IsEmail, IsNotEmpty, isString } from 'class-validator'
 import { RequireHiveVerify } from './utils'
 import { cryptoUtils } from '@hiveio/dhive'
 import moment from 'moment'
+import { authenticator } from 'otplib'
 
 const mg = new Mailgun({
   apiKey: process.env.MAIL_GUN_SECRET,
   domain: process.env.MAIL_GUN_DOMAIN,
 })
 
-async function createAccountWithAuthority(newAccountname, authorityAccountname) {
+async function createAccountWithAuthority(newAccountname, authorityAccountname, options?: {
+  posting_auths?: string[]
+  active_auths?: string[]
+}) {
   const owner = {
     weight_threshold: 1,
     account_auths: [[authorityAccountname, 1]],
@@ -42,12 +46,16 @@ async function createAccountWithAuthority(newAccountname, authorityAccountname) 
   }
   const active = {
     weight_threshold: 1,
-    account_auths: [[authorityAccountname, 1]],
+    account_auths: [[authorityAccountname, 1], ...(options?.active_auths || []).map(e => {
+      return [e, 1]
+    })],
     key_auths: [],
   }
   const posting = {
     weight_threshold: 1,
-    account_auths: [[authorityAccountname, 1]],
+    account_auths: [[authorityAccountname, 1], ...(options?.posting_auths || []).map(e => {
+      return [e, 1]
+    })],
     key_auths: [],
   }
   const memo_key = 'STM7C9FCSZ6ntNsrwkU5MCvAB7TV44bUF8J4pwWLWpGY5Z7Ba7Q6e'
@@ -60,13 +68,13 @@ async function createAccountWithAuthority(newAccountname, authorityAccountname) 
     posting,
     memo_key,
     json_metadata: JSON.stringify({
-      beneficiaries: [
-        {
-          name: 'spk.beneficiary',
-          weight: 500,
-          label: 'provider',
-        },
-      ],
+      // beneficiaries: [
+      //   {
+      //     name: 'spk.beneficiary',
+      //     weight: 500,
+      //     label: 'provider',
+      //   },
+      // ],
     }),
     extensions: [],
   }
@@ -138,15 +146,15 @@ export class AppController {
           id: id,
           type: 'singleton',
           sub: `singleton/${proof_payload.account}`,
-          username: proof_payload.account
+          username: proof_payload.account,
         })
 
         await appContainer.self.authSessions.insertOne({
           id: id,
-          type: "singleton",
+          type: 'singleton',
           sub: `singleton/${proof_payload.account}`,
           date: new Date(),
-          expires: moment().add('1', 'month').toDate()
+          expires: moment().add('1', 'month').toDate(),
         })
 
         return {
@@ -182,6 +190,63 @@ export class AppController {
     console.log('user details check', req.user)
   }
 
+  @Post('/auth/lite/register-initial')
+  async registerLite(@Body() body) {
+    const { username, otp_code } = body
+    const output = await HiveClient.database.getAccounts([username])
+
+    if (output.length === 0) {
+      // const secret = authenticator.generateSecret(32)
+      
+      if(authenticator.verify({
+        token: otp_code,
+        secret: body.secret
+      })) {
+        await appContainer.self.hiveAccountsDb.insertOne({
+          status: "requested",
+          username,
+          keys_requested: false,
+          created_by: null,
+          requested_at: new Date(),
+          request_type: 'otp-login',
+          created_at: new Date(),
+          secret: body.secret
+        })
+        // const accountCreation = await createAccountWithAuthority(
+        //   username,
+        //   process.env.ACCOUNT_CREATOR
+        // )
+
+        const jwt = await this.authService.jwtService.signAsync({
+          username,
+        })
+
+        return {
+          // id: accountCreation.id,
+          jwt
+        }
+      } else {
+        throw new HttpException({
+          reason: "Invalid OTP code"
+        }, HttpStatus.BAD_REQUEST)
+      }
+
+    } else {
+      throw new HttpException(
+        { reason: 'Hive account with the requested name already exists' },
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+  }
+  // @Post('/auth/lite/register-initial')
+  // async registerLiteFinish(@Body() body) {
+  //   await appContainer.self.usersDb.insertOne({
+  //     status: 'requested',
+  //     username: body.username
+  //   })
+  // }
+
   @UseGuards(AuthGuard('local'))
   @Post('/auth/register')
   async register(@Request() req) {
@@ -207,8 +272,16 @@ export class AppController {
       user_id: uuid(),
       email: req.body.email,
       email_code,
-      password: hashedPassword,
+      auth_methods: {
+        password: {
+          value: hashedPassword
+        }
+      },
       type: 'multi',
+      created_at: new Date(),
+      updated_at: new Date(),
+      last_login_at: new Date(),
+      password_reset_at: null
     })
     // return this.authService.login(req.user);
   }
@@ -318,6 +391,7 @@ export class AppController {
         challenge,
         linked_at: new Date(),
         verified_at: null,
+        type: 'native'
       })
 
       return {
@@ -359,7 +433,7 @@ export class AppController {
     })
     console.log(signatureValid, account, message.message, identityChallenge)
     if (signatureValid === true) {
-      if (identityChallenge.username === account.name) {
+      if (identityChallenge.account === account.name) {
         await appContainer.self.linkedAccountsDb.updateOne(
           {
             _id: identityChallenge._id,

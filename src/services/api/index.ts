@@ -1,5 +1,6 @@
 import { Injectable, Module, NestMiddleware, ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { createSchema, createYoga } from 'graphql-yoga'
 import { AcelaCore } from '..'
 import { Resolvers, Schema } from './admin/graphql'
@@ -73,6 +74,11 @@ export class ApiModule {
     app.enableShutdownHooks()
 
     app.useGlobalPipes(new ValidationPipe());
+    
+    const config = new DocumentBuilder().build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('/api/v1/docs', app, document);
 
     await app.listen(this.listenPort)
 
