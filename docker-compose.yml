@@ -14,7 +14,7 @@ services:
     networks:
       - acela-core
     environment:
-      MONGO_HOST: mongo:27017
+      # MONGO_HOST: mongo:27017
       IPFS_HOST: ipfs:5001
     volumes:
       - ./data/video-encoder:/root/.spk-encoder
@@ -27,16 +27,16 @@ services:
       - acela-core
     ports:
       - 1080:1080
-  mongo:
-    container_name: mongo_acela
-    image: mongo:latest
-    restart: always
-    ports:
-      - 27417:27017
-    networks:
-      - acela-core
-    volumes:
-      - ./data/mongodb:/data/db
+  # mongo:
+  #   container_name: mongo_acela
+  #   image: mongo:latest
+  #   restart: always
+  #   ports:
+  #     - 27417:27017
+  #   networks:
+  #     - acela-core
+  #   volumes:
+  #     - ./data/mongodb:/data/db
 
 volumes:
   tusd:
