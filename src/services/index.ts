@@ -1,5 +1,12 @@
 import { Db, MongoClient, Collection } from 'mongodb'
-import { AuthSession, HiveAccountCreation } from '../types/auth';
+import * as IPFSHTTPClient from 'ipfs-http-client';
+import os from 'os'
+import Path from 'path'
+import Crypto from 'crypto'
+import { Ed25519Provider } from 'key-did-provider-ed25519';
+import { DID } from "dids";
+import KeyResolver from 'key-did-resolver'
+import { AuthSession, HiveAccountCreation, UserAccount, UserAccountLink } from '../types/auth';
 import { CommsCore } from './comms';
 import { VoterCore } from './comms/voter';
 import { MONGODB_URL } from './db';
@@ -7,16 +14,18 @@ import { HealthCheckCore } from './health';
 import { LockService } from './lock-service';
 import { StorageEngine } from './storage-engine';
 import { VideoService } from './video-service';
+import { Config } from './config';
 
 
 export class AcelaCore {
     db: Db;
-    usersDb: Collection;
+    usersDb: Collection<UserAccount>;
+    linkedAccountsDb: Collection<UserAccountLink>;
+    hiveAccountsDb: Collection<HiveAccountCreation>;
+
     commitLog: Collection;
     unionDb: Db;
     delegatedAuthority: Collection;
-    linkedAccountsDb: Collection;
-    hiveAccountsDb: Collection<HiveAccountCreation>;
     authSessions: Collection<AuthSession>
     healthChecks: HealthCheckCore;
     voter: VoterCore;
@@ -27,9 +36,39 @@ export class AcelaCore {
     comms: CommsCore;
     videoService: VideoService;
     localPosts: Collection;
+    ipfs: IPFSHTTPClient.IPFSHTTPClient;
+    config: Config;
+    identity: DID;
 
+
+    private async setupKeys() {
+        for(let key of ['node']) {
+            let privateKey = null
+            if (this.config.get(`identity.${key}Private`)) {
+              privateKey = Buffer.from(this.config.get(`identity.${key}Private`), 'base64')
+            } else {
+              privateKey = Crypto.randomBytes(32)
+              const hex = privateKey.toString('base64')
+              this.config.set(`identity.${key}Private`, hex)
+            }
+            const keyPrivate = new Ed25519Provider(privateKey)
+            const did = new DID({ provider: keyPrivate, resolver: KeyResolver.getResolver() })
+            await did.authenticate()
+            this.config.set(`identity.${key}Public`, did.id)
+            if(key === "node") {
+                this.identity = did
+            }
+        }
+    }
 
     async start() {
+
+        const homeDir = Path.join(os.homedir(), '.acela-core')
+        this.config = new Config(homeDir)
+        await this.config.open()
+
+        await this.setupKeys()
+
         const connection = new MongoClient(MONGODB_URL)
         await connection.connect();
         const connection2 = new MongoClient(process.env.INDEXER_MONGODB_URL)
@@ -37,9 +76,9 @@ export class AcelaCore {
 
         this.db = connection.db('acela-core')
         this.usersDb = this.db.collection('users')
-        this.linkedAccountsDb = this.db.collection('linked_accounts')
+        this.linkedAccountsDb = this.db.collection('linked_accounts')  
         this.hiveAccountsDb = this.db.collection<HiveAccountCreation>('hive_accounts')
-        this.authSessions = this.db.collection('auth_sessions')
+        this.authSessions = this.db.collection('auth_sessions') 
         this.commitLog = this.db.collection('commit_log')
         this.uploadsDb = this.db.collection('uploads')
         this.localPosts = this.db.collection('local_posts')
@@ -73,5 +112,7 @@ export class AcelaCore {
         this.videoService = new VideoService(this)
 
         await this.videoService.start();
+
+        this.ipfs = IPFSHTTPClient.create()
     }
 }
