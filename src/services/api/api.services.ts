@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MongoClient } from 'mongodb';
 import { appContainer } from '.';
-import { MONGODB_URL } from '../db';
 
 @Injectable()
 export class ApiService {}

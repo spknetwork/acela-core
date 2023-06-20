@@ -9,7 +9,7 @@ import KeyResolver from 'key-did-resolver'
 import { AuthSession, HiveAccountCreation, UserAccount, UserAccountLink } from '../types/auth';
 import { CommsCore } from './comms';
 import { VoterCore } from './comms/voter';
-import { MONGODB_URL } from './db';
+import { CORE_MONGODB_URL } from './db';
 import { HealthCheckCore } from './health';
 import { LockService } from './lock-service';
 import { StorageEngine } from './storage-engine';
@@ -69,7 +69,7 @@ export class AcelaCore {
 
         await this.setupKeys()
 
-        const connection = new MongoClient(MONGODB_URL)
+        const connection = new MongoClient(CORE_MONGODB_URL)
         await connection.connect();
         const connection2 = new MongoClient(process.env.INDEXER_MONGODB_URL)
         await connection2.connect();
