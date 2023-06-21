@@ -29,6 +29,7 @@ import { RequireHiveVerify } from './utils'
 import { cryptoUtils } from '@hiveio/dhive'
 import moment from 'moment'
 import { authenticator } from 'otplib'
+import { ApiCookieAuth, ApiHeader, ApiProperty } from '@nestjs/swagger'
 
 const mg = new Mailgun({
   apiKey: process.env.MAIL_GUN_SECRET,
@@ -89,12 +90,23 @@ async function createAccountWithAuthority(newAccountname, authorityAccountname, 
 
 class LoginSingletonDt {
   @IsNotEmpty()
+  @ApiProperty({
+    description: 'Username of the account',
+    default: "test-account",
+  })
   username: string
 
   @IsNotEmpty()
+  @ApiProperty({
+    description: 'Network of the identity; Can be HIVE or CERAMIC',
+    default: "HIVE",
+  })
   network: string
 
   @IsNotEmpty()
+  @ApiProperty({
+
+  })
   authority_type: string
 
   proof_payload: string
@@ -185,6 +197,12 @@ export class AppController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @ApiHeader({
+    name: "x-auth",
+    description: "JWT Authorization",
+    required: true
+    
+  })
   @Post('/auth/check')
   async checkAuth(@Request() req) {
     console.log('user details check', req.user)
