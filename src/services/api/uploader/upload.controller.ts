@@ -20,14 +20,78 @@ import {v4 as uuid, v5 as uuidv5} from 'uuid'
 import { appContainer } from '..'
 import { RequireHiveVerify, UserDetailsInterceptor } from '../utils'
 import { ipfsCluster } from '../../storage-engine'
+import { ApiConsumes, ApiOperation, ApiProperty } from '@nestjs/swagger'
+
+class CreateUploadDto {
+  @ApiProperty({
+    description: 'Title of the post',
+    default: "Your video title",
+  })
+  title: string
+
+  @ApiProperty({
+    description: 'Description of the post',
+    default: "This video is a test video. Here we can put a description",
+  })
+  body: string
+
+  @ApiProperty({
+    description: 'Tags for the post',
+    default: ['threespeak', 'acela-core'],
+  })
+  tags: string[]
+
+  @ApiProperty({
+    description: 'Community',
+    default: 'hive-101',
+  })
+  community: string
+
+  @ApiProperty({
+    description: 'Language of the video in ISO 639-1 format',
+    default: 'en',
+  })
+  language: string
+}
+
+class StartEncodeDto {
+  @ApiProperty({
+    description: 'ID of the upload',
+    default: 'ec102517-7be9-4255-9d07-75a525a88565',
+  })
+  upload_id: string
+}
+
+class UploadThumbnailUpload {
+
+  @ApiProperty({
+    description: "ID of video"
+  })
+  video_id: string
+  @ApiProperty({
+    description: 'Attachments',
+    type: 'array',
+    items: {
+      type: 'file',
+      items: {
+        type: 'string',
+        format: 'binary',
+      },
+    },
+  })
+  file: Express.Multer.File
+}
 
 @Controller('/api/v1')
 export class UploadController {
+
+  @ApiConsumes('multipart/form-data', 'application/json')
   @Post('upload_thumbnail')
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
   async uploadThumbnail(
     @Req() req, 
+    @Body() Body: UploadThumbnailUpload,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -94,11 +158,12 @@ export class UploadController {
   }
 
   //Sequence matters
+  @ApiOperation({ summary: 'Creates post metadata container' })
   @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @UseInterceptors(UserDetailsInterceptor)
   @Post('create_upload')
-  async createUpload(@Request() req) {
-    const body = req.body
+  async createUpload(@Request() req, @Body() reqBody: CreateUploadDto) {
+    const body = reqBody
     const user = req.user
 
     // console.log(body, req.headers, req.user)
@@ -109,7 +174,7 @@ export class UploadController {
       id,
       owner: user.username,
       title: body.title,
-      description: body.description,
+      description: body.body,
       beneficiaries: [],
       tags: body.tags || [],
       community: body.community, //'',
@@ -157,7 +222,7 @@ export class UploadController {
   }
   @UseGuards(AuthGuard('jwt'))
   @Post('start_encode')
-  async startEncode(@Body() body) {
+  async startEncode(@Body() body: StartEncodeDto) {
     const uploadJob = await appContainer.self.uploadsDb.findOne({
       id: body.upload_id
     })
@@ -179,6 +244,7 @@ export class UploadController {
   }
 
 
+  @ApiOperation({ summary: 'Updates the metadata of a pending upload [Work in progress]' })
   @Post('update_post')
   async postUpdate(@Body() body, @Req() req) {
     console.log(req)
@@ -202,10 +268,10 @@ export class UploadController {
     } else {
       throw new HttpException({ reason: "You do not have access to edit the requested post"}, HttpStatus.BAD_REQUEST)
     }
-    
   }
 
   @Post('tus-callback')
+  @ApiOperation({ summary: 'TUSd uploader callback. Internal use only' })
   async tusdCallback(@Body() body) {
     if(body.Upload.MetaData.authorization === "TESTING") {
       throw new HttpException({ error: 'Test authorization used' }, HttpStatus.BAD_REQUEST)

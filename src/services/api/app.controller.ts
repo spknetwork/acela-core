@@ -27,9 +27,9 @@ import Crypto from 'crypto'
 import { IsEmail, IsNotEmpty, isString } from 'class-validator'
 import { RequireHiveVerify } from './utils'
 import { cryptoUtils } from '@hiveio/dhive'
-import moment from 'moment'
+import moment, { invalid } from 'moment'
 import { authenticator } from 'otplib'
-import { ApiCookieAuth, ApiHeader, ApiProperty } from '@nestjs/swagger'
+import { ApiBadRequestResponse, ApiBody, ApiCookieAuth, ApiHeader, ApiInternalServerErrorResponse, ApiMovedPermanentlyResponse, ApiOkResponse, ApiOperation, ApiParam, ApiProperty, ApiResponseProperty, ApiUnauthorizedResponse } from '@nestjs/swagger'
 
 const mg = new Mailgun({
   apiKey: process.env.MAIL_GUN_SECRET,
@@ -113,6 +113,73 @@ class LoginSingletonDt {
   proof: string
 }
 
+class LoginDto {
+  @ApiProperty({
+    default: "test-account@fakedomain.com"
+  })
+  username: string
+
+  @ApiProperty({
+    default: "user-generated-password"
+  })
+  password: string
+}
+
+class LoginResponseDto {
+  @ApiProperty({
+    description: "JWT login token",
+    default: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+  }) 
+  access_token: string
+}
+
+class VotePostDto {
+  @ApiProperty({
+    default: "sagarkothari88"
+  })
+  author: string
+
+  @ApiProperty({
+    default: "actifit-sagarkothari88-20230211t122818265z"
+  })
+  permlink: string
+}
+
+class VotePostResponseDto {
+  @ApiProperty({
+    default: "f555e5e690aefa99f5d6c1fe47c08db6ad79af1f"
+  })
+  id: string
+}
+
+
+
+
+enum LoginErrorPossibles {
+  unsupportedNetwork = "UNSUPPORTED_NETWORK",
+  invalidSignature = "INVALID_SIGNATURE"
+}
+
+enum LoginErrorReasonEnum {
+  "Unsupported network type" = "Unsupported network type",
+  "Invalid Signature" = "Invalid Signature"
+}
+
+class LoginErrorResponseDto {
+  @ApiProperty({
+    description: "Reason for failed response",
+    enum: LoginErrorReasonEnum
+  })
+  reason: "Unsupported network type" | "Invalid Signature"
+
+  @ApiProperty({
+    description: "Error type enum - use this for application logic",
+    enum: LoginErrorPossibles,
+    isArray: false,
+  })
+  errorType: LoginErrorPossibles
+}
+
 class LinkAccountPost {
   @IsNotEmpty()
   username: string
@@ -120,6 +187,7 @@ class LinkAccountPost {
 
 function verifyHiveMessage(message, signature: string, account: DHive.ExtendedAccount): boolean {
   for (let auth of account.posting.key_auths) {
+
     const sigValidity = DHive.PublicKey.fromString(auth[0].toString()).verify(
       Buffer.from(message),
       DHive.Signature.fromBuffer(Buffer.from(signature, 'hex')),
@@ -137,11 +205,26 @@ export class AppController {
 
   @UseGuards(AuthGuard('local'))
   @Post('/auth/login')
-  async login(@Request() req) {
+  @ApiOkResponse({
+    description: "Login success",
+    type: LoginResponseDto
+  })
+  async login(@Request() req, @Body() body: LoginDto) {
     return this.authService.login(req.user)
   }
 
   // @UseGuards(AuthGuard('local'))
+  @ApiOkResponse({
+    description: "Successfully logged in",
+    type: LoginResponseDto
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid options",
+    type: LoginErrorResponseDto
+  })
+  @ApiInternalServerErrorResponse({
+    description: "Internal Server Error - unrelated to request body"
+  })
   @Post('/auth/login_singleton')
   async loginSingletonReturn(@Body() body: LoginSingletonDt) {
     // console.log(req)
@@ -176,6 +259,7 @@ export class AppController {
         throw new HttpException(
           {
             reason: 'Invalid Signature',
+            errorType: "INVALID_SIGNATURE"
           },
           HttpStatus.BAD_REQUEST,
         )
@@ -188,6 +272,7 @@ export class AppController {
       throw new HttpException(
         {
           reason: 'Unsupported network type',
+          errorType: "UNSUPPORTED_NETWORK"
         },
         HttpStatus.BAD_REQUEST,
       )
@@ -196,18 +281,81 @@ export class AppController {
     // return this.authService.login(req.user)
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @ApiHeader({
-    name: "x-auth",
+    name: "Authorization",
     description: "JWT Authorization",
+    example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
     required: true
-    
   })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        ok: {
+          type: 'boolean',
+          default: true
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({
+    description: "Invalid or expired authentication token"
+  })
+  @UseGuards(AuthGuard('jwt'))
   @Post('/auth/check')
   async checkAuth(@Request() req) {
     console.log('user details check', req.user)
+    return {
+      ok: true
+    }
   }
 
+  @ApiOperation({
+    summary: "Registers an account using light OTP/TOTP login"
+  })
+  @ApiBody({
+    schema: {
+      properties: {
+        username: {
+          type: 'string',
+          default: "test-account"
+        },
+        otp_code: {
+          type: 'string',
+          default: '029735'
+        },
+        secret: {
+          type: 'string',
+          default: "GYZWKZBSGUYDEMLGHFTDQYJWHEYTKMLCMZQTGZA"
+        } 
+      }
+    }
+  })
+  @ApiOkResponse({
+    description: "Successfully logged in",
+    type: LoginResponseDto
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid options",
+    schema: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          enum: ['Invalid OTP code', 'Hive account with the requested name already exists'],
+          default: 'Invalid OTP code'
+        },
+        errorType: {
+          type: "string",
+          enum: ['INVALID_OTP', 'HIVE_ACCOUNT_EXISTS'],
+          default: 'INVALID_OTP'
+
+        }
+      }
+    }
+  })
+  @ApiInternalServerErrorResponse({
+    description: "Internal Server Error - unrelated to request body"
+  })
   @Post('/auth/lite/register-initial')
   async registerLite(@Body() body) {
     const { username, otp_code } = body
@@ -241,17 +389,20 @@ export class AppController {
 
         return {
           // id: accountCreation.id,
-          jwt
+          access_token: jwt
         }
       } else {
         throw new HttpException({
-          reason: "Invalid OTP code"
+          reason: "Invalid OTP code",
+          errorType: "INVALID_OTP"
         }, HttpStatus.BAD_REQUEST)
       }
 
     } else {
-      throw new HttpException(
-        { reason: 'Hive account with the requested name already exists' },
+      throw new HttpException({ 
+          reason: 'Hive account with the requested name already exists', 
+          errorType: "HIVE_ACCOUNT_EXISTS"
+        },
         HttpStatus.BAD_REQUEST,
       )
     }
@@ -265,12 +416,42 @@ export class AppController {
   //   })
   // }
 
+  @ApiOperation({
+    summary: "Registers an account using email/password login"
+  })
+  @ApiBody({
+    schema: {
+      properties: {
+        password: {
+          type: 'string',
+          default: "!SUPER-SECRET_PASSWORD!"
+        },
+        email: {
+          type: 'string',
+          default: 'test@invalid.example.org'
+        }
+      }
+    }
+  })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        ok: {
+          type: 'boolean',
+          default: true
+        }
+      }
+    }
+  })
   @UseGuards(AuthGuard('local'))
   @Post('/auth/register')
-  async register(@Request() req) {
+  async register(@Request() req, @Body() body: {
+    Test: 'hello'
+  }) {
     const password = req.body.password
     const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10))
 
+    console.log(body.Test)
     const email_code = uuid()
     mg.messages().send(
       {
@@ -302,8 +483,18 @@ export class AppController {
       password_reset_at: null
     })
     // return this.authService.login(req.user);
+    return {
+      ok: true
+    }
   }
 
+  @ApiParam({
+    name: "code",
+    type: 'string'
+  })
+  @ApiMovedPermanentlyResponse({
+    description: "Redirect user to 3Speak.tv",
+  })
   @Get('/auth/verifyemail')
   async verifyEmail(@Request() req, @Response() res) {
     const verifyCode = req.query.code
@@ -322,6 +513,35 @@ export class AppController {
     return res.redirect('https://3speak.tv')
   }
 
+
+  @ApiHeader({
+    name: "Authorization",
+    description: "JWT Authorization",
+    example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    required: true
+  })
+  @ApiBody({
+    schema: {
+      properties: {
+        username: {
+          type: 'string',
+          default: "test-account",
+          description: "Username of requested HIVE account"
+        }
+      }
+    }
+  })
+  @ApiOkResponse({
+    description: "Account created",
+    schema: {
+      properties: {
+        id: {
+          type: 'string',
+          default: "f555e5e690aefa99f5d6c1fe47c08db6ad79af1f"
+        }
+      }
+    }
+  })
   @UseGuards(AuthGuard('jwt'))
   @Post('/auth/request_hive_account')
   async requestHiveAccount(@Request() req) {
@@ -338,22 +558,30 @@ export class AppController {
     const output = await HiveClient.database.getAccounts([req.body.username])
     // console.log(output)
     if (output.length === 0) {
-      const accountCreation = await createAccountWithAuthority(
-        req.body.username,
-        process.env.ACCOUNT_CREATOR,
-      )
-      //Here will be thrown if failed at this point
-
-      await appContainer.self.hiveAccountsDb.insertOne({
-        status: 'created',
-        username: req.body.username,
-        keys_requested: false,
-        created_by: req.user.user_id,
-        requested_at: new Date(),
-        created_at: new Date(),
-      })
-
-      throw accountCreation
+      try {
+        const accountCreation = await createAccountWithAuthority(
+          req.body.username,
+          process.env.ACCOUNT_CREATOR,
+        )
+        //Here will be thrown if failed at this point
+  
+        await appContainer.self.hiveAccountsDb.insertOne({
+          status: 'created',
+          username: req.body.username,
+          keys_requested: false,
+          created_by: req.user.user_id,
+          requested_at: new Date(),
+          created_at: new Date(),
+        })
+  
+        
+        return accountCreation
+      } catch(ex) {
+        throw new HttpException(
+          { reason: `On chain error - ${ex.message}` },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        )
+      }
     } else {
       throw new HttpException(
         { reason: 'Hive account with the requested name already exists' },
@@ -362,6 +590,45 @@ export class AppController {
     }
   }
 
+  @ApiHeader({
+    name: "Authorization",
+    description: "JWT Authorization",
+    example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    required: true,
+  })
+  @ApiBody({
+    schema: {
+      properties: {
+        body: {
+          type: 'string',
+          default: "Example body"
+        }, 
+        parent_author: {
+          type: 'string',
+          default: "sagarkothari88"
+        }, 
+        parent_permlink: {
+          type: 'string',
+          default: "actifit-sagarkothari88-20230211t122818265z"
+        }, 
+        author: {
+          type: 'string',
+          default: "test-account"
+        }
+      }
+    }
+  })
+  @ApiOkResponse({
+    description: "Successfully posted to HIVE blockchain",
+    schema: {
+      properties: {
+        id: {
+          type: 'string',
+          default: "f555e5e690aefa99f5d6c1fe47c08db6ad79af1f"
+        }
+      }
+    }
+  })
   @UseGuards(AuthGuard('jwt'))
   @Post('/hive/post_comment')
   async postHiveComment(@Body() reqBody) {
@@ -391,6 +658,46 @@ export class AppController {
     return req.user
   }
 
+  @ApiHeader({
+    name: "Authorization",
+    description: "JWT Authorization",
+    required: true,
+    schema: {
+      example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+      // default: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    }
+  })
+  @ApiBody({
+    schema: {
+      properties: {
+        username: {
+          type: 'string',
+          default: 'test-account'
+        }
+      }
+    }
+  })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        challenge: {
+          type: 'string',
+          default: "aa3cb275-b923-4d71-ae55-3330e1cb508b"
+        }
+      }
+    }
+  })
+  @ApiBadRequestResponse({
+    schema: {
+      properties: {
+        reason: {
+          type: 'string',
+          enum: ["Hive account already linked"],
+          default: "Hive account already linked"
+        }
+      }
+    }
+  })
   @UseGuards(AuthGuard('jwt'))
   @Post(`/hive/linkaccount`)
   async linkAccount(@Body() data: LinkAccountPost, @Request() req: any) {
@@ -424,7 +731,34 @@ export class AppController {
       throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST)
     }
   }
-
+  
+  @ApiHeader({
+    name: "Authorization",
+    description: "JWT Authorization",
+    required: true,
+    schema: {
+      example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    }
+  })
+  @ApiBody({
+    schema: {
+      properties: {
+        memo: {
+          type: 'string'
+        }
+      }
+    }
+  })
+  @ApiBadRequestResponse({
+    schema: {
+      properties: {
+        reason: {
+          type: "string",
+          enum: ['Incorrect signing account', 'Incorrect signature']
+        }
+      }
+    }
+  })
   @UseGuards(AuthGuard('jwt'))
   @Post(`/hive/verify_linked_account`)
   async verifyLinkedAccount(@Body() data: any, @Request() req: any) {
@@ -462,6 +796,9 @@ export class AppController {
             },
           },
         )
+        return {
+          ok: true
+        }
       } else {
         throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST)
       }
@@ -470,10 +807,17 @@ export class AppController {
     }
   }
 
+  @ApiOperation({
+    summary: "Votes on a piece of HIVE content using logged in account"
+  })
+  @ApiOkResponse({
+    description: "Successfully voted",
+    type: VotePostResponseDto
+  })
   @UseGuards(AuthGuard('jwt'))
   @UseGuards(RequireHiveVerify)
   @Post(`/hive/vote`)
-  async votePost(@Body() data: any) {
+  async votePost(@Body() data: VotePostDto) {
     // console.log(data)
     const delegatedAuth = await appContainer.self.delegatedAuthority.findOne({
       // to: 'threespeak.beta',
