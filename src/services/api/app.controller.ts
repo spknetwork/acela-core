@@ -443,7 +443,7 @@ export class AppController {
       }
     }
   })
-  @UseGuards(AuthGuard('local'))
+  // @UseGuards(AuthGuard('local'))
   @Post('/auth/register')
   async register(@Request() req, @Body() body: {
     Test: 'hello'
