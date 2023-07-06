@@ -1,5 +1,6 @@
+import 'dotenv/config'
 import { Test, TestingModule } from '@nestjs/testing';
-import { UsersService } from './api.services';
+import { UsersService } from './services/api/api.services';
 
 describe('UsersService', () => {
   let service: UsersService;

@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from '../api.services';

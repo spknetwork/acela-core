@@ -79,7 +79,7 @@ class UploadThumbnailUpload {
       },
     },
   })
-  file: Express.Multer.File
+  file: any
 }
 
 @Controller('/api/v1')
@@ -100,7 +100,7 @@ export class UploadController {
         ],
       }),
     )
-    file: Express.Multer.File,
+    file: any,
   ) {
     const {body, user} = req;
     
