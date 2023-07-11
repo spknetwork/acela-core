@@ -445,47 +445,58 @@ export class AppController {
   })
   // @UseGuards(AuthGuard('local'))
   @Post('/auth/register')
-  async register(@Request() req, @Body() body: {
-    Test: 'hello'
-  }) {
+  async register(@Request() req, @Body() body) {
     const password = req.body.password
+    const {email} = req.body;
     const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10))
 
-    console.log(body.Test)
-    const email_code = uuid()
-    mg.messages().send(
-      {
-        from: `test@${process.env.MAIL_GUN_DOMAIN}`,
-        to: req.body.email,
-        subject: 'test registration',
-        html: `test registration. Click <a href=\"http://localhost:4569/api/v1/auth/verifyemail?code=${email_code}\">here</a> to verify email address.`,
-      },
-      (err, info) => {
-        console.log('[mailer]', 'confirm_signup', err, info)
-      },
-    )
 
-    await appContainer.self.usersDb.insertOne({
-      status: 'unverified',
-      email_status: 'unverified',
-      user_id: uuid(),
-      email: req.body.email,
-      email_code,
-      auth_methods: {
-        password: {
-          value: hashedPassword
-        }
-      },
-      type: 'multi',
-      created_at: new Date(),
-      updated_at: new Date(),
-      last_login_at: new Date(),
-      password_reset_at: null
+
+    const existingRecord = await appContainer.self.usersDb.findOne({
+      email
     })
-    // return this.authService.login(req.user);
-    return {
-      ok: true
+
+    if(existingRecord) {
+      throw new HttpException(
+        { reason: 'Email Password account already created!' },
+        HttpStatus.BAD_REQUEST,
+      ) 
+    } else {
+      const email_code = uuid()
+      
+      await appContainer.self.usersDb.insertOne({
+        status: 'unverified',
+        email_status: 'unverified',
+        user_id: uuid(),
+        email: req.body.email,
+        email_code,
+        auth_methods: {
+          password: {
+            value: hashedPassword
+          }
+        },
+        type: 'multi',
+        created_at: new Date(),
+        updated_at: new Date(),
+        last_login_at: new Date(),
+        password_reset_at: null
+      })
+      mg.messages().send(
+        {
+          from: `test@${process.env.MAIL_GUN_DOMAIN}`,
+          to: req.body.email,
+          subject: 'test registration',
+          html: `test registration. Click <a href=\"http://${process.env.PUBLIC_CALLBACK_URL || "localhost:4569"}/api/v1/auth/verifyemail?code=${email_code}\">here</a> to verify email address.`,
+        },
+        (err, info) => {
+          console.log('[mailer]', 'confirm_signup', err, info)
+        },
+      )
+      return {
+        ok: true
+      }
     }
+    // return this.authService.login(req.user);
   }
 
   @ApiParam({
