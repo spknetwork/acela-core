@@ -652,7 +652,7 @@ export class AppController {
         parent_author,
         parent_permlink,
         author,
-        permlink: Crypto.randomBytes(8).toString('base64url').toLowerCase(),
+        permlink: Crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
         title: '',
         body,
         json_metadata: JSON.stringify({
