@@ -16,8 +16,9 @@ services:
     environment:
       # MONGO_HOST: mongo:27017
       IPFS_HOST: ipfs:5001
+      UPLOAD_PATH: /acela-uploads
     volumes:
-      - ./data/tusd-uploads:/root/tusd-uploads
+      - ./data/acela-uploads:/acela-uploads
   tusd:
     image: tusproject/tusd:v1.9
     command: -s3-bucket mybucket -s3-endpoint http://minio:9000 -host=0.0.0.0 -port=1080 -behind-proxy -max-size 5000000000 -hooks-http http://acela-core:4569/api/v1/tus-callback

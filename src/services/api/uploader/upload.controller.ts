@@ -82,6 +82,13 @@ class UploadThumbnailUpload {
   file: any
 }
 
+
+MulterModule.registerAsync({
+  useFactory: () => ({
+    dest: process.env.UPLOAD_PATH || './upload',
+  }),
+});
+
 @Controller('/api/v1')
 export class UploadController {
 
