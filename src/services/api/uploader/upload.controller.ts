@@ -119,6 +119,7 @@ export class UploadController {
 
     const id = uuidv5(`thumbnail`, body.video_id)
 
+    console.log('uploaded thumbnail', file)
     const { cid } = await ipfsCluster.addData(file.buffer, {
       metadata: {
         key: `${body.video_id}/thumbnail`,
