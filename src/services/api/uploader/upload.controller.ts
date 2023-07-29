@@ -13,7 +13,7 @@ import {
   HttpStatus,
   Req,
 } from '@nestjs/common'
-import { FileInterceptor } from '@nestjs/platform-express'
+import { FileInterceptor, MulterModule } from '@nestjs/platform-express'
 import { AuthGuard } from '@nestjs/passport'
 import moment from 'moment'
 import {v4 as uuid, v5 as uuidv5} from 'uuid'
