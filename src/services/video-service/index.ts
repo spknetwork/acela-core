@@ -7,6 +7,7 @@ import KeyResolver from 'key-did-resolver'
 import { Cluster } from '@nftstorage/ipfs-cluster'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
+import * as Minio from 'minio'
 import { AcelaCore } from "..";
 
 let cluster = new Cluster(process.env.IPFS_CLUSTER_URL, {
@@ -122,6 +123,26 @@ export class VideoService {
             await fsPromises.rm(upload.file_path)
         }
 
+    }
+
+    /**
+     * For S3 minio bucket for TUSd
+     */
+    async initS3() {
+        if(process.env.S3_ENABLED) {
+            var minioClient = new Minio.Client({
+                endPoint: 'minio',
+                port: 9000,
+                useSSL: false,
+                accessKey: 'AKIAIOSFODNN7EXAMPLE',
+                secretKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+            });
+    
+            const needsCreation = await minioClient.bucketExists('mybucket')
+            if(!needsCreation) {
+                await minioClient.makeBucket('mybucket')
+            }
+        }
     }
     
     async start() {
