@@ -159,5 +159,10 @@ export class VideoService {
         this.self.lockService.registerHandle('queue-ipfs', () => {
             NodeSchedule.scheduleJob('* * * * *', this.queueIpfs)
         })
+        try {
+            await this.initS3()
+        } catch(ex) {
+            console.log(ex)
+        }
     }
 }
