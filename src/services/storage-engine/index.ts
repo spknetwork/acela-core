@@ -1,4 +1,3 @@
-import { Cluster } from '@nftstorage/ipfs-cluster'
 import fs from 'fs'
 
 import { File, Blob } from '@web-std/file'
@@ -9,10 +8,11 @@ import fetch from '@web-std/fetch'
 import Axios from 'axios'
 import NodeSchedule from 'node-schedule'
 
-import {Ed25519Provider} from "key-did-provider-ed25519";
+// import {Ed25519Provider} from "key-did-provider-ed25519";
 import Crypto from 'crypto'
 import KeyResolver from 'key-did-resolver'
 import {DID} from 'dids'
+import { Cluster } from '@nftstorage/ipfs-cluster'
 import { AcelaCore } from '..'
 
 // const { Ed25519Provider } = Ed25519ProviderImport;
@@ -92,6 +92,7 @@ export class StorageEngine {
     // })
 
     // console.log(await Ed25519Provider)
+    const {Ed25519Provider} = await import('key-did-provider-ed25519')
     let key = new Ed25519Provider(Buffer.from(process.env.ENCODER_SECRET, 'base64'))
     this.did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
 
