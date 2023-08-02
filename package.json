@@ -33,7 +33,7 @@
     "ipfs-http-client": "^60.0.0",
     "it-pushable": "^3.1.2",
     "key-did-provider-ed25519": "^3.0.0",
-    "key-did-resolver": "^1.4.0",
+    "key-did-resolver": "^3.0.0",
     "mailgun-js": "^0.22.0",
     "mocha": "^10.2.0",
     "moment": "^2.29.4",
