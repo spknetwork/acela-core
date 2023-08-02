@@ -17,6 +17,7 @@ import { FileInterceptor, MulterModule } from '@nestjs/platform-express'
 import { AuthGuard } from '@nestjs/passport'
 import moment from 'moment'
 import {v4 as uuid, v5 as uuidv5} from 'uuid'
+import * as IpfsClusterUtils from '../../../utils/ipfsClusterUtils'
 import { appContainer } from '..'
 import { RequireHiveVerify, UserDetailsInterceptor } from '../utils'
 import { ipfsCluster } from '../../storage-engine'
@@ -120,7 +121,7 @@ export class UploadController {
     const id = uuidv5(`thumbnail`, body.video_id)
 
     console.log('uploaded thumbnail', file)
-    const { cid } = await ipfsCluster.addData(file.buffer, {
+    const { cid } = await IpfsClusterUtils.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
       metadata: {
         key: `${body.video_id}/thumbnail`,
         app: "3speak-beta",
