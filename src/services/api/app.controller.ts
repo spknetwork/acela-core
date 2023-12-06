@@ -16,7 +16,7 @@ import {
 import { AuthGuard } from '@nestjs/passport'
 import { Observable } from 'rxjs'
 import { appContainer } from '.'
-import { HiveClient } from '../../utils'
+import { HiveClient } from '../../utils/hiveClient'
 import { AuthService } from './auth/auth.service'
 import * as DHive from '@hiveio/dhive'
 import hive from '@hiveio/hive-js'

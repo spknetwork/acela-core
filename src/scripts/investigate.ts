@@ -1,7 +1,7 @@
 // import Signature from "@hiveio/hive-js/lib/auth/ecc/src/Signature"
 import { cryptoUtils, PrivateKey, Signature } from '@hiveio/dhive'
 import hash from '@hiveio/hive-js/lib/auth/ecc/src/hash'
-import { HiveClient } from '../utils'
+import { HiveClient } from '../utils/hiveClient'
 
 void (async () => {
             

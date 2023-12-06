@@ -3,7 +3,7 @@ import moment from "moment";
 import NodeSchedule from 'node-schedule'
 import { Logger } from "@nestjs/common";
 import { AcelaCore } from "..";
-import { HiveClient } from "../../utils";
+import { HiveClient } from "../../utils/hiveClient";
 
 export class VoterCore {
     self: AcelaCore;
