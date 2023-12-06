@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AcelaCore } from './services';
 import { ApiModule } from './services/api';
-import { AppModule } from './services/api/app.module';
+import { AppModule } from './app.module';
 
 async function startup(): Promise<void> {
 
@@ -9,13 +9,11 @@ async function startup(): Promise<void> {
 
   await core.start();
 
-  
-  console.log(`startup`)
-  // const app = await NestFactory.create(AppModule);
-  // await app.listen(3000);
-
   const apiListener = new ApiModule(core, 4569)
   await apiListener.listen()
+  
+  const app = await NestFactory.create(AppModule);
+  await app.init()
 }
 
 void startup()
