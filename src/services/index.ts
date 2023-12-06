@@ -13,7 +13,7 @@ import { CORE_MONGODB_URL } from './db';
 import { HealthCheckCore } from './health';
 import { LockService } from './lock-service';
 import { StorageEngine } from './storage-engine';
-import { VideoService } from './video-service';
+import { VideoProcessService } from './video-process';
 import { Config } from './config';
 
 
@@ -34,7 +34,7 @@ export class AcelaCore {
     locksDb: Collection;
     lockService: LockService;
     comms: CommsCore;
-    videoService: VideoService;
+    videoProcessService: VideoProcessService;
     localPosts: Collection;
     ipfs: IPFSHTTPClient.IPFSHTTPClient;
     config: Config;
@@ -109,9 +109,9 @@ export class AcelaCore {
 
         await this.comms.start()
 
-        this.videoService = new VideoService(this)
+        this.videoProcessService = new VideoProcessService(this)
 
-        await this.videoService.start();
+        await this.videoProcessService.start();
 
         this.ipfs = IPFSHTTPClient.create()
     }

@@ -14,7 +14,7 @@ let cluster = new Cluster(process.env.IPFS_CLUSTER_URL, {
     headers: {},
 })
 
-export class VideoService {
+export class VideoProcessService {
     self: AcelaCore;
     encoderKey: DID;
     constructor(self: AcelaCore) {
