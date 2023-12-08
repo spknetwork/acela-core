@@ -89,7 +89,7 @@ export class StorageClusterAllocator extends StorageCluster {
                                 ws: ws
                             }
                             peerId = (message.data as SocketMsgAuth).peerID
-                            Logger.debug('Peer '+peerId+' authenticated successfully, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
+                            Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
                             ws.send(JSON.stringify({
                                 type: SocketMsgTypes.AUTH_SUCCESS,
                                 data: {}

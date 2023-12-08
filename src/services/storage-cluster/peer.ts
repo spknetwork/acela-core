@@ -43,16 +43,27 @@ export class StorageClusterPeer extends StorageCluster {
                 case SocketMsgTypes.AUTH_SUCCESS:
                     Logger.log('Authentication success', 'storage-cluster')
                     let diskInfo = await this.getDiskInfo()
+                    let totalSpaceMB = Math.floor(diskInfo.total/1048576)
+                    let freeSpaceMB = Math.floor(diskInfo.available/1048576)
+                    Logger.log('Available disk space: '+Math.floor(freeSpaceMB/1024)+' GB ('+Math.floor(100*freeSpaceMB/totalSpaceMB)+'%), total: '+Math.floor(totalSpaceMB/1024)+' GB', 'storage-cluster')
                     this.ws.send(JSON.stringify({
                         type: SocketMsgTypes.PEER_INFO,
                         data: {
-                            totalSpaceMB: Math.floor(diskInfo.total/1048576),
-                            freeSpaceMB: Math.floor(diskInfo.available/1048576)
+                            totalSpaceMB,
+                            freeSpaceMB
                         }
                     }))
                     break
                 default:
                     break
+            }
+        })
+        this.ws.on('close', (code) => {
+            if (code === 1006) {
+                Logger.warn('Connection closed abnormally, attempting to reconnect in 10 seconds...')
+                setTimeout(() => {
+                    this.initWs()
+                }, 10000)
             }
         })
     }
