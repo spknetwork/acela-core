@@ -1,22 +1,21 @@
-import { Collection, Db } from 'mongodb'
-import type { Pin } from '../health'
-import WebSocket, { CLOSED, WebSocketServer } from 'ws'
+import { Db } from 'mongodb'
+import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { SocketMsg, SocketMsgAuth, SocketMsgTypes } from './types'
+import { SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgTypes, StorageCluster } from './types.js'
 
-export class StorageCluster {
-    unionDb: Db
-    pins: Collection<Pin>
+export class StorageClusterAllocator extends StorageCluster {
     peers: {
-        [peerId: string]: WebSocket
+        [peerId: string]: {
+            ws: WebSocket,
+            totalSpaceMB?: number,
+            freeSpaceMB?: number,
+        }
     }
     wss: WebSocketServer
-    peerId: string
 
     constructor(unionDb: Db, peerId: string) {
-        this.unionDb = unionDb
-        this.pins = this.unionDb.collection('pins')
-        this.peerId = peerId
+        super(unionDb, peerId)
+        this.peers = {}
     }
 
     /**
@@ -77,7 +76,7 @@ export class StorageCluster {
                 } catch {
                     return
                 }
-                if (!message || typeof message.type === 'undefined' || !message.data)
+                if (!message || typeof message.type === 'undefined' || (!authenticated && message.type !== SocketMsgTypes.AUTH) || !message.data)
                     return
 
                 switch (message.type) {
@@ -86,10 +85,23 @@ export class StorageCluster {
                             if ((message.data as SocketMsgAuth).peerID === this.peerId)
                                 return // peer id cannot be itself
                             authenticated = true
-                            this.peers[message.data.peerID] = ws
-                            peerId = message.data.peerID
+                            this.peers[(message.data as SocketMsgAuth).peerID] = {
+                                ws: ws
+                            }
+                            peerId = (message.data as SocketMsgAuth).peerID
                             Logger.debug('Peer '+peerId+' authenticated successfully, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
+                            ws.send(JSON.stringify({
+                                type: SocketMsgTypes.AUTH_SUCCESS,
+                                data: {}
+                            }))
                         }
+                        break
+                    case SocketMsgTypes.PEER_INFO:
+                        if (typeof (message.data as SocketMsgPeerInfo).freeSpaceMB !== 'number' || typeof (message.data as SocketMsgPeerInfo).totalSpaceMB !== 'number')
+                            return
+                        this.peers[peerId].freeSpaceMB = (message.data as SocketMsgPeerInfo).freeSpaceMB
+                        this.peers[peerId].totalSpaceMB = (message.data as SocketMsgPeerInfo).totalSpaceMB
+                        Logger.debug('Peer '+peerId+' disk available: '+Math.floor(this.peers[peerId].freeSpaceMB/1024)+' GB, total: '+Math.floor(this.peers[peerId].totalSpaceMB/1024)+' GB', 'storage-cluster')
                         break
                     default:
                         break
@@ -103,7 +115,7 @@ export class StorageCluster {
                 if (!authenticated) {
                     ws.close()
                     setTimeout(() => {
-                        if (ws.readyState !== CLOSED)
+                        if (ws.readyState !== WebSocket.CLOSED)
                             ws.terminate()
                     },3000)
                 }
@@ -113,6 +125,7 @@ export class StorageCluster {
     }
 
     wsClosed(peerId: string) {
+        Logger.debug(peerId+' left', 'storage-cluster')
         if (peerId)
             delete this.peers[peerId]
     }

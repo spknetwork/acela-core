@@ -29,6 +29,7 @@ declare global {
         IPFS_CLUSTER_SECRET: string
         IPFS_CLUSTER_WS_URL: string
         IPFS_CLUSTER_WSS_PORT: number
+        IPFS_CLUSTER_PATH: string
 
         MAIL_GUN_KEY: string
         MAIL_GUN_SECRET: string
