@@ -82,13 +82,13 @@ export class StorageClusterAllocator extends StorageCluster {
                 switch (message.type) {
                     case SocketMsgTypes.AUTH:
                         if ((message.data as SocketMsgAuth).secret === process.env.IPFS_CLUSTER_SECRET) {
-                            if ((message.data as SocketMsgAuth).peerID === this.peerId)
+                            if ((message.data as SocketMsgAuth).peerId === this.peerId)
                                 return // peer id cannot be itself
                             authenticated = true
-                            this.peers[(message.data as SocketMsgAuth).peerID] = {
+                            this.peers[(message.data as SocketMsgAuth).peerId] = {
                                 ws: ws
                             }
-                            peerId = (message.data as SocketMsgAuth).peerID
+                            peerId = (message.data as SocketMsgAuth).peerId
                             Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
                             ws.send(JSON.stringify({
                                 type: SocketMsgTypes.AUTH_SUCCESS,

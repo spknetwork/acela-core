@@ -14,7 +14,7 @@ export type SocketMsg = {
 
 export type SocketMsgAuth = {
     secret: string
-    peerID: string
+    peerId: string
 }
 
 export type SocketMsgPeerInfo = {
