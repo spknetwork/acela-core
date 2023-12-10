@@ -22,7 +22,7 @@ export class StorageClusterPeer extends StorageCluster {
         return await disk.check(process.env.IPFS_CLUSTER_PATH)
     }
 
-    async sendPeerInfo() {
+    private async sendPeerInfo() {
         let diskInfo = await this.getDiskInfo()
         let totalSpaceMB = Math.floor(diskInfo.total/1048576)
         let freeSpaceMB = Math.floor(diskInfo.available/1048576)
@@ -36,7 +36,7 @@ export class StorageClusterPeer extends StorageCluster {
         }))
     }
 
-    async handlePinAlloc(allocs: SocketMsgPinAlloc) {
+    private async handlePinAlloc(allocs: SocketMsgPinAlloc) {
         if (allocs.allocations.length === 0) {
             setTimeout(() => this.sendPeerInfo(), 30000)
             return
@@ -59,7 +59,7 @@ export class StorageClusterPeer extends StorageCluster {
         await this.sendPeerInfo()
     }
 
-    async executeIPFSPin(cids: string[], peerIds: string[]) {
+    private async executeIPFSPin(cids: string[], peerIds: string[]) {
         let swarmConnect = setInterval(async () => {
             for (let p in peerIds)
                 try {
@@ -102,7 +102,7 @@ export class StorageClusterPeer extends StorageCluster {
      * Handle pin failures
      * @param cid CID that failed to pin
      */
-    async pinFailed(cid: string) {
+    private async pinFailed(cid: string) {
         try {
             await this.pins.updateOne({
                 _id: cid
@@ -120,7 +120,7 @@ export class StorageClusterPeer extends StorageCluster {
         }))
     }
 
-    initWs() {
+    private initWs() {
         if (!process.env.IPFS_CLUSTER_WS_URL)
             return Logger.warn('IPFS_CLUSTER_WS_URL is not specified, not connecting to storage cluster', 'storage-cluster')
         this.ws = new WebSocket(process.env.IPFS_CLUSTER_WS_URL)

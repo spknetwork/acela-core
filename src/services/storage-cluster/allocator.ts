@@ -86,7 +86,7 @@ export class StorageClusterAllocator extends StorageCluster {
     /**
      * Init Websocket server for assignment peer
      */
-    initWss() {
+    private initWss() {
         if (!process.env.IPFS_CLUSTER_WSS_PORT)
             return Logger.warn('IPFS_CLUSTER_WSS_PORT is not specified, not starting storage cluster WSS', 'storage-cluster')
         this.wss = new WebSocketServer({
@@ -191,7 +191,7 @@ export class StorageClusterAllocator extends StorageCluster {
         Logger.log('IPFS storage cluster WSS started at port '+this.wss.options.port, 'storage-cluster')
     }
 
-    wsClosed(peerId: string) {
+    private wsClosed(peerId: string) {
         Logger.debug(peerId+' left', 'storage-cluster')
         if (peerId)
             delete this.peers[peerId]
