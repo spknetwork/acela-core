@@ -2,6 +2,7 @@ import { Db } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
 import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgTypes, StorageCluster } from './types.js'
+import { multiaddr } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
     peers: {
@@ -13,8 +14,8 @@ export class StorageClusterAllocator extends StorageCluster {
     }
     wss: WebSocketServer
 
-    constructor(unionDb: Db, peerId: string) {
-        super(unionDb, peerId)
+    constructor(unionDb: Db) {
+        super(unionDb)
         this.peers = {}
     }
 
@@ -106,14 +107,18 @@ export class StorageClusterAllocator extends StorageCluster {
 
                 switch (message.type) {
                     case SocketMsgTypes.AUTH:
+                        let incomingPeerId = (message.data as SocketMsgAuth).peerId
                         if ((message.data as SocketMsgAuth).secret === process.env.IPFS_CLUSTER_SECRET) {
-                            if ((message.data as SocketMsgAuth).peerId === this.peerId)
-                                return // peer id cannot be itself
+                            try {
+                                multiaddr(incomingPeerId)
+                            } catch {
+                                return Logger.debug('Rejecting incoming connection due to bad peer ID')
+                            }
                             authenticated = true
-                            this.peers[(message.data as SocketMsgAuth).peerId] = {
+                            peerId = incomingPeerId
+                            this.peers[peerId] = {
                                 ws: ws
                             }
-                            peerId = (message.data as SocketMsgAuth).peerId
                             Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
                             ws.send(JSON.stringify({
                                 type: SocketMsgTypes.AUTH_SUCCESS,
@@ -138,7 +143,7 @@ export class StorageClusterAllocator extends StorageCluster {
                             let allocated_at = new Date().getTime()
                             let cids = toAllocate.map(val => val._id)
                             let peerIds = []
-                            for (let p in Object.keys(this.peers))
+                            for (let p in this.peers)
                                 if (p !== peerId)
                                     peerIds.push(p)
                             await this.pins.updateMany({ _id: { $in: cids } }, {
@@ -152,6 +157,7 @@ export class StorageClusterAllocator extends StorageCluster {
                                     allocationCount: 1
                                 }
                             })
+                            Logger.debug('Allocated '+toAllocate.length+' pins to peer '+peerId)
                             ws.send(JSON.stringify({
                                 type: SocketMsgTypes.PIN_ALLOCATION,
                                 data: {
@@ -160,6 +166,9 @@ export class StorageClusterAllocator extends StorageCluster {
                                 }
                             }))
                         }
+                        break
+                    case SocketMsgTypes.PIN_COMPLETED:
+                    case SocketMsgTypes.PIN_FAILED:
                         break
                     default:
                         break
