@@ -1,7 +1,7 @@
 import { Collection } from "mongodb";
-import { CID, create } from 'ipfs-http-client'
+import { CID, create } from 'kubo-rpc-client'
 import { AcelaCore } from "..";
-import type { IPFSHTTPClient } from "ipfs-http-client/dist/src/types";
+import type { IPFSHTTPClient } from 'kubo-rpc-client';
 import Axios from "axios";
 import { ndjsonParse } from "./ipfs-cluster-utils";
 
