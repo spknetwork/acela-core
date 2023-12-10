@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgTypes, StorageCluster } from './types.js'
 
 export class StorageClusterAllocator extends StorageCluster {
     peers: {
@@ -46,6 +46,7 @@ export class StorageClusterAllocator extends StorageCluster {
                                 network: video.TYPE,
                                 owner: video.author,
                                 permlink: video.permlink,
+                                created_at: new Date().getTime(),
                                 allocations: []
                             }
                         }, {
@@ -55,6 +56,22 @@ export class StorageClusterAllocator extends StorageCluster {
                 }
             }
         }
+    }
+
+    /**
+     * 
+     * @param peerId Peer ID to allocate pins to
+     * @returns Array of pins yet to be allocated to the peer
+     */
+    async getNewAllocations(peerId: string) {
+        return await this.pins.find({
+            allocations: {
+                $not: { $elemMatch: { id: peerId } }
+            }
+        }).sort({
+            allocationCount: 1,
+            created_at: -1
+        }).limit(10).toArray()
     }
 
     /**
@@ -69,7 +86,7 @@ export class StorageClusterAllocator extends StorageCluster {
         this.wss.on('connection', (ws) => {
             let authenticated = false
             let peerId: string
-            ws.on('message', (data) => {
+            ws.on('message', async (data) => {
                 let message: SocketMsg
                 try {
                     message = JSON.parse(data.toString())
@@ -102,6 +119,39 @@ export class StorageClusterAllocator extends StorageCluster {
                         this.peers[peerId].freeSpaceMB = (message.data as SocketMsgPeerInfo).freeSpaceMB
                         this.peers[peerId].totalSpaceMB = (message.data as SocketMsgPeerInfo).totalSpaceMB
                         Logger.debug('Peer '+peerId+' disk available: '+Math.floor(this.peers[peerId].freeSpaceMB/1024)+' GB, total: '+Math.floor(this.peers[peerId].totalSpaceMB/1024)+' GB', 'storage-cluster')
+                        if (100*this.peers[peerId].freeSpaceMB/this.peers[peerId].totalSpaceMB > ALLOCATION_DISK_THRESHOLD) {
+                            // allocate new pins if above free space threshold
+                            let toAllocate = await this.getNewAllocations(peerId)
+                            for (let a in toAllocate) {
+                                delete toAllocate[a].allocations
+                                delete toAllocate[a].allocationCount
+                                delete toAllocate[a].status
+                            }
+                            let allocated_at = new Date().getTime()
+                            let cids = toAllocate.map(val => val._id)
+                            let peerIds = []
+                            for (let p in Object.keys(this.peers))
+                                if (p !== peerId)
+                                    peerIds.push(p)
+                            await this.pins.updateMany({ _id: { $in: cids } }, {
+                                $push: {
+                                    allocations: {
+                                        id: peerId,
+                                        allocated_at
+                                    }
+                                },
+                                $inc: {
+                                    allocationCount: 1
+                                }
+                            })
+                            ws.send(JSON.stringify({
+                                type: SocketMsgTypes.PIN_ALLOCATION,
+                                data: {
+                                    peerIds,
+                                    allocations: toAllocate
+                                }
+                            }))
+                        }
                         break
                     default:
                         break
