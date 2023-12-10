@@ -65,9 +65,17 @@ export class StorageClusterAllocator extends StorageCluster {
      */
     async getNewAllocations(peerId: string) {
         return await this.pins.find({
-            allocations: {
-                $not: { $elemMatch: { id: peerId } }
-            }
+            $and: [{
+                allocations: {
+                    $not: { $elemMatch: { id: peerId } }
+                }
+            }, {
+                $or: [{
+                    median_size: { $exists: false }
+                }, {
+                    median_size: { $lt: this.peers[peerId].freeSpaceMB!-(this.peers[peerId].totalSpaceMB!*ALLOCATION_DISK_THRESHOLD/100) }
+                }]
+            }]
         }).sort({
             allocationCount: 1,
             created_at: -1

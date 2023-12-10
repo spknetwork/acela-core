@@ -58,4 +58,5 @@ export interface Pin {
     created_at: number
     allocations: Array<PinAllocate>
     allocationCount: number
+    median_size?: number
 }
