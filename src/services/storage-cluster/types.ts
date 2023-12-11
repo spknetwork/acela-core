@@ -8,7 +8,8 @@ export enum SocketMsgTypes {
     PEER_INFO,
     PIN_ALLOCATION,
     PIN_COMPLETED,
-    PIN_FAILED
+    PIN_FAILED,
+    PIN_NEW
 }
 
 export type SocketMsg = {
@@ -40,6 +41,11 @@ export type SocketMsgPinFail = {
     cid: string
 }
 
+export type SocketMsgPinAdd = {
+    cid: string,
+    size: number
+}
+
 export class StorageCluster {
     unionDb: Db
     pins: Collection<Pin>
@@ -60,13 +66,13 @@ interface PinAllocate {
 export interface Pin {
     _id: string
     status: "new" | "queued" | "failed" | "unpinned" | "pinned" | "deleted"
-    owner: string
-    permlink: string
-    network: string
-    type: string
     created_at: number
-    allocations: Array<PinAllocate>
-    allocationCount: number
+    owner?: string
+    permlink?: string
+    network?: string
+    type?: string
+    allocations?: Array<PinAllocate>
+    allocationCount?: number
     median_size?: number
     size?: number
 }

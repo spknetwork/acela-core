@@ -3,7 +3,7 @@ import WebSocket from 'ws'
 import disk from 'diskusage'
 import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
 import { Logger } from '@nestjs/common'
-import { multiaddr } from 'kubo-rpc-client'
+import { multiaddr, CID } from 'kubo-rpc-client'
 import type { IPFSHTTPClient } from 'kubo-rpc-client'
 import type { Multiaddr } from 'kubo-rpc-client/dist/src/types.js'
 
@@ -20,6 +20,45 @@ export class StorageClusterPeer extends StorageCluster {
 
     async getDiskInfo() {
         return await disk.check(process.env.IPFS_CLUSTER_PATH)
+    }
+
+    async addToCluster(cid: string | CID) {
+        if (typeof cid === 'string')
+            cid = CID.parse(cid)
+        let isPinned = false
+        for await (let pinLs of this.ipfs.pin.ls({
+            type: 'recursive',
+            paths: [cid]
+        })) {
+            if (pinLs.cid.toString() === cid.toString()) {
+                isPinned = true
+                break
+            }
+        }
+        if (!isPinned) {
+            Logger.error('Attempting to add '+cid.toString()+' to cluster which isn\'t pinned', 'storage-cluster')
+            throw new Error('CID not pinned in node')
+        }
+        let isAdded = await this.pins.findOne({_id: cid.toString()})
+        if (isAdded) {
+            Logger.error(cid.toString()+' is already exists in the cluster, ignoring request', 'storage-cluster')
+            throw new Error('CID already exists in cluster')
+        }
+        let created_at = new Date().getTime()
+        let info = await this.ipfs.files.stat('/ipfs/'+cid.toString())
+        await this.pins.insertOne({
+            _id: cid.toString(),
+            status: 'pinned',
+            created_at,
+            size: info.cumulativeSize
+        })
+        this.ws.send(JSON.stringify({
+            type: SocketMsgTypes.PIN_NEW,
+            data: {
+                cid: cid.toString(),
+                size: info.cumulativeSize
+            }
+        }))
     }
 
     private async sendPeerInfo() {
@@ -46,7 +85,7 @@ export class StorageClusterPeer extends StorageCluster {
             await this.pins.updateOne({
                 _id: allocs.allocations[a]._id
             }, {
-                $setOnInsert: {
+                $set: {
                     status: 'queued',
                     owner: allocs.allocations[a].owner,
                     permlink: allocs.allocations[a].permlink,
@@ -91,6 +130,7 @@ export class StorageClusterPeer extends StorageCluster {
                         size: pinned.cumulativeSize
                     }
                 }))
+                Logger.debug('Pinned '+cids[cid], 'storage-cluster')
             } catch {
                 await this.pinFailed(cids[cid])
             }
@@ -159,7 +199,7 @@ export class StorageClusterPeer extends StorageCluster {
         })
         this.ws.on('close', (code) => {
             if (code === 1006) {
-                Logger.warn('Connection closed abnormally, attempting to reconnect in 10 seconds...')
+                Logger.warn('Connection closed abnormally, attempting to reconnect in 10 seconds...', 'storage-cluster')
                 setTimeout(() => {
                     this.initWs()
                 }, 10000)

@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPinCompl, SocketMsgPinFail, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPinAdd, SocketMsgPinCompl, SocketMsgPinFail, SocketMsgTypes, StorageCluster } from './types.js'
 import { multiaddr } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
@@ -118,6 +118,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 }
                 if (!message || typeof message.type === 'undefined' || (!authenticated && message.type !== SocketMsgTypes.AUTH) || !message.data)
                     return
+                let currentTs = new Date().getTime()
 
                 switch (message.type) {
                     case SocketMsgTypes.AUTH:
@@ -154,7 +155,6 @@ export class StorageClusterAllocator extends StorageCluster {
                                 delete toAllocate[a].allocationCount
                                 delete toAllocate[a].status
                             }
-                            let allocated_at = new Date().getTime()
                             let cids = toAllocate.map(val => val._id)
                             let peerIds = []
                             for (let p in this.peers)
@@ -164,14 +164,14 @@ export class StorageClusterAllocator extends StorageCluster {
                                 $push: {
                                     allocations: {
                                         id: peerId,
-                                        allocated_at
+                                        allocated_at: currentTs
                                     }
                                 },
                                 $inc: {
                                     allocationCount: 1
                                 }
                             })
-                            Logger.debug('Allocated '+toAllocate.length+' pins to peer '+peerId)
+                            Logger.debug('Allocated '+toAllocate.length+' pins to peer '+peerId, 'storage-cluster')
                             ws.send(JSON.stringify({
                                 type: SocketMsgTypes.PIN_ALLOCATION,
                                 data: {
@@ -185,19 +185,18 @@ export class StorageClusterAllocator extends StorageCluster {
                         let completedPin = message.data as SocketMsgPinCompl
                         let pinned = await this.pins.findOne({_id: completedPin.cid})
                         let preAllocated = false
-                        let ts = new Date().getTime()
                         for (let a in pinned.allocations)
                             if (pinned.allocations[a].id === peerId) {
                                 preAllocated = true
-                                pinned.allocations[a].pinned_at = ts
+                                pinned.allocations[a].pinned_at = currentTs
                                 pinned.allocations[a].reported_size = completedPin.size
                                 break
                             }
                         if (!preAllocated)
                             pinned.allocations.push({
                                 id: peerId,
-                                allocated_at: ts,
-                                pinned_at: ts,
+                                allocated_at: currentTs,
+                                pinned_at: currentTs,
                                 reported_size: completedPin.size
                             })
                         const reported_sizes = pinned.allocations
@@ -218,7 +217,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         for (let a in affected.allocations)
                             if (affected.allocations[a].id === peerId) {
                                 if (typeof affected.allocations[a].pinned_at !== 'undefined') {
-                                    Logger.verbose('Ignoring PIN_FAILED from peer '+peerId+' for '+failedPin.cid+' as it is already pinned successfully according to db')
+                                    Logger.verbose('Ignoring PIN_FAILED from peer '+peerId+' for '+failedPin.cid+' as it is already pinned successfully according to db', 'storage-cluster')
                                     return
                                 }
                                 affected.allocations.splice(parseInt(a), 1)
@@ -230,6 +229,48 @@ export class StorageClusterAllocator extends StorageCluster {
                                 allocationCount: affected.allocations.length
                             }
                         })
+                        break
+                    case SocketMsgTypes.PIN_NEW:
+                        // new pin from a peer
+                        let newPin = message.data as SocketMsgPinAdd
+                        let alreadyExists = await this.pins.findOne({_id: newPin.cid})
+                        let newAlloc = {
+                            id: peerId,
+                            allocated_at: currentTs,
+                            pinned_at: currentTs,
+                            reported_size: newPin.size
+                        }
+                        if (!alreadyExists)
+                            await this.pins.insertOne({
+                                _id: newPin.cid,
+                                status: 'pinned',
+                                created_at: currentTs,
+                                allocations: [newAlloc],
+                                allocationCount: 1,
+                                median_size: newPin.size
+                            })
+                        else {
+                            let isAllocated = false
+                            for (let a in alreadyExists.allocations)
+                                if (alreadyExists.allocations[a].id === peerId) {
+                                    isAllocated = true
+                                    break
+                                }
+                            if (!isAllocated) {
+                                alreadyExists.allocations.push(newAlloc)
+                                alreadyExists.median_size = this.calculateMedian(alreadyExists.allocations
+                                    .map(a => a.reported_size)
+                                    .filter(size => size !== null && typeof size !== 'undefined'))
+                                await this.pins.updateOne({_id: newPin.cid}, {
+                                    $set: {
+                                        allocations: alreadyExists.allocations,
+                                        allocationCount: alreadyExists.allocations.length,
+                                        median_size: alreadyExists.median_size
+                                    }
+                                })
+                            } else
+                                Logger.verbose('Ignoring new pin '+newPin.cid+' from peer '+peerId+' as it was already allocated previously', 'storage-cluster')
+                        }
                         break
                     default:
                         break
