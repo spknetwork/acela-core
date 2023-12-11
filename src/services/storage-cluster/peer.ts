@@ -8,7 +8,7 @@ import type { IPFSHTTPClient } from 'kubo-rpc-client'
 import type { Multiaddr } from 'kubo-rpc-client/dist/src/types.js'
 
 export class StorageClusterPeer extends StorageCluster {
-    ws: WebSocket
+    private ws: WebSocket
     ipfs: IPFSHTTPClient
     peerId: Multiaddr
 
@@ -80,7 +80,8 @@ export class StorageClusterPeer extends StorageCluster {
                     _id: cid
                 }, {
                     $set: {
-                        status: 'pinned'
+                        status: 'pinned',
+                        size: pinned.cumulativeSize
                     }
                 })
                 this.ws.send(JSON.stringify({

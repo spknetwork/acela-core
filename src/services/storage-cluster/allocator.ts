@@ -1,18 +1,18 @@
 import { Db } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPinCompl, SocketMsgPinFail, SocketMsgTypes, StorageCluster } from './types.js'
 import { multiaddr } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
-    peers: {
+    private peers: {
         [peerId: string]: {
             ws: WebSocket,
             totalSpaceMB?: number,
             freeSpaceMB?: number,
         }
     }
-    wss: WebSocketServer
+    private wss: WebSocketServer
 
     constructor(unionDb: Db) {
         super(unionDb)
@@ -57,6 +57,20 @@ export class StorageClusterAllocator extends StorageCluster {
                 }
             }
         }
+    }
+
+    calculateMedian(values: number[]) {
+        if (values.length === 0)
+            return null
+    
+        values.sort((a, b) => a - b)
+    
+        const half = Math.floor(values.length / 2)
+    
+        if (values.length % 2)
+          return values[half]
+    
+        return (values[half - 1] + values[half]) / 2.0
     }
 
     /**
@@ -168,7 +182,54 @@ export class StorageClusterAllocator extends StorageCluster {
                         }
                         break
                     case SocketMsgTypes.PIN_COMPLETED:
+                        let completedPin = message.data as SocketMsgPinCompl
+                        let pinned = await this.pins.findOne({_id: completedPin.cid})
+                        let preAllocated = false
+                        let ts = new Date().getTime()
+                        for (let a in pinned.allocations)
+                            if (pinned.allocations[a].id === peerId) {
+                                preAllocated = true
+                                pinned.allocations[a].pinned_at = ts
+                                pinned.allocations[a].reported_size = completedPin.size
+                                break
+                            }
+                        if (!preAllocated)
+                            pinned.allocations.push({
+                                id: peerId,
+                                allocated_at: ts,
+                                pinned_at: ts,
+                                reported_size: completedPin.size
+                            })
+                        const reported_sizes = pinned.allocations
+                            .map(a => a.reported_size)
+                            .filter(size => size !== null && typeof size !== 'undefined')
+                        await this.pins.updateOne({_id: completedPin.cid}, {
+                            $set: {
+                                allocations: pinned.allocations,
+                                allocationCount: pinned.allocations.length,
+                                median_size: this.calculateMedian(reported_sizes)
+                            }
+                        })
+                        break
                     case SocketMsgTypes.PIN_FAILED:
+                        // cluster peer rejects allocation for any reason (i.e. errored pin or low disk space)
+                        let failedPin = message.data as SocketMsgPinFail
+                        let affected = await this.pins.findOne({_id: failedPin.cid})
+                        for (let a in affected.allocations)
+                            if (affected.allocations[a].id === peerId) {
+                                if (typeof affected.allocations[a].pinned_at !== 'undefined') {
+                                    Logger.verbose('Ignoring PIN_FAILED from peer '+peerId+' for '+failedPin.cid+' as it is already pinned successfully according to db')
+                                    return
+                                }
+                                affected.allocations.splice(parseInt(a), 1)
+                                break
+                            }
+                        await this.pins.updateOne({_id: failedPin.cid}, {
+                            $set: {
+                                allocations: affected.allocations,
+                                allocationCount: affected.allocations.length
+                            }
+                        })
                         break
                     default:
                         break
