@@ -184,31 +184,55 @@ export class StorageClusterAllocator extends StorageCluster {
                     case SocketMsgTypes.PIN_COMPLETED:
                         let completedPin = message.data as SocketMsgPinCompl
                         let pinned = await this.pins.findOne({_id: completedPin.cid})
-                        let preAllocated = false
+                        let preAllocated = -1
+                        if (!pinned) {
+                            Logger.verbose('Cannot process PIN_COMPLETED for pin that does not exist in cluster', 'storage-cluster')
+                            return
+                        }
                         for (let a in pinned.allocations)
                             if (pinned.allocations[a].id === peerId) {
-                                preAllocated = true
-                                pinned.allocations[a].pinned_at = currentTs
-                                pinned.allocations[a].reported_size = completedPin.size
+                                preAllocated = parseInt(a)
+                                if (typeof pinned.allocations[a].pinned_at !== 'undefined' && typeof pinned.allocations[a].reported_size !== 'undefined') {
+                                    Logger.verbose('Ignoring PIN_COMPLETED for '+completedPin.cid+' from '+peerId+' as it was already processed', 'storage-cluster')
+                                    return
+                                }
                                 break
                             }
-                        if (!preAllocated)
-                            pinned.allocations.push({
-                                id: peerId,
-                                allocated_at: currentTs,
-                                pinned_at: currentTs,
-                                reported_size: completedPin.size
-                            })
                         const reported_sizes = pinned.allocations
                             .map(a => a.reported_size)
                             .filter(size => size !== null && typeof size !== 'undefined')
-                        await this.pins.updateOne({_id: completedPin.cid}, {
-                            $set: {
-                                allocations: pinned.allocations,
-                                allocationCount: pinned.allocations.length,
-                                median_size: this.calculateMedian(reported_sizes)
-                            }
-                        })
+                        if (preAllocated === -1) {
+                            reported_sizes.push(completedPin.size)
+                            await this.pins.updateOne({_id: completedPin.cid}, {
+                                $push: {
+                                    allocations: {
+                                        id: peerId,
+                                        allocated_at: currentTs,
+                                        pinned_at: currentTs,
+                                        reported_size: completedPin.size
+                                    }
+                                },
+                                $inc: {
+                                    allocationCount: 1
+                                },
+                                $set: {
+                                    median_size: this.calculateMedian(reported_sizes)
+                                }
+                            })
+                        } else {
+                            await this.pins.updateOne({_id: completedPin.cid, 'allocations.id': peerId}, {
+                                $set: {
+                                    status: 'pinned',
+                                    'allocations.$': {
+                                        id: peerId,
+                                        allocated_at: pinned.allocations[preAllocated].allocated_at,
+                                        pinned_at: currentTs,
+                                        reported_size: completedPin.size
+                                    },
+                                    median_size: this.calculateMedian(reported_sizes)
+                                }
+                            })
+                        }
                         break
                     case SocketMsgTypes.PIN_FAILED:
                         // cluster peer rejects allocation for any reason (i.e. errored pin or low disk space)
@@ -220,13 +244,16 @@ export class StorageClusterAllocator extends StorageCluster {
                                     Logger.verbose('Ignoring PIN_FAILED from peer '+peerId+' for '+failedPin.cid+' as it is already pinned successfully according to db', 'storage-cluster')
                                     return
                                 }
-                                affected.allocations.splice(parseInt(a), 1)
                                 break
                             }
                         await this.pins.updateOne({_id: failedPin.cid}, {
-                            $set: {
-                                allocations: affected.allocations,
-                                allocationCount: affected.allocations.length
+                            $pull: {
+                                allocations: {
+                                    id: peerId
+                                }
+                            },
+                            $inc: {
+                                allocationCount: -1
                             }
                         })
                         break
@@ -257,15 +284,19 @@ export class StorageClusterAllocator extends StorageCluster {
                                     break
                                 }
                             if (!isAllocated) {
-                                alreadyExists.allocations.push(newAlloc)
-                                alreadyExists.median_size = this.calculateMedian(alreadyExists.allocations
+                                const reported_sizes = alreadyExists.allocations
                                     .map(a => a.reported_size)
-                                    .filter(size => size !== null && typeof size !== 'undefined'))
+                                    .filter(size => size !== null && typeof size !== 'undefined')
+                                reported_sizes.push(newAlloc.reported_size)
                                 await this.pins.updateOne({_id: newPin.cid}, {
+                                    $push: {
+                                        allocations: newAlloc
+                                    },
+                                    $inc: {
+                                        allocationCount: 1
+                                    },
                                     $set: {
-                                        allocations: alreadyExists.allocations,
-                                        allocationCount: alreadyExists.allocations.length,
-                                        median_size: alreadyExists.median_size
+                                        median_size: this.calculateMedian(reported_sizes)
                                     }
                                 })
                             } else
