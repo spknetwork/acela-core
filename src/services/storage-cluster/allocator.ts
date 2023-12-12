@@ -59,6 +59,11 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
+    /**
+     * Median value of an array of numbers but uses the higher value instead of average if array length is even.
+     * @param values Array of numbers to calculate the median value of.
+     * @returns 
+     */
     calculateMedian(values: number[]) {
         if (values.length === 0)
             return null
@@ -67,10 +72,7 @@ export class StorageClusterAllocator extends StorageCluster {
     
         const half = Math.floor(values.length / 2)
     
-        if (values.length % 2)
-          return values[half]
-    
-        return (values[half - 1] + values[half]) / 2.0
+        return values[half]
     }
 
     /**
