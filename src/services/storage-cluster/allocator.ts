@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPinAdd, SocketMsgPinCompl, SocketMsgPinFail, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster } from './types.js'
 import { multiaddr } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
@@ -98,6 +98,29 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     /**
+     * Unpin CID from the cluster
+     * @param cid CID to unpin from cluster
+     */
+    async removePin(cid: string) {
+        let toRm = await this.pins.findOne({_id: cid})
+        if (!toRm) {
+            Logger.error('Unable to remove non-existent pin ',cid)
+            throw new Error('Pin does not exist')
+        }
+        await this.pins.updateOne({_id: cid}, {
+            $set: {
+                status: 'unpinned'
+            }
+        })
+        for (let a in toRm.allocations)
+            if (this.peers[toRm.allocations[a].id])
+                this.peers[toRm.allocations[a].id].ws.send(JSON.stringify({
+                    type: SocketMsgTypes.PIN_REMOVE,
+                    data: { cid }
+                }))
+    }
+
+    /**
      * Init Websocket server for assignment peer
      */
     private initWss() {
@@ -182,7 +205,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         }
                         break
                     case SocketMsgTypes.PIN_COMPLETED:
-                        let completedPin = message.data as SocketMsgPinCompl
+                        let completedPin = message.data as SocketMsgPin
                         let pinned = await this.pins.findOne({_id: completedPin.cid})
                         let preAllocated = -1
                         if (!pinned) {
@@ -201,8 +224,8 @@ export class StorageClusterAllocator extends StorageCluster {
                         const reported_sizes = pinned.allocations
                             .map(a => a.reported_size)
                             .filter(size => size !== null && typeof size !== 'undefined')
+                        reported_sizes.push(completedPin.size)
                         if (preAllocated === -1) {
-                            reported_sizes.push(completedPin.size)
                             await this.pins.updateOne({_id: completedPin.cid}, {
                                 $push: {
                                     allocations: {
@@ -236,7 +259,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         break
                     case SocketMsgTypes.PIN_FAILED:
                         // cluster peer rejects allocation for any reason (i.e. errored pin or low disk space)
-                        let failedPin = message.data as SocketMsgPinFail
+                        let failedPin = message.data as SocketMsgPin
                         let affected = await this.pins.findOne({_id: failedPin.cid})
                         for (let a in affected.allocations)
                             if (affected.allocations[a].id === peerId) {
@@ -259,7 +282,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         break
                     case SocketMsgTypes.PIN_NEW:
                         // new pin from a peer
-                        let newPin = message.data as SocketMsgPinAdd
+                        let newPin = message.data as SocketMsgPin
                         let alreadyExists = await this.pins.findOne({_id: newPin.cid})
                         let newAlloc = {
                             id: peerId,
@@ -301,6 +324,35 @@ export class StorageClusterAllocator extends StorageCluster {
                                 })
                             } else
                                 Logger.verbose('Ignoring new pin '+newPin.cid+' from peer '+peerId+' as it was already allocated previously', 'storage-cluster')
+                        }
+                        break
+                    case SocketMsgTypes.PIN_REMOVE_PEER:
+                        let removedPin = message.data as SocketMsgPin
+                        let removedCid = await this.pins.findOne({_id: removedPin.cid})
+                        if (!removedCid) {
+                            Logger.verbose('Cannot process PIN_REMOVE_PEER for non-existent pin', 'storage-cluster')
+                            return
+                        }
+                        let wasPinned = false
+                        for (let a in removedCid.allocations)
+                            if (removedCid.allocations[a].id === peerId)
+                                wasPinned = true
+                        if (wasPinned) {
+                            if (removedCid.allocations.length === 1)
+                                Logger.warn('Removing pin allocation for the only allocated peer for cid '+removedPin.cid+' for '+peerId, 'storage-cluster')
+                            await this.pins.updateOne({_id: removedPin.cid}, {
+                                $pull: {
+                                    allocations: {
+                                        id: peerId
+                                    }
+                                },
+                                $inc: {
+                                    allocationCount: -1
+                                }
+                            })
+                        } else {
+                            Logger.verbose('Ignoring PIN_REMOVE_PEER as pin was not allocated to peer for cid '+removedPin.cid, 'storage-cluster')
+                            return
                         }
                         break
                     default:

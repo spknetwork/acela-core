@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket from 'ws'
 import disk from 'diskusage'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
 import { Logger } from '@nestjs/common'
 import { multiaddr, CID } from 'kubo-rpc-client'
 import type { IPFSHTTPClient } from 'kubo-rpc-client'
@@ -22,6 +22,10 @@ export class StorageClusterPeer extends StorageCluster {
         return await disk.check(process.env.IPFS_CLUSTER_PATH)
     }
 
+    /**
+     * Add a pinned CID to the cluster to be pinned by other nodes
+     * @param cid CID to be added to the cluster
+     */
     async addToCluster(cid: string | CID) {
         if (typeof cid === 'string')
             cid = CID.parse(cid)
@@ -57,6 +61,22 @@ export class StorageClusterPeer extends StorageCluster {
             data: {
                 cid: cid.toString(),
                 size: info.cumulativeSize
+            }
+        }))
+    }
+
+    async unpinFromPeer(cid: string | CID) {
+        if (typeof cid === 'string')
+            cid = CID.parse(cid)
+        await this.pins.updateOne({_id: cid.toString()}, {$set: {
+            status: 'unpinned'
+        }})
+        await this.ipfs.pin.rm(cid)
+        Logger.debug('Unpinned '+cid.toString()+' from peer', 'storage-cluster')
+        this.ws.send(JSON.stringify({
+            type: SocketMsgTypes.PIN_REMOVE_PEER,
+            data: {
+                cid: cid.toString()
             }
         }))
     }
@@ -140,6 +160,18 @@ export class StorageClusterPeer extends StorageCluster {
     }
 
     /**
+     * Handle unpin request from allocator
+     * @param cid CID to unpin
+     */
+    private async handleUnpinRequest(cid: string) {
+        await this.pins.updateOne({_id: cid}, {$set: {
+            status: 'deleted'
+        }})
+        await this.ipfs.pin.rm(CID.parse(cid))
+        Logger.debug('Unpinned '+cid, 'storage-cluster')
+    }
+
+    /**
      * Handle pin failures
      * @param cid CID that failed to pin
      */
@@ -192,6 +224,9 @@ export class StorageClusterPeer extends StorageCluster {
                     break
                 case SocketMsgTypes.PIN_ALLOCATION:
                     await this.handlePinAlloc(message.data as SocketMsgPinAlloc)
+                    break
+                case SocketMsgTypes.PIN_REMOVE:
+                    await this.handleUnpinRequest((message.data as SocketMsgPin).cid)
                     break
                 default:
                     break

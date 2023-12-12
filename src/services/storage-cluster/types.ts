@@ -9,12 +9,14 @@ export enum SocketMsgTypes {
     PIN_ALLOCATION,
     PIN_COMPLETED,
     PIN_FAILED,
-    PIN_NEW
+    PIN_NEW,
+    PIN_REMOVE,
+    PIN_REMOVE_PEER
 }
 
 export type SocketMsg = {
     type: SocketMsgTypes
-    data: SocketMsgAuth | SocketMsgPeerInfo | SocketMsgPinAlloc | SocketMsgPinCompl | SocketMsgPinFail
+    data: SocketMsgAuth | SocketMsgPeerInfo | SocketMsgPinAlloc | SocketMsgPin
 }
 
 export type SocketMsgAuth = {
@@ -32,18 +34,9 @@ export type SocketMsgPinAlloc = {
     allocations: Pin[]
 }
 
-export type SocketMsgPinCompl = {
+export type SocketMsgPin = {
     cid: string
-    size: number
-}
-
-export type SocketMsgPinFail = {
-    cid: string
-}
-
-export type SocketMsgPinAdd = {
-    cid: string,
-    size: number
+    size?: number
 }
 
 export class StorageCluster {
