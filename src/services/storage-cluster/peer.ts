@@ -9,17 +9,23 @@ import type { Multiaddr } from 'kubo-rpc-client/dist/src/types.js'
 
 export class StorageClusterPeer extends StorageCluster {
     private ws: WebSocket
-    ipfs: IPFSHTTPClient
-    peerId: Multiaddr
+    private wsUrl: string
+    private ipfs: IPFSHTTPClient
+    private peerId: Multiaddr
+    private ipfsPath: string
 
-    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, peerId: string) {
+    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, peerId: string, wsUrl: string, ipfsPath: string) {
+        if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://'))
+            throw new Error('wsUrl must start with ws:// or wss://')
         super(unionDb, secret)
         this.ipfs = ipfs
         this.peerId = multiaddr(peerId)
+        this.wsUrl = wsUrl
+        this.ipfsPath = ipfsPath
     }
 
     async getDiskInfo() {
-        return await disk.check(process.env.IPFS_CLUSTER_PATH)
+        return await disk.check(this.ipfsPath)
     }
 
     getIpfsApiUrl() {
@@ -209,9 +215,7 @@ export class StorageClusterPeer extends StorageCluster {
     }
 
     private initWs() {
-        if (!process.env.IPFS_CLUSTER_WS_URL)
-            return Logger.warn('IPFS_CLUSTER_WS_URL is not specified, not connecting to storage cluster', 'storage-peer')
-        this.ws = new WebSocket(process.env.IPFS_CLUSTER_WS_URL)
+        this.ws = new WebSocket(this.wsUrl)
         this.ws.on('error', (err) => Logger.error(err, 'storage-peer'))
         this.ws.on('open', async () => {
             this.ws.send(JSON.stringify({

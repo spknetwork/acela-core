@@ -40,11 +40,13 @@ export type SocketMsgPin = {
 }
 
 export class StorageCluster {
-    unionDb: Db
-    pins: Collection<Pin>
+    protected unionDb: Db
+    protected pins: Collection<Pin>
     protected secret: string
 
     constructor(unionDb: Db, secret: string) {
+        if (!secret)
+            throw new Error('secret is required')
         this.unionDb = unionDb
         this.pins = this.unionDb.collection('pins')
         this.secret = secret

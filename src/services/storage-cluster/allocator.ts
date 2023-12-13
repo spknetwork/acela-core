@@ -13,10 +13,14 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
     private wss: WebSocketServer
+    private wsPort: number
 
-    constructor(unionDb: Db, secret: string) {
+    constructor(unionDb: Db, secret: string, wsPort: number) {
+        if (wsPort < 1024 || wsPort > 65535)
+            throw new Error('wsPort must be between 1024 and 65535')
         super(unionDb, secret)
         this.peers = {}
+        this.wsPort = wsPort
     }
 
     /**
@@ -168,10 +172,8 @@ export class StorageClusterAllocator extends StorageCluster {
      * Init Websocket server for assignment peer
      */
     private initWss() {
-        if (!process.env.IPFS_CLUSTER_WSS_PORT)
-            return Logger.warn('IPFS_CLUSTER_WSS_PORT is not specified, not starting storage cluster WSS', 'storage-cluster')
         this.wss = new WebSocketServer({
-            port: process.env.IPFS_CLUSTER_WSS_PORT
+            port: this.wsPort
         })
         this.wss.on('connection', (ws) => {
             let authenticated = false
@@ -427,10 +429,6 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     start() {
-        if (!this.secret) {
-            Logger.warn('secret not provided, not initializing storage cluster', 'storage-cluster')
-            throw new Error('secret is required')
-        }
         this.initWss()
     }
 }
