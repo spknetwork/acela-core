@@ -421,7 +421,7 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     private wsClosed(peerId: string) {
-        Logger.debug(peerId+' left', 'storage-cluster')
+        Logger.debug('Peer '+peerId+' left', 'storage-cluster')
         if (peerId)
             delete this.peers[peerId]
     }

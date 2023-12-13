@@ -45,12 +45,12 @@ export class StorageClusterPeer extends StorageCluster {
             }
         }
         if (!isPinned) {
-            Logger.error('Attempting to add '+cid.toString()+' to cluster which isn\'t pinned', 'storage-cluster')
+            Logger.error('Attempting to add '+cid.toString()+' to cluster which isn\'t pinned', 'storage-peer')
             throw new Error('CID not pinned in node')
         }
         let isAdded = await this.pins.findOne({_id: cid.toString()})
         if (isAdded) {
-            Logger.error(cid.toString()+' is already exists in the cluster, ignoring request', 'storage-cluster')
+            Logger.error(cid.toString()+' is already exists in the cluster, ignoring request', 'storage-peer')
             throw new Error('CID already exists in cluster')
         }
         let created_at = new Date().getTime()
@@ -77,7 +77,7 @@ export class StorageClusterPeer extends StorageCluster {
             status: 'unpinned'
         }})
         await this.ipfs.pin.rm(cid)
-        Logger.debug('Unpinned '+cid.toString()+' from peer', 'storage-cluster')
+        Logger.debug('Unpinned '+cid.toString()+' from peer', 'storage-peer')
         this.ws.send(JSON.stringify({
             type: SocketMsgTypes.PIN_REMOVE_PEER,
             data: {
@@ -90,7 +90,7 @@ export class StorageClusterPeer extends StorageCluster {
         let diskInfo = await this.getDiskInfo()
         let totalSpaceMB = Math.floor(diskInfo.total/1048576)
         let freeSpaceMB = Math.floor(diskInfo.available/1048576)
-        Logger.log('Available disk space: '+Math.floor(freeSpaceMB/1024)+' GB ('+Math.floor(100*freeSpaceMB/totalSpaceMB)+'%), total: '+Math.floor(totalSpaceMB/1024)+' GB', 'storage-cluster')
+        Logger.log('Available disk space: '+Math.floor(freeSpaceMB/1024)+' GB ('+Math.floor(100*freeSpaceMB/totalSpaceMB)+'%), total: '+Math.floor(totalSpaceMB/1024)+' GB', 'storage-peer')
         this.ws.send(JSON.stringify({
             type: SocketMsgTypes.PEER_INFO,
             data: {
@@ -105,7 +105,7 @@ export class StorageClusterPeer extends StorageCluster {
             setTimeout(() => this.sendPeerInfo(), 30000)
             return
         }
-        Logger.log('Received '+allocs.allocations.length+' pin allocations', 'storage-cluster')
+        Logger.log('Received '+allocs.allocations.length+' pin allocations', 'storage-peer')
         for (let a in allocs.allocations)
             await this.pins.updateOne({
                 _id: allocs.allocations[a]._id
@@ -164,7 +164,7 @@ export class StorageClusterPeer extends StorageCluster {
                         size: size
                     }
                 }))
-                Logger.debug('Pinned '+cids[cid]+', size: '+size, 'storage-cluster')
+                Logger.debug('Pinned '+cids[cid]+', size: '+size, 'storage-peer')
             } catch (e) {
                 Logger.verbose(e)
                 await this.pinFailed(cids[cid])
@@ -183,7 +183,7 @@ export class StorageClusterPeer extends StorageCluster {
             status: 'deleted'
         }})
         await this.ipfs.pin.rm(CID.parse(cid))
-        Logger.debug('Unpinned '+cid, 'storage-cluster')
+        Logger.debug('Unpinned '+cid, 'storage-peer')
     }
 
     /**
@@ -210,9 +210,9 @@ export class StorageClusterPeer extends StorageCluster {
 
     private initWs() {
         if (!process.env.IPFS_CLUSTER_WS_URL)
-            return Logger.warn('IPFS_CLUSTER_WS_URL is not specified, not connecting to storage cluster', 'storage-cluster')
+            return Logger.warn('IPFS_CLUSTER_WS_URL is not specified, not connecting to storage cluster', 'storage-peer')
         this.ws = new WebSocket(process.env.IPFS_CLUSTER_WS_URL)
-        this.ws.on('error', (err) => Logger.error(err, 'storage-cluster'))
+        this.ws.on('error', (err) => Logger.error(err, 'storage-peer'))
         this.ws.on('open', async () => {
             this.ws.send(JSON.stringify({
                 type: SocketMsgTypes.AUTH,
@@ -234,7 +234,7 @@ export class StorageClusterPeer extends StorageCluster {
 
             switch (message.type) {
                 case SocketMsgTypes.AUTH_SUCCESS:
-                    Logger.log('Authentication success', 'storage-cluster')
+                    Logger.log('Authentication success', 'storage-peer')
                     await this.sendPeerInfo()
                     break
                 case SocketMsgTypes.PIN_ALLOCATION:
@@ -249,7 +249,7 @@ export class StorageClusterPeer extends StorageCluster {
         })
         this.ws.on('close', (code) => {
             if (code === 1006) {
-                Logger.warn('Connection closed abnormally, attempting to reconnect in 10 seconds...', 'storage-cluster')
+                Logger.warn('Connection closed abnormally, attempting to reconnect in 10 seconds...', 'storage-peer')
                 setTimeout(() => {
                     this.initWs()
                 }, 10000)
