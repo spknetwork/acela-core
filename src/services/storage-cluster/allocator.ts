@@ -14,8 +14,8 @@ export class StorageClusterAllocator extends StorageCluster {
     }
     private wss: WebSocketServer
 
-    constructor(unionDb: Db) {
-        super(unionDb)
+    constructor(unionDb: Db, secret: string) {
+        super(unionDb, secret)
         this.peers = {}
     }
 
@@ -190,7 +190,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 switch (message.type) {
                     case SocketMsgTypes.AUTH:
                         let incomingPeerId = (message.data as SocketMsgAuth).peerId
-                        if ((message.data as SocketMsgAuth).secret === process.env.IPFS_CLUSTER_SECRET) {
+                        if ((message.data as SocketMsgAuth).secret === this.secret) {
                             try {
                                 multiaddr(incomingPeerId)
                             } catch {
@@ -427,8 +427,10 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     start() {
-        if (!process.env.IPFS_CLUSTER_SECRET)
-            return Logger.warn('IPFS_CLUSTER_SECRET is not provided, not initializing storage cluster', 'storage-cluster')
+        if (!this.secret) {
+            Logger.warn('secret not provided, not initializing storage cluster', 'storage-cluster')
+            throw new Error('secret is required')
+        }
         this.initWss()
     }
 }

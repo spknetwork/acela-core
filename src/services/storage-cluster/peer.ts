@@ -12,8 +12,8 @@ export class StorageClusterPeer extends StorageCluster {
     ipfs: IPFSHTTPClient
     peerId: Multiaddr
 
-    constructor(unionDb: Db, ipfs: IPFSHTTPClient, peerId: string) {
-        super(unionDb)
+    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, peerId: string) {
+        super(unionDb, secret)
         this.ipfs = ipfs
         this.peerId = multiaddr(peerId)
     }
@@ -217,7 +217,7 @@ export class StorageClusterPeer extends StorageCluster {
             this.ws.send(JSON.stringify({
                 type: SocketMsgTypes.AUTH,
                 data: {
-                    secret: process.env.IPFS_CLUSTER_SECRET,
+                    secret: this.secret,
                     peerId: this.peerId.toString()
                 }
             }))
