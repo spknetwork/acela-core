@@ -22,6 +22,11 @@ export class StorageClusterPeer extends StorageCluster {
         return await disk.check(process.env.IPFS_CLUSTER_PATH)
     }
 
+    getIpfsApiUrl() {
+        const ipfsEndpoint = this.ipfs.getEndpointConfig()
+        return ipfsEndpoint.protocol+'//'+ipfsEndpoint.host+':'+ipfsEndpoint.port+ipfsEndpoint['api-path']
+    }
+
     /**
      * Add a pinned CID to the cluster to be pinned by other nodes
      * @param cid CID to be added to the cluster
@@ -128,30 +133,40 @@ export class StorageClusterPeer extends StorageCluster {
 
         for (let cid in cids) {
             let diskInfo = await this.getDiskInfo()
-            if (100*diskInfo.free/diskInfo.total <= ALLOCATION_DISK_THRESHOLD) {
+            if ((100*diskInfo.free/diskInfo.total) <= ALLOCATION_DISK_THRESHOLD) {
                 await this.pinFailed(cids[cid])
                 continue
             }
             try {
-                await this.ipfs.pin.add(cids[cid])
-                let pinned = await this.ipfs.files.stat('/ipfs/'+cids[cid])
+                let pinned = await this.ipfs.pin.add(cids[cid])
+                let size: number
+                if (pinned.code === 0x70) {
+                    size = (await this.ipfs.files.stat('/ipfs/'+cids[cid])).cumulativeSize
+                } else if (pinned.code === 0x71) {
+                    // why does ipfs.dag.stat() not exist
+                    let apiRes = (await (await fetch(this.getIpfsApiUrl()+'/dag/stat?arg='+cids[cid], {
+                        method: 'POST'
+                    })).text()).trim().split('\n')
+                    size = JSON.parse(apiRes[apiRes.length-1]).TotalSize as number
+                }
                 await this.pins.updateOne({
-                    _id: cid
+                    _id: cids[cid]
                 }, {
                     $set: {
                         status: 'pinned',
-                        size: pinned.cumulativeSize
+                        size: size
                     }
                 })
                 this.ws.send(JSON.stringify({
                     type: SocketMsgTypes.PIN_COMPLETED,
                     data: {
                         cid: cids[cid],
-                        size: pinned.cumulativeSize
+                        size: size
                     }
                 }))
-                Logger.debug('Pinned '+cids[cid], 'storage-cluster')
-            } catch {
+                Logger.debug('Pinned '+cids[cid]+', size: '+size, 'storage-cluster')
+            } catch (e) {
+                Logger.verbose(e)
                 await this.pinFailed(cids[cid])
             }
         }
