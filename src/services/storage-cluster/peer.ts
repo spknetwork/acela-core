@@ -120,7 +120,7 @@ export class StorageClusterPeer extends StorageCluster {
                 }
             }, { upsert: true })
         await this.executeIPFSPin(allocs.allocations.map((val) => val._id), allocs.peerIds)
-        await this.sendPeerInfo()
+        setTimeout(async () => await this.sendPeerInfo(), 1000)
     }
 
     private async executeIPFSPin(cids: string[], peerIds: string[]) {

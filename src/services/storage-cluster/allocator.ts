@@ -2,7 +2,7 @@ import { Db } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
 import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster } from './types.js'
-import { multiaddr } from 'kubo-rpc-client'
+import { multiaddr, CID } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
     private peers: {
@@ -97,6 +97,48 @@ export class StorageClusterAllocator extends StorageCluster {
             allocationCount: 1,
             created_at: -1
         }).limit(10).toArray()
+    }
+
+    /**
+     * Add a CID to the cluster pinned by a peer to be pinned by other peers
+     * @param cid CID to be added to the cluster
+     * @param pinned_in The peer ID where the CID is already pinned on
+     */
+    async addToCluster(cid: string | CID, pinned_in: string) {
+        if (typeof cid === 'string')
+            cid = CID.parse(cid)
+        let toAdd = await this.pins.findOne({_id: cid.toString()})
+        if (toAdd)
+            throw new Error('CID already exists in cluster')
+        else if (!this.peers[pinned_in])
+            throw new Error('Peer where CID is pinned in isn\'t currently connected to the cluster')
+        let ts = new Date().getTime()
+        await this.pins.insertOne({
+            _id: cid.toString(),
+            status: 'new',
+            created_at: ts,
+            allocations: [{
+                id: pinned_in,
+                allocated_at: ts
+                
+            }],
+            allocationCount: 1
+        })
+        // trigger db update in pinned_in peer
+        let peerIds = []
+        for (let p in this.peers)
+            if (p !== pinned_in)
+                peerIds.push(p)
+        this.peers[pinned_in].ws.send(JSON.stringify({
+            type: SocketMsgTypes.PIN_ALLOCATION,
+            data: {
+                peerIds,
+                allocations: [{
+                    _id: cid.toString(),
+                    created_at: ts
+                }]
+            }
+        }))
     }
 
     /**
