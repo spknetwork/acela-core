@@ -3,13 +3,18 @@ import { StorageClusterPeer } from './peer.js'
 import { mongo } from '../db.js'
 import { create } from 'kubo-rpc-client'
 
-const printHelp = () => console.log(`Usage:
+const printHelp = () => {
+    let path = process.argv[1]
+    if (path.startsWith(process.cwd()+'/'))
+        path = path.replace(process.cwd()+'/','')
+    console.log(`Usage:
     
   Allocator node:
-    node ${process.argv[1].replace(process.cwd()+'/','')} allocator <db_name>
+    node ${path} allocator <db_name>
   
   Peer node:
-    node ${process.argv[1].replace(process.cwd()+'/','')} peer <db_name>`)
+    node ${path} peer <db_name>`)
+}
 
 if (process.argv.length < 4) {
     printHelp()
