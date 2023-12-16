@@ -240,7 +240,7 @@ export class StorageClusterAllocator extends StorageCluster {
                                     allocationCount: 1
                                 }
                             })
-                            Logger.debug('Allocated '+toAllocate.length+' pins to peer '+peerId, 'storage-cluster')
+                            Logger.log('Allocated '+toAllocate.length+' pins to peer '+peerId, 'storage-cluster')
                             ws.send(JSON.stringify({
                                 type: SocketMsgTypes.PIN_ALLOCATION,
                                 data: {

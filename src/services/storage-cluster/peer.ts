@@ -83,7 +83,7 @@ export class StorageClusterPeer extends StorageCluster {
             status: 'unpinned'
         }})
         await this.ipfs.pin.rm(cid)
-        Logger.debug('Unpinned '+cid.toString()+' from peer', 'storage-peer')
+        Logger.log('Unpinned '+cid.toString()+' from peer', 'storage-peer')
         this.ws.send(JSON.stringify({
             type: SocketMsgTypes.PIN_REMOVE_PEER,
             data: {
@@ -170,7 +170,7 @@ export class StorageClusterPeer extends StorageCluster {
                         size: size
                     }
                 }))
-                Logger.debug('Pinned '+cids[cid]+', size: '+size, 'storage-peer')
+                Logger.log('Pinned '+cids[cid]+', size: '+size, 'storage-peer')
             } catch (e) {
                 Logger.verbose(e)
                 await this.pinFailed(cids[cid])
