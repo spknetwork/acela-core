@@ -184,6 +184,9 @@ export class Video {
 
   @Prop()
   thumbUrl: string;
+
+  @Prop({ default: false })
+  fromMobile: boolean;
 }
 
 export const VideoSchema = SchemaFactory.createForClass(Video);

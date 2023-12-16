@@ -1,4 +1,4 @@
-export function createProjectionFromDto<T>(dto: new () => T): Record<keyof T, number> {
+export function createProjectionFromDto<T extends {}>(dto: new () => T): Record<keyof T, number> {
   const dtoInstance = new dto();
   const keys = Object.keys(dtoInstance) as Array<keyof T>;
   const projection = {} as Record<keyof T, number>;
