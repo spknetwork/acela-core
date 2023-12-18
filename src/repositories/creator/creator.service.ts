@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ContentCreator } from './schemas/creator.schema';
 
 @Injectable()
-export class CreatorService {
+export class CreatorRepository {
   constructor(@InjectModel(ContentCreator.name) private creatorModel: Model<ContentCreator>) {}
 
   async getContentCreatorByUsername(username: string) {

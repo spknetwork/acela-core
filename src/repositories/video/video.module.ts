@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule, getModelToken } from '@nestjs/mongoose';
-import { VideoService } from './video.service';
+import { VideoRepository } from './video.service';
 import { Video, VideoDocument, VideoSchema } from './schemas/video.schema';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MockVideoService } from './video.service.mock';
+import { MockVideoRepository } from './video.service.mock';
 import { Model } from 'mongoose';
 
 @Module({
@@ -14,18 +14,18 @@ import { Model } from 'mongoose';
   controllers: [],
   providers: [
     {
-      provide: VideoService,
+      provide: VideoRepository,
       inject: [ConfigService, getModelToken(Video.name)],
       useFactory: (configService: ConfigService, videoModel: Model<VideoDocument>) => {
         const env = configService.get<string>('ENVIRONMENT');
         if (env !== 'prod') {
-          return new MockVideoService(videoModel);
+          return new MockVideoRepository(videoModel);
         } else {
-          return new VideoService(videoModel);
+          return new VideoRepository(videoModel);
         }
       },
     },
   ],
-  exports: [VideoService]
+  exports: [VideoRepository]
 })
 export class VideoModule {}

@@ -1,4 +1,4 @@
-import { createProjectionFromDto } from "../../../../utils/createProjectionFromDto";
+import { createProjectionFromDto } from "../../../utils/createProjectionFromDto";
 
 export class TrendingChainDto {
   readonly created: Date;

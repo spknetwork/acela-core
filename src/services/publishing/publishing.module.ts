@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PublishingService } from './publishing.service';
-import { VideoModule } from '../repositories/video/video.module';
-import { CreatorModule } from '../repositories/creator/creator.module';
+import { VideoModule } from '../../repositories/video/video.module';
+import { CreatorModule } from '../../repositories/creator/creator.module';
 import { MockPublishingService } from './publishing.service.mock';
-import { VideoService } from '../repositories/video/video.service';
-import { CreatorService } from '../repositories/creator/creator.service';
+import { VideoRepository } from '../../repositories/video/video.service';
+import { CreatorRepository } from '../../repositories/creator/creator.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
@@ -13,8 +13,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   providers: [
     {
       provide: PublishingService,
-      inject: [VideoService, CreatorService, ConfigService],
-      useFactory: (videoService: VideoService, creatorService: CreatorService, configService: ConfigService) => {
+      inject: [VideoRepository, CreatorRepository, ConfigService],
+      useFactory: (videoService: VideoRepository, creatorService: CreatorRepository, configService: ConfigService) => {
         const env = configService.get<string>('ENVIRONMENT');
         if (env !== 'prod') {
           return new MockPublishingService(videoService, creatorService);

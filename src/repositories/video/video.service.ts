@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Video } from './schemas/video.schema';
 import { TrendingChainDto, trendingChainProjection } from './dto/trending-chain.dto';
-import { normaliseTags } from '../../../utils/normaliseTags';
+import { normaliseTags } from '../../utils/normaliseTags';
 import { DbVideoToPublishDto, dbVideoToPublishProjection } from './dto/videos-to-publish.dto';
 import { UpdateResult } from 'mongodb';
 
@@ -24,7 +24,7 @@ type TrendingChainResponse = Array<({
 })>;
 
 @Injectable()
-export class VideoService {
+export class VideoRepository {
   constructor(@InjectModel(Video.name) private videoModel: Model<Video>) {}
 
   async getTrendingForChain(): Promise<TrendingChainResponse> {

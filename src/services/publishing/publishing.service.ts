@@ -5,8 +5,8 @@ import hiveJsPackage from '@hiveio/hive-js';
 import { VideoToPublishDto } from './dto/video-to-publish.dto';
 import { APP_BUNNY_IPFS_CDN, APP_IMAGE_CDN_DOMAIN } from '../../consts';
 import { PostBeneficiary, CommentOption, HiveAccountMetadata, CustomJsonOperation, OperationsArray } from './types';
-import { VideoService } from '../repositories/video/video.service';
-import { CreatorService } from '../repositories/creator/creator.service';
+import { VideoRepository } from '../../repositories/video/video.service';
+import { CreatorRepository } from '../../repositories/creator/creator.service';
 import { chunk } from '../../utils/chunk';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -28,12 +28,12 @@ hiveJsPackage.config.set('rebranded_api','true');
 @Injectable()
 export class PublishingService {
   readonly #logger: Logger;
-  readonly #videoService: VideoService;
-  readonly #creatorService: CreatorService;
+  readonly #videoService: VideoRepository;
+  readonly #creatorService: CreatorRepository;
   readonly #hive: Client = HiveClient;
   readonly #hiveJs = hiveJsPackage
 
-  constructor(videoService: VideoService, creatorService: CreatorService) {
+  constructor(videoService: VideoRepository, creatorService: CreatorRepository) {
     this.#videoService = videoService;
     this.#creatorService = creatorService;
     this.#logger = new Logger(PublishingService.name)
@@ -210,7 +210,7 @@ export class PublishingService {
   
     return {
       tags,
-      app: '3speak/0.3.0',
+      app: '3speak/0.4.0',
       type: `3speak/${postType}`,
       image: [
         imageUrl

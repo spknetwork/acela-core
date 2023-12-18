@@ -1,17 +1,17 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { VideoService } from "./video.service";
+import { VideoRepository } from "./video.service";
 import { Video } from "./schemas/video.schema";
 import { Model } from "mongoose";
 import { ObjectId } from "mongodb";
 
 @Injectable()
-export class MockVideoService extends VideoService {
+export class MockVideoRepository extends VideoRepository {
   readonly #logger: Logger;
 
   constructor(videoModel: Model<Video>) {
     super(videoModel);
 
-    this.#logger = new Logger(MockVideoService.name)
+    this.#logger = new Logger(MockVideoRepository.name)
   }
 
   async updateVideoFailureStatus(owner: string, failureStatuses: { lowRc: boolean; publishFailed: boolean; }) {

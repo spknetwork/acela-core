@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule, getModelToken } from '@nestjs/mongoose';
-import { CreatorService } from './creator.service';
+import { CreatorRepository } from './creator.service';
 import { ContentCreator, ContentCreatorSchema } from './schemas/creator.schema';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MockCreatorService } from './creator.service.mock';
@@ -14,18 +14,18 @@ import { Model } from 'mongoose';
   controllers: [],
   providers: [
     {
-      provide: CreatorService,
+      provide: CreatorRepository,
       inject: [ConfigService, getModelToken(ContentCreator.name)],
       useFactory: (configService: ConfigService, creatorModel: Model<ContentCreator>) => {
         const env = configService.get<string>('ENVIRONMENT');
         if (env !== 'prod') {
           return new MockCreatorService(creatorModel);
         } else {
-          return new CreatorService(creatorModel);
+          return new CreatorRepository(creatorModel);
         }
       },
     },
   ],
-  exports: [CreatorService]
+  exports: [CreatorRepository]
 })
 export class CreatorModule {}

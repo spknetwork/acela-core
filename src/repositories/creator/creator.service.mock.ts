@@ -1,12 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { CreatorService } from "./creator.service";
+import { CreatorRepository } from "./creator.service";
 import { ContentCreator } from "./schemas/creator.schema";
 import { Model } from "mongoose";
 import { ObjectId } from "mongodb";
 import { UpdateResult } from "../types";
 
 @Injectable()
-export class MockCreatorService extends CreatorService {
+export class MockCreatorService extends CreatorRepository {
   readonly #logger: Logger;
 
   constructor(creatorModel: Model<ContentCreator>) {

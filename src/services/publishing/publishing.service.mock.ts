@@ -1,13 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { PublishingService } from "./publishing.service";
-import { CreatorService } from "../repositories/creator/creator.service";
+import { CreatorRepository } from "../../repositories/creator/creator.service";
 import { OperationsArray } from "./types";
-import { VideoService } from "../repositories/video/video.service";
+import { VideoRepository } from "../../repositories/video/video.service";
 
 @Injectable()
 export class MockPublishingService extends PublishingService {
 
-  constructor(videoService: VideoService, creatorService: CreatorService) {
+  constructor(videoService: VideoRepository, creatorService: CreatorRepository) {
     super(videoService, creatorService);
   }
 

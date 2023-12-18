@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TasksModule } from './services/tasks/tasks.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { VideoModule } from './services/repositories/video/video.module';
+import { VideoModule } from './repositories/video/video.module';
 import { ConfigModule } from '@nestjs/config';
 import { PublishingModule } from './services/publishing/publishing.module';
-import { CreatorModule } from './services/repositories/creator/creator.module';
+import { CreatorModule } from './repositories/creator/creator.module';
 
 @Module({
   imports: [
