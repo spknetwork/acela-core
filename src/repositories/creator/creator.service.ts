@@ -11,7 +11,7 @@ export class CreatorRepository {
     return this.creatorModel.findOne({ username }).exec()
   }
 
-  async setUserToVisible(username: string) {
+  async setUserToVisible(username: ContentCreator['username']) {
     return this.creatorModel.updateOne({ username, hidden: true }, { $set: { hidden: false } }).exec()
   }
 }

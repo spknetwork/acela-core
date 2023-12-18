@@ -67,11 +67,11 @@ export class VideoRepository {
     }, dbVideoToPublishProjection).sort('-created');
   }
 
-  async updateVideoFailureStatus(owner: string, failureStatuses: { lowRc: boolean; publishFailed: boolean; }): Promise<UpdateResult> {
+  async updateVideoFailureStatus(owner: Video['owner'], failureStatuses: { lowRc: Video['lowRc']; publishFailed: Video['publishFailed']; }): Promise<UpdateResult> {
     return await this.videoModel.updateOne({ owner }, { $set: failureStatuses }).exec()
   }
 
-  async setPostedToChain(owner: string, ipfs?: string): Promise<UpdateResult> {
+  async setPostedToChain(owner: Video['owner'], ipfs?: Video['ipfs']): Promise<UpdateResult> {
     return await this.videoModel.updateOne({ owner }, { $set: { steemPosted: true, lowRc: false, needsHiveUpdate: !!ipfs } }).exec()
   }
 }

@@ -44,7 +44,7 @@ export type PostOperation = (string | {
 
 export type CustomJsonOperation = (string | {
   required_posting_auths: string[];
-  required_auths: never[];
+  required_auths: any[];
   id: string;
   json: string;
 })[];
