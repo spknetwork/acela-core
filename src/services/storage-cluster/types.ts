@@ -68,8 +68,8 @@ export interface Pin {
     permlink?: string
     network?: string
     type?: string
-    allocations?: Array<PinAllocate>
-    allocationCount?: number
+    allocations: Array<PinAllocate>
+    allocationCount: number
     median_size?: number
     size?: number
 }

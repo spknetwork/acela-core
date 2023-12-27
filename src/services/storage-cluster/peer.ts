@@ -34,7 +34,8 @@ export class StorageClusterPeer extends StorageCluster {
     }
 
     /**
-     * Add a pinned CID to the cluster to be pinned by other nodes
+     * Add a pinned CID to the cluster to be pinned by other nodes.
+     * CID must not already exist in the cluster prior to calling this function.
      * @param cid CID to be added to the cluster
      */
     async addToCluster(cid: string | CID) {
@@ -65,7 +66,15 @@ export class StorageClusterPeer extends StorageCluster {
             _id: cid.toString(),
             status: 'pinned',
             created_at,
-            size: info.cumulativeSize
+            allocations: [{
+                id: this.peerId.toString(),
+                allocated_at: created_at,
+                pinned_at: created_at,
+                reported_size: info.cumulativeSize
+            }],
+            allocationCount: 1,
+            size: info.cumulativeSize,
+            median_size: info.cumulativeSize
         })
         this.ws.send(JSON.stringify({
             type: SocketMsgTypes.PIN_NEW,
