@@ -10,11 +10,6 @@ export class TasksService {
     this.#publishingService = publishingService;
   }
 
-  @Cron(CronExpression.EVERY_30_MINUTES, { name: 'Publish trending metadata to chain' })
-  async updateTrendingDataOnChain() {
-    this.#publishingService.publishTrendingMetadataOnChain();
-  }
-
   @Cron(CronExpression.EVERY_10_MINUTES, { name: 'Publish mongo videos to hive chain' })
   async publishVideosToHive() {
     this.#publishingService.normalVideoPublish();

@@ -97,25 +97,6 @@ export class PublishingService {
     }
   }
 
-  async publishTrendingMetadataOnChain() {
-    const trendingForChain = await this.#videoService.getTrendingForChain()
-    const chunks = chunk(trendingForChain, 10)
-    const operations: CustomJsonOperation[] = chunks.map((chunk, index) => ([
-      'custom_json', {
-          required_posting_auths: [process.env.DELEGATED_ACCOUNT || 'threespeak'],
-          required_auths: [],
-          id: `3speak-trending-${index}`,
-          json: JSON.stringify(chunk)
-      }
-    ]));
-    try {
-      const tx = await this._broadcastOperations(operations);
-      this.#logger.log(`DONE: https://hiveblockexplorer.com/tx/${tx.id}`)
-    } catch (e) {
-      console.log(e.message)
-    }
-  }
-
   protected getLogger(): Logger {
     return this.#logger;
   }
