@@ -7,10 +7,10 @@ import { APP_BUNNY_IPFS_CDN, APP_IMAGE_CDN_DOMAIN } from '../../consts';
 import { PostBeneficiary, CommentOption, HiveAccountMetadata, CustomJsonOperation, OperationsArray } from './types';
 import { VideoRepository } from '../../repositories/video/video.service';
 import { CreatorRepository } from '../../repositories/creator/creator.service';
-import { chunk } from '../../utils/chunk';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { DbVideoToPublishDto } from '../../repositories/video/dto/videos-to-publish.dto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,58 +42,7 @@ export class PublishingService {
   async normalVideoPublish() {
     const videosToPublish = await this.#videoService.getVideosToPublish();
     for (const video of videosToPublish) {
-
-      try {
-        if (await this.#hivePostExists({ author: video.owner, permlink: video.permlink })) {
-          //await this.#videoService.setPostedToChain(video.owner, video.ipfs);
-          this.#logger.warn(`## SKIPPED ${video.owner}/${video.permlink} ALREADY PUBLISHED!`);
-          continue;
-        }
-
-        const publish = await this.#publishVideoToChain({
-          author: video.owner,
-          permlink: video.permlink,
-          title: video.title,
-          description: video.description,
-          community: video.hive,
-          size: video.size,
-          filename: video.filename,
-          firstUpload: video.firstUpload,
-          fromMobile: video.fromMobile,
-          beneficiaries: video.beneficiaries,
-          declineRewards: video.declineRewards,
-          rewardPowerup: video.rewardPowerup
-        })
-
-        if (publish && publish.id) {
-
-          await this.#videoService.setPostedToChain(video.owner, video.hive);
-
-          await this.#creatorService.setUserToVisible(video.owner);
-
-          this.#logger.log('## Published:', 'https://hiveblockexplorer.com/tx/' + publish.id, 'https://3speak.tv/watch?v=' + video.owner + '/' + video.permlink)
-
-        } else {
-          const lowRc = !!publish.message && publish.message.indexOf('power up') > -1;
-          const blockSizeExceeded = !!publish.message && publish.message.indexOf('maximum_block_size') > -1;
-          const missingAuthority = !!publish.message && publish.message.indexOf('Missing Posting Authority') > -1;
-          const titleException = !!publish.message && publish.message.indexOf('Title size limit exceeded.') > -1;
-          const paidForbidden = !!publish.message && publish.message.indexOf('Updating parameters for comment that is paid out is forbidden') > -1;
-          const commentBeneficiaries = !!publish.message && publish.message.indexOf('Comment already has beneficiaries specified') > -1;
-          const publishFailed = blockSizeExceeded || missingAuthority || titleException || paidForbidden || commentBeneficiaries
-
-          await this.#videoService.updateVideoFailureStatus(video.owner, { lowRc, publishFailed });
-
-          this.#logger.warn(
-            '## ERROR, failed to publish:',
-            publish.message,
-            `${video.owner}/${video.permlink}`,
-            { blockSizeExceeded, missingAuthority }
-          )
-        }
-      } catch (ex) {
-        this.#logger.error(ex);
-      }
+      await this.#publish(video)      
     }
   }
 
@@ -110,6 +59,60 @@ export class PublishingService {
       this.#logger.error(`Error publishing operations to chain!`, operations, e)
       return e;
     });
+  }
+
+  async #publish(video: DbVideoToPublishDto): Promise<void> {
+    try {
+      if (await this.#hivePostExists({ author: video.owner, permlink: video.permlink })) {
+        //await this.#videoService.setPostedToChain(video.owner, video.ipfs);
+        this.#logger.warn(`## SKIPPED ${video.owner}/${video.permlink} ALREADY PUBLISHED!`);
+        return;
+      }
+
+      const publish = await this.#publishVideoToChain({
+        author: video.owner,
+        permlink: video.permlink,
+        title: video.title,
+        description: video.description,
+        community: video.hive,
+        size: video.size,
+        filename: video.filename,
+        firstUpload: video.firstUpload,
+        fromMobile: video.fromMobile,
+        beneficiaries: video.beneficiaries,
+        declineRewards: video.declineRewards,
+        rewardPowerup: video.rewardPowerup
+      })
+
+      if (publish && publish.id) {
+
+        await this.#videoService.setPostedToChain(video.owner, video.hive);
+
+        await this.#creatorService.setUserToVisible(video.owner);
+
+        this.#logger.log('## Published:', 'https://hiveblockexplorer.com/tx/' + publish.id, 'https://3speak.tv/watch?v=' + video.owner + '/' + video.permlink)
+
+      } else {
+        const lowRc = !!publish.message && publish.message.indexOf('power up') > -1;
+        const blockSizeExceeded = !!publish.message && publish.message.indexOf('maximum_block_size') > -1;
+        const missingAuthority = !!publish.message && publish.message.indexOf('Missing Posting Authority') > -1;
+        const titleException = !!publish.message && publish.message.indexOf('Title size limit exceeded.') > -1;
+        const paidForbidden = !!publish.message && publish.message.indexOf('Updating parameters for comment that is paid out is forbidden') > -1;
+        const commentBeneficiaries = !!publish.message && publish.message.indexOf('Comment already has beneficiaries specified') > -1;
+        const publishFailed = blockSizeExceeded || missingAuthority || titleException || paidForbidden || commentBeneficiaries
+
+        await this.#videoService.updateVideoFailureStatus(video.owner, { lowRc, publishFailed });
+
+        this.#logger.warn(
+          '## ERROR, failed to publish:',
+          publish.message,
+          `${video.owner}/${video.permlink}`,
+          { blockSizeExceeded, missingAuthority }
+        )
+      }
+    } catch (ex) {
+      this.#logger.error(ex);
+    }
   }
 
   async #hivePostExists({ author, permlink }: {author: string, permlink: string }) {
