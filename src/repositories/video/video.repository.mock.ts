@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { VideoRepository } from "./video.service";
+import { VideoRepository } from "./video.repository";
 import { Video } from "./schemas/video.schema";
 import { Model } from "mongoose";
 import { ObjectId } from "mongodb";

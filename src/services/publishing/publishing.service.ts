@@ -5,8 +5,8 @@ import hiveJsPackage from '@hiveio/hive-js';
 import { VideoToPublishDto } from './dto/video-to-publish.dto';
 import { APP_BUNNY_IPFS_CDN, APP_IMAGE_CDN_DOMAIN } from '../../consts';
 import { PostBeneficiary, CommentOption, HiveAccountMetadata, CustomJsonOperation, OperationsArray } from './types';
-import { VideoRepository } from '../../repositories/video/video.service';
-import { CreatorRepository } from '../../repositories/creator/creator.service';
+import { VideoRepository } from '../../repositories/video/video.repository';
+import { CreatorRepository } from '../../repositories/creator/creator.repository';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -28,19 +28,19 @@ hiveJsPackage.config.set('rebranded_api','true');
 @Injectable()
 export class PublishingService {
   readonly #logger: Logger;
-  readonly #videoService: VideoRepository;
-  readonly #creatorService: CreatorRepository;
+  readonly #videoRepository: VideoRepository;
+  readonly #creatorRepository: CreatorRepository;
   readonly #hive: Client = HiveClient;
   readonly #hiveJs = hiveJsPackage
 
-  constructor(videoService: VideoRepository, creatorService: CreatorRepository) {
-    this.#videoService = videoService;
-    this.#creatorService = creatorService;
+  constructor(videoRepository: VideoRepository, creatorRepository: CreatorRepository) {
+    this.#videoRepository = videoRepository;
+    this.#creatorRepository = creatorRepository;
     this.#logger = new Logger(PublishingService.name)
   }
 
   async normalVideoPublish() {
-    const videosToPublish = await this.#videoService.getVideosToPublish();
+    const videosToPublish = await this.#videoRepository.getVideosToPublish();
     for (const video of videosToPublish) {
       await this.#publish(video)      
     }
@@ -64,7 +64,7 @@ export class PublishingService {
   async #publish(video: DbVideoToPublishDto): Promise<void> {
     try {
       if (await this.#hivePostExists({ author: video.owner, permlink: video.permlink })) {
-        //await this.#videoService.setPostedToChain(video.owner, video.ipfs);
+        await this.#videoRepository.setPostedToChain(video.owner, video.ipfs);
         this.#logger.warn(`## SKIPPED ${video.owner}/${video.permlink} ALREADY PUBLISHED!`);
         return;
       }
@@ -86,9 +86,9 @@ export class PublishingService {
 
       if (publish && publish.id) {
 
-        await this.#videoService.setPostedToChain(video.owner, video.hive);
+        await this.#videoRepository.setPostedToChain(video.owner, video.hive);
 
-        await this.#creatorService.setUserToVisible(video.owner);
+        await this.#creatorRepository.setUserToVisible(video.owner);
 
         this.#logger.log('## Published:', 'https://hiveblockexplorer.com/tx/' + publish.id, 'https://3speak.tv/watch?v=' + video.owner + '/' + video.permlink)
 
@@ -101,7 +101,7 @@ export class PublishingService {
         const commentBeneficiaries = !!publish.message && publish.message.indexOf('Comment already has beneficiaries specified') > -1;
         const publishFailed = blockSizeExceeded || missingAuthority || titleException || paidForbidden || commentBeneficiaries
 
-        await this.#videoService.updateVideoFailureStatus(video.owner, { lowRc, publishFailed });
+        await this.#videoRepository.updateVideoFailureStatus(video.owner, { lowRc, publishFailed });
 
         this.#logger.warn(
           '## ERROR, failed to publish:',

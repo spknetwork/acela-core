@@ -3,8 +3,8 @@ import { PublishingService } from './publishing.service';
 import { VideoModule } from '../../repositories/video/video.module';
 import { CreatorModule } from '../../repositories/creator/creator.module';
 import { MockPublishingService } from './publishing.service.mock';
-import { VideoRepository } from '../../repositories/video/video.service';
-import { CreatorRepository } from '../../repositories/creator/creator.service';
+import { VideoRepository } from '../../repositories/video/video.repository';
+import { CreatorRepository } from '../../repositories/creator/creator.repository';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({

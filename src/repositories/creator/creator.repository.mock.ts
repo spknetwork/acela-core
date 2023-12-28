@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { CreatorRepository } from "./creator.service";
+import { CreatorRepository } from "./creator.repository";
 import { ContentCreator } from "./schemas/creator.schema";
 import { Model } from "mongoose";
 import { ObjectId } from "mongodb";
