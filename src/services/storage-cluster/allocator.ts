@@ -356,6 +356,34 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
+    private async handleSocketMsg(ws: WebSocket, message: SocketMsg, peerId: string, currentTs: number) {
+        switch (message.type) {
+            case SocketMsgTypes.PEER_INFO:
+                let peerInfo = message.data as SocketMsgPeerInfo
+                if (typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
+                    return
+                await this.handlePeerInfoAndAllocate(ws, peerInfo, peerId, currentTs)
+                break
+            case SocketMsgTypes.PIN_COMPLETED:
+                await this.handlePinComplete(message.data as SocketMsgPin, peerId, currentTs)
+                break
+            case SocketMsgTypes.PIN_FAILED:
+                // cluster peer rejects allocation for any reason (i.e. errored pin or low disk space)
+                await this.handlePinFailed(message.data as SocketMsgPin, peerId, currentTs)
+                break
+            case SocketMsgTypes.PIN_NEW:
+                // new pin from a peer
+                await this.handleNewPinFromPeer(message.data as SocketMsgPin, peerId, currentTs)
+                break
+            case SocketMsgTypes.PIN_REMOVE_PEER:
+                // unpinned from a peer (not to be confused as removed from entire cluster)
+                await this.handlePinRmFromPeer(message.data as SocketMsgPin, peerId, currentTs)
+                break
+            default:
+                break
+        }
+    }
+
     /**
      * Init Websocket server for assignment peer
      */
@@ -377,51 +405,31 @@ export class StorageClusterAllocator extends StorageCluster {
                     return
                 let currentTs = new Date().getTime()
 
-                switch (message.type) {
-                    case SocketMsgTypes.AUTH:
-                        let incomingPeerId = (message.data as SocketMsgAuth).peerId
-                        if ((message.data as SocketMsgAuth).secret === this.secret) {
-                            try {
-                                multiaddr(incomingPeerId)
-                            } catch {
-                                return Logger.debug('Rejecting incoming connection due to bad peer ID')
-                            }
-                            authenticated = true
-                            peerId = incomingPeerId
-                            this.peers[peerId] = {
-                                ws: ws
-                            }
-                            Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
-                            ws.send(JSON.stringify({
-                                type: SocketMsgTypes.AUTH_SUCCESS,
-                                data: {}
-                            }))
+                // handle authentication of peers
+                if (message.type === SocketMsgTypes.AUTH) {
+                    let incomingPeerId = (message.data as SocketMsgAuth).peerId
+                    if ((message.data as SocketMsgAuth).secret === this.secret) {
+                        try {
+                            multiaddr(incomingPeerId)
+                        } catch {
+                            return Logger.debug('Rejecting incoming connection due to bad peer ID')
                         }
-                        break
-                    case SocketMsgTypes.PEER_INFO:
-                        let peerInfo = message.data as SocketMsgPeerInfo
-                        if (typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
-                            return
-                        await this.handlePeerInfoAndAllocate(ws, peerInfo, peerId, currentTs)
-                        break
-                    case SocketMsgTypes.PIN_COMPLETED:
-                        await this.handlePinComplete(message.data as SocketMsgPin, peerId, currentTs)
-                        break
-                    case SocketMsgTypes.PIN_FAILED:
-                        // cluster peer rejects allocation for any reason (i.e. errored pin or low disk space)
-                        await this.handlePinFailed(message.data as SocketMsgPin, peerId, currentTs)
-                        break
-                    case SocketMsgTypes.PIN_NEW:
-                        // new pin from a peer
-                        await this.handleNewPinFromPeer(message.data as SocketMsgPin, peerId, currentTs)
-                        break
-                    case SocketMsgTypes.PIN_REMOVE_PEER:
-                        // unpinned from a peer (not to be confused as removed from entire cluster)
-                        await this.handlePinRmFromPeer(message.data as SocketMsgPin, peerId, currentTs)
-                        break
-                    default:
-                        break
+                        authenticated = true
+                        peerId = incomingPeerId
+                        this.peers[peerId] = {
+                            ws: ws
+                        }
+                        Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
+                        ws.send(JSON.stringify({
+                            type: SocketMsgTypes.AUTH_SUCCESS,
+                            data: {}
+                        }))
+                    }
+                    return
                 }
+
+                // handle authenticated peers messages
+                await this.handleSocketMsg(ws, message, peerId, currentTs)
             })
 
             ws.on('close', () => this.wsClosed(peerId))
