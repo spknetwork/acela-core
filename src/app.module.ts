@@ -6,6 +6,7 @@ import { VideoModule } from './repositories/video/video.module';
 import { ConfigModule } from '@nestjs/config';
 import { PublishingModule } from './services/publishing/publishing.module';
 import { CreatorModule } from './repositories/creator/creator.module';
+import { UserModule } from './repositories/user/user.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CreatorModule } from './repositories/creator/creator.module';
     ScheduleModule.forRoot(),
     VideoModule,
     CreatorModule,
+    UserModule,
     PublishingModule,
     TasksModule
   ],

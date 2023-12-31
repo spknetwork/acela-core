@@ -2,13 +2,13 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs'
-import { UsersService } from '../api.services';
+import { UserRepository } from '../../../repositories/user/user.repository';
 
 @Injectable()
 export class AuthService {
   jwtService: JwtService;
   constructor(
-    private readonly usersService: UsersService,
+    private readonly usersService: UserRepository,
     jwtService: JwtService
   ) {
     this.jwtService = jwtService;
