@@ -17,6 +17,7 @@ export enum SocketMsgTypes {
 export type SocketMsg = {
     type: SocketMsgTypes
     data: SocketMsgAuth | SocketMsgPeerInfo | SocketMsgPinAlloc | SocketMsgPin
+    ts: number
 }
 
 export type SocketMsgAuth = {

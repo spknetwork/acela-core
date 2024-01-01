@@ -81,7 +81,8 @@ export class StorageClusterPeer extends StorageCluster {
             data: {
                 cid: cid.toString(),
                 size: info.cumulativeSize
-            }
+            },
+            ts: new Date().getTime()
         }))
     }
 
@@ -97,7 +98,8 @@ export class StorageClusterPeer extends StorageCluster {
             type: SocketMsgTypes.PIN_REMOVE_PEER,
             data: {
                 cid: cid.toString()
-            }
+            },
+            ts: new Date().getTime()
         }))
     }
 
@@ -111,34 +113,47 @@ export class StorageClusterPeer extends StorageCluster {
             data: {
                 totalSpaceMB,
                 freeSpaceMB
-            }
+            },
+            ts: new Date().getTime()
         }))
     }
 
-    private async handlePinAlloc(allocs: SocketMsgPinAlloc) {
+    private async handlePinAlloc(allocs: SocketMsgPinAlloc, msgTs: number) {
         if (allocs.allocations.length === 0) {
             setTimeout(() => this.sendPeerInfo(), 30000)
             return
         }
         Logger.log('Received '+allocs.allocations.length+' pin allocations', 'storage-peer')
-        for (let a in allocs.allocations)
-            await this.pins.updateOne({
-                _id: allocs.allocations[a]._id
-            }, {
-                $set: {
-                    status: 'queued',
-                    owner: allocs.allocations[a].owner,
-                    permlink: allocs.allocations[a].permlink,
-                    network: allocs.allocations[a].network,
-                    type: allocs.allocations[a].type,
-                    created_at: allocs.allocations[a].created_at
-                }
-            }, { upsert: true })
-        await this.executeIPFSPin(allocs.allocations.map((val) => val._id), allocs.peerIds)
+        for (let a in allocs.allocations) {
+            let exists = await this.pins.findOne({_id: allocs.allocations[a]._id, 'allocations.id': this.peerId.toString()})
+            if (!exists)
+                await this.pins.updateOne({
+                    _id: allocs.allocations[a]._id
+                }, {
+                    $set: {
+                        status: 'queued',
+                        owner: allocs.allocations[a].owner,
+                        permlink: allocs.allocations[a].permlink,
+                        network: allocs.allocations[a].network,
+                        type: allocs.allocations[a].type,
+                        created_at: allocs.allocations[a].created_at
+                    },
+                    $push: {
+                        allocations: {
+                            id: this.peerId.toString(),
+                            allocated_at: msgTs
+                        }
+                    },
+                    $inc: {
+                        allocationCount: 1
+                    }
+                }, { upsert: true })
+        }
+        await this.executeIPFSPin(allocs.allocations.map((val) => val._id), allocs.peerIds, msgTs)
         setTimeout(async () => await this.sendPeerInfo(), 1000)
     }
 
-    private async executeIPFSPin(cids: string[], peerIds: string[]) {
+    private async executeIPFSPin(cids: string[], peerIds: string[], allocatedTs: number) {
         let swarmConnect = setInterval(async () => {
             for (let p in peerIds)
                 try {
@@ -164,12 +179,21 @@ export class StorageClusterPeer extends StorageCluster {
                     })).text()).trim().split('\n')
                     size = JSON.parse(apiRes[apiRes.length-1]).TotalSize as number
                 }
+                let pinnedTs = new Date().getTime()
                 await this.pins.updateOne({
-                    _id: cids[cid]
+                    _id: cids[cid],
+                    'allocations.id': this.peerId.toString()
                 }, {
                     $set: {
                         status: 'pinned',
-                        size: size
+                        size: size,
+                        median_size: size,
+                        'allocations.$': {
+                            id: this.peerId.toString(),
+                            allocated_at: allocatedTs,
+                            pinned_at: pinnedTs,
+                            reported_size: size
+                        }
                     }
                 })
                 this.ws.send(JSON.stringify({
@@ -177,7 +201,8 @@ export class StorageClusterPeer extends StorageCluster {
                     data: {
                         cid: cids[cid],
                         size: size
-                    }
+                    },
+                    ts: pinnedTs
                 }))
                 Logger.log('Pinned '+cids[cid]+', size: '+size, 'storage-peer')
             } catch (e) {
@@ -193,7 +218,7 @@ export class StorageClusterPeer extends StorageCluster {
      * Handle unpin request from allocator
      * @param cid CID to unpin
      */
-    private async handleUnpinRequest(cid: string) {
+    private async handleUnpinRequest(cid: string, msgTs: number) {
         await this.pins.updateOne({_id: cid}, {$set: {
             status: 'deleted'
         }})
@@ -219,7 +244,8 @@ export class StorageClusterPeer extends StorageCluster {
             type: SocketMsgTypes.PIN_FAILED,
             data: {
                 cid: cid
-            }
+            },
+            ts: new Date().getTime()
         }))
     }
 
@@ -232,7 +258,8 @@ export class StorageClusterPeer extends StorageCluster {
                 data: {
                     secret: this.secret,
                     peerId: this.peerId.toString()
-                }
+                },
+                ts: new Date().getTime()
             }))
         })
         this.ws.on('message', async (data) => {
@@ -251,10 +278,10 @@ export class StorageClusterPeer extends StorageCluster {
                     await this.sendPeerInfo()
                     break
                 case SocketMsgTypes.PIN_ALLOCATION:
-                    await this.handlePinAlloc(message.data as SocketMsgPinAlloc)
+                    await this.handlePinAlloc(message.data as SocketMsgPinAlloc, message.ts)
                     break
                 case SocketMsgTypes.PIN_REMOVE:
-                    await this.handleUnpinRequest((message.data as SocketMsgPin).cid)
+                    await this.handleUnpinRequest((message.data as SocketMsgPin).cid, message.ts)
                     break
                 default:
                     break

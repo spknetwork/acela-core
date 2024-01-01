@@ -141,7 +141,8 @@ export class StorageClusterAllocator extends StorageCluster {
                     _id: cid.toString(),
                     created_at: ts
                 }]
-            }
+            },
+            ts
         }))
     }
 
@@ -155,6 +156,7 @@ export class StorageClusterAllocator extends StorageCluster {
             Logger.error('Unable to remove non-existent pin ',cid)
             throw new Error('Pin does not exist')
         }
+        let ts = new Date().getTime()
         await this.pins.updateOne({_id: cid}, {
             $set: {
                 status: 'unpinned'
@@ -164,11 +166,12 @@ export class StorageClusterAllocator extends StorageCluster {
             if (this.peers[toRm.allocations[a].id])
                 this.peers[toRm.allocations[a].id].ws.send(JSON.stringify({
                     type: SocketMsgTypes.PIN_REMOVE,
-                    data: { cid }
+                    data: { cid },
+                    ts
                 }))
     }
 
-    private async handlePeerInfoAndAllocate(ws: WebSocket, peerInfo: SocketMsgPeerInfo, peerId: string, currentTs: number) {
+    private async handlePeerInfoAndAllocate(ws: WebSocket, peerInfo: SocketMsgPeerInfo, peerId: string, msgTs: number, currentTs: number) {
         this.peers[peerId].freeSpaceMB = peerInfo.freeSpaceMB
         this.peers[peerId].totalSpaceMB = peerInfo.totalSpaceMB
         Logger.debug('Peer '+peerId+' disk available: '+Math.floor(this.peers[peerId].freeSpaceMB/1024)+' GB, total: '+Math.floor(this.peers[peerId].totalSpaceMB/1024)+' GB', 'storage-cluster')
@@ -189,7 +192,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 $push: {
                     allocations: {
                         id: peerId,
-                        allocated_at: currentTs
+                        allocated_at: msgTs
                     }
                 },
                 $inc: {
@@ -202,12 +205,13 @@ export class StorageClusterAllocator extends StorageCluster {
                 data: {
                     peerIds,
                     allocations: toAllocate
-                }
+                },
+                ts: currentTs
             }))
         }
     }
 
-    private async handlePinComplete(completedPin: SocketMsgPin, peerId: string, currentTs: number) {
+    private async handlePinComplete(completedPin: SocketMsgPin, peerId: string, msgTs: number, currentTs: number) {
         let pinned = await this.pins.findOne({_id: completedPin.cid})
         let preAllocated = -1
         if (!pinned) {
@@ -232,8 +236,8 @@ export class StorageClusterAllocator extends StorageCluster {
                 $push: {
                     allocations: {
                         id: peerId,
-                        allocated_at: currentTs,
-                        pinned_at: currentTs,
+                        allocated_at: msgTs,
+                        pinned_at: msgTs,
                         reported_size: completedPin.size
                     }
                 },
@@ -251,7 +255,7 @@ export class StorageClusterAllocator extends StorageCluster {
                     'allocations.$': {
                         id: peerId,
                         allocated_at: pinned.allocations[preAllocated].allocated_at,
-                        pinned_at: currentTs,
+                        pinned_at: msgTs,
                         reported_size: completedPin.size
                     },
                     median_size: this.calculateMedian(reported_sizes)
@@ -260,7 +264,7 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
-    private async handlePinFailed(failedPin: SocketMsgPin, peerId: string, currentTs: number) {
+    private async handlePinFailed(failedPin: SocketMsgPin, peerId: string, msgTs: number, currentTs: number) {
         let affected = await this.pins.findOne({_id: failedPin.cid})
         for (let a in affected.allocations)
             if (affected.allocations[a].id === peerId) {
@@ -282,19 +286,19 @@ export class StorageClusterAllocator extends StorageCluster {
         })
     }
 
-    private async handleNewPinFromPeer(newPin: SocketMsgPin, peerId: string, currentTs: number) {
+    private async handleNewPinFromPeer(newPin: SocketMsgPin, peerId: string, msgTs: number, currentTs: number) {
         let alreadyExists = await this.pins.findOne({_id: newPin.cid})
         let newAlloc = {
             id: peerId,
-            allocated_at: currentTs,
-            pinned_at: currentTs,
+            allocated_at: msgTs,
+            pinned_at: msgTs,
             reported_size: newPin.size
         }
         if (!alreadyExists)
             await this.pins.insertOne({
                 _id: newPin.cid,
                 status: 'pinned',
-                created_at: currentTs,
+                created_at: msgTs,
                 allocations: [newAlloc],
                 allocationCount: 1,
                 median_size: newPin.size
@@ -327,7 +331,7 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
-    private async handlePinRmFromPeer(removedPin: SocketMsgPin, peerId: string, currentTs: number) {
+    private async handlePinRmFromPeer(removedPin: SocketMsgPin, peerId: string, msgTs: number, currentTs: number) {
         let removedCid = await this.pins.findOne({_id: removedPin.cid})
         if (!removedCid) {
             Logger.verbose('Cannot process PIN_REMOVE_PEER for non-existent pin', 'storage-cluster')
@@ -362,22 +366,22 @@ export class StorageClusterAllocator extends StorageCluster {
                 let peerInfo = message.data as SocketMsgPeerInfo
                 if (typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
                     return
-                await this.handlePeerInfoAndAllocate(ws, peerInfo, peerId, currentTs)
+                await this.handlePeerInfoAndAllocate(ws, peerInfo, peerId, message.ts, currentTs)
                 break
             case SocketMsgTypes.PIN_COMPLETED:
-                await this.handlePinComplete(message.data as SocketMsgPin, peerId, currentTs)
+                await this.handlePinComplete(message.data as SocketMsgPin, peerId, message.ts, currentTs)
                 break
             case SocketMsgTypes.PIN_FAILED:
                 // cluster peer rejects allocation for any reason (i.e. errored pin or low disk space)
-                await this.handlePinFailed(message.data as SocketMsgPin, peerId, currentTs)
+                await this.handlePinFailed(message.data as SocketMsgPin, peerId, message.ts, currentTs)
                 break
             case SocketMsgTypes.PIN_NEW:
                 // new pin from a peer
-                await this.handleNewPinFromPeer(message.data as SocketMsgPin, peerId, currentTs)
+                await this.handleNewPinFromPeer(message.data as SocketMsgPin, peerId, message.ts, currentTs)
                 break
             case SocketMsgTypes.PIN_REMOVE_PEER:
                 // unpinned from a peer (not to be confused as removed from entire cluster)
-                await this.handlePinRmFromPeer(message.data as SocketMsgPin, peerId, currentTs)
+                await this.handlePinRmFromPeer(message.data as SocketMsgPin, peerId, message.ts, currentTs)
                 break
             default:
                 break
@@ -422,7 +426,8 @@ export class StorageClusterAllocator extends StorageCluster {
                         Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
                         ws.send(JSON.stringify({
                             type: SocketMsgTypes.AUTH_SUCCESS,
-                            data: {}
+                            data: {},
+                            ts: currentTs
                         }))
                     }
                     return
