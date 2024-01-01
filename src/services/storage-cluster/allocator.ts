@@ -42,16 +42,18 @@ export class StorageClusterAllocator extends StorageCluster {
             if (Array.isArray(sourceMap)) {
                 for(let src of sourceMap) {
                     if (src.url.startsWith('ipfs://')) {
+                        let ts = new Date().getTime()
                         await this.pins.updateOne({
                             _id: src.url.replace('ipfs://', '').split('/')[0]
                         }, {
                             $setOnInsert: {
                                 status: 'new',
+                                last_updated: ts,
                                 type: src.type,
                                 network: video.TYPE,
                                 owner: video.author,
                                 permlink: video.permlink,
-                                created_at: new Date().getTime(),
+                                created_at: ts,
                                 allocations: []
                             }
                         }, {
@@ -121,6 +123,7 @@ export class StorageClusterAllocator extends StorageCluster {
             _id: cid.toString(),
             status: 'new',
             created_at: ts,
+            last_updated: ts,
             allocations: [{
                 id: pinned_in,
                 allocated_at: ts
@@ -159,7 +162,8 @@ export class StorageClusterAllocator extends StorageCluster {
         let ts = new Date().getTime()
         await this.pins.updateOne({_id: cid}, {
             $set: {
-                status: 'unpinned'
+                status: 'unpinned',
+                last_updated: ts
             }
         })
         for (let a in toRm.allocations)
@@ -189,10 +193,13 @@ export class StorageClusterAllocator extends StorageCluster {
                 if (p !== peerId)
                     peerIds.push(p)
             await this.pins.updateMany({ _id: { $in: cids } }, {
+                $set: {
+                    last_updated: currentTs
+                },
                 $push: {
                     allocations: {
                         id: peerId,
-                        allocated_at: msgTs
+                        allocated_at: currentTs
                     }
                 },
                 $inc: {
@@ -245,6 +252,7 @@ export class StorageClusterAllocator extends StorageCluster {
                     allocationCount: 1
                 },
                 $set: {
+                    last_updated: msgTs,
                     median_size: this.calculateMedian(reported_sizes)
                 }
             })
@@ -252,6 +260,7 @@ export class StorageClusterAllocator extends StorageCluster {
             await this.pins.updateOne({_id: completedPin.cid, 'allocations.id': peerId}, {
                 $set: {
                     status: 'pinned',
+                    last_updated: msgTs,
                     'allocations.$': {
                         id: peerId,
                         allocated_at: pinned.allocations[preAllocated].allocated_at,
@@ -275,6 +284,9 @@ export class StorageClusterAllocator extends StorageCluster {
                 break
             }
         await this.pins.updateOne({_id: failedPin.cid}, {
+            $set: {
+                last_updated: msgTs
+            },
             $pull: {
                 allocations: {
                     id: peerId
@@ -299,6 +311,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 _id: newPin.cid,
                 status: 'pinned',
                 created_at: msgTs,
+                last_updated: msgTs,
                 allocations: [newAlloc],
                 allocationCount: 1,
                 median_size: newPin.size
@@ -323,6 +336,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         allocationCount: 1
                     },
                     $set: {
+                        last_updated: msgTs,
                         median_size: this.calculateMedian(reported_sizes)
                     }
                 })
@@ -345,6 +359,9 @@ export class StorageClusterAllocator extends StorageCluster {
             if (removedCid.allocations.length === 1)
                 Logger.warn('Removing pin allocation for the only allocated peer for cid '+removedPin.cid+' for '+peerId, 'storage-cluster')
             await this.pins.updateOne({_id: removedPin.cid}, {
+                $set: {
+                    last_updated: msgTs
+                },
                 $pull: {
                     allocations: {
                         id: peerId

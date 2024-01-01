@@ -65,6 +65,7 @@ export interface Pin {
     _id: string
     status: "new" | "queued" | "failed" | "unpinned" | "pinned" | "deleted"
     created_at: number
+    last_updated: number
     owner?: string
     permlink?: string
     network?: string

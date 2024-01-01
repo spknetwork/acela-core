@@ -66,6 +66,7 @@ export class StorageClusterPeer extends StorageCluster {
             _id: cid.toString(),
             status: 'pinned',
             created_at,
+            last_updated: created_at,
             allocations: [{
                 id: this.peerId.toString(),
                 allocated_at: created_at,
@@ -82,15 +83,17 @@ export class StorageClusterPeer extends StorageCluster {
                 cid: cid.toString(),
                 size: info.cumulativeSize
             },
-            ts: new Date().getTime()
+            ts: created_at
         }))
     }
 
     async unpinFromPeer(cid: string | CID) {
         if (typeof cid === 'string')
             cid = CID.parse(cid)
+        let unpinnedTs = new Date().getTime()
         await this.pins.updateOne({_id: cid.toString()}, {$set: {
-            status: 'unpinned'
+            status: 'unpinned',
+            last_updated: unpinnedTs
         }})
         await this.ipfs.pin.rm(cid)
         Logger.log('Unpinned '+cid.toString()+' from peer', 'storage-peer')
@@ -99,7 +102,7 @@ export class StorageClusterPeer extends StorageCluster {
             data: {
                 cid: cid.toString()
             },
-            ts: new Date().getTime()
+            ts: unpinnedTs
         }))
     }
 
@@ -136,7 +139,8 @@ export class StorageClusterPeer extends StorageCluster {
                         permlink: allocs.allocations[a].permlink,
                         network: allocs.allocations[a].network,
                         type: allocs.allocations[a].type,
-                        created_at: allocs.allocations[a].created_at
+                        created_at: allocs.allocations[a].created_at,
+                        last_updated: msgTs
                     },
                     $push: {
                         allocations: {
@@ -186,6 +190,7 @@ export class StorageClusterPeer extends StorageCluster {
                 }, {
                     $set: {
                         status: 'pinned',
+                        last_updated: pinnedTs,
                         size: size,
                         median_size: size,
                         'allocations.$': {
@@ -220,7 +225,8 @@ export class StorageClusterPeer extends StorageCluster {
      */
     private async handleUnpinRequest(cid: string, msgTs: number) {
         await this.pins.updateOne({_id: cid}, {$set: {
-            status: 'deleted'
+            status: 'deleted',
+            last_updated: msgTs
         }})
         await this.ipfs.pin.rm(CID.parse(cid))
         Logger.debug('Unpinned '+cid, 'storage-peer')
@@ -231,11 +237,13 @@ export class StorageClusterPeer extends StorageCluster {
      * @param cid CID that failed to pin
      */
     private async pinFailed(cid: string) {
+        let failedTs = new Date().getTime()
         try {
             await this.pins.updateOne({
                 _id: cid
             }, {
                 $set: {
+                    last_updated: failedTs,
                     status: 'failed'
                 }
             })
@@ -245,7 +253,7 @@ export class StorageClusterPeer extends StorageCluster {
             data: {
                 cid: cid
             },
-            ts: new Date().getTime()
+            ts: failedTs
         }))
     }
 
