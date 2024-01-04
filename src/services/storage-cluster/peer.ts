@@ -273,6 +273,8 @@ export class StorageClusterPeer extends StorageCluster {
     }
 
     private initWs(isDiscovery: boolean, wsUrl: string) {
+        if (!wsUrl)
+            return // first peer does not require wsUrl for now, but add the urls of other peers when they join the cluster later
         let ws = new WebSocket(wsUrl)
         ws.on('error', (err) => Logger.error(err, 'storage-peer'))
         ws.on('open', async () => {
