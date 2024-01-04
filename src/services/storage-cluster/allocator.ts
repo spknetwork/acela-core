@@ -97,7 +97,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 $or: [{
                     median_size: { $exists: false }
                 }, {
-                    median_size: { $lt: this.peers[peerId].freeSpaceMB!-(this.peers[peerId].totalSpaceMB!*ALLOCATION_DISK_THRESHOLD/100) }
+                    median_size: { $lt: (this.peers[peerId].freeSpaceMB!-(this.peers[peerId].totalSpaceMB!*ALLOCATION_DISK_THRESHOLD/100))*1048576 }
                 }]
             }]
         }).sort({
