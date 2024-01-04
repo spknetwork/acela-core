@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket from 'ws'
 import disk from 'diskusage'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuthSuccess, SocketMsgGossip, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuthSuccess, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
 import { Logger } from '@nestjs/common'
 import { multiaddr, CID } from 'kubo-rpc-client'
 import type { IPFSHTTPClient } from 'kubo-rpc-client'
@@ -23,7 +23,7 @@ export class StorageClusterPeer extends StorageCluster {
         this.wsUrl = wsUrl
         this.ipfsPath = ipfsPath
         this.wsDiscovery = wsDiscovery
-        this.allocator = new StorageClusterAllocator(this.unionDb, this.secret, this.peerId.toString(), wsPort)
+        this.allocator = new StorageClusterAllocator(this.unionDb, this.secret, this.peerId.toString(), wsPort, this.handleSocketMsg)
     }
 
     async getDiskInfo() {
@@ -259,7 +259,7 @@ export class StorageClusterPeer extends StorageCluster {
         }))
     }
 
-    private async handleSocketMsg(message: SocketMsg, peerId: string = this.peerId.toString()) {
+    private async handleSocketMsg(message: SocketMsg) {
         switch (message.type) {
             case SocketMsgTypes.PIN_ALLOCATION:
                 await this.handlePinAlloc(message.data as SocketMsgPinAlloc, message.ts)
@@ -309,19 +309,13 @@ export class StorageClusterPeer extends StorageCluster {
                     if (allocPeerInfo.discoveryPeers[p] !== this.wsDiscovery)
                         this.initWs(true, allocPeerInfo.discoveryPeers[p])
                 setTimeout(() => this.sendPeerInfo(), 5000)
-            } else if (message.type === SocketMsgTypes.MSG_GOSSIP_ALLOC) {
-                let gossipInfo = message.data as SocketMsgGossip
-                if (gossipInfo.peerId === this.peerId.toString())
-                    return
-                await this.allocator.handleSocketMsg(null, gossipInfo.data, gossipInfo.peerId, gossipInfo.data.ts)
-            } else if (message.type === SocketMsgTypes.MSG_GOSSIP_PEER) {
-                let gossipInfo = message.data as SocketMsgGossip
-                if (gossipInfo.peerId === this.peerId.toString())
-                    return
-                await this.handleSocketMsg(gossipInfo.data, gossipInfo.peerId)
-            } else {
-                await this.handleSocketMsg(message, this.peerId.toString())
             }
+
+            // handle this peer's messages from allocators connected outbound
+            await this.handleSocketMsg(message)
+
+            // handle allocator messages (including gossips) from peers connected outbound
+            await this.allocator.handleSocketMsg(ws, message, this.peerId.toString(), new Date().getTime())
         })
         if (!isDiscovery)
             this.ws = ws

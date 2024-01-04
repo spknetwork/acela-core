@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler } from './types.js'
 import { multiaddr, CID } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
@@ -15,13 +15,16 @@ export class StorageClusterAllocator extends StorageCluster {
     }
     private wss: WebSocketServer
     private wsPort: number
+    private wsPeerHandler: WSPeerHandler
 
-    constructor(unionDb: Db, secret: string, peerId: string, wsPort: number) {
+    constructor(unionDb: Db, secret: string, peerId: string, wsPort: number, wsPeerHandler?: WSPeerHandler) {
         if (wsPort < 1024 || wsPort > 65535)
             throw new Error('wsPort must be between 1024 and 65535')
         super(unionDb, secret, peerId)
         this.peers = {}
         this.wsPort = wsPort
+        if (typeof wsPeerHandler === 'function')
+            this.wsPeerHandler = wsPeerHandler
     }
 
     /**
@@ -380,6 +383,12 @@ export class StorageClusterAllocator extends StorageCluster {
 
     async handleSocketMsg(ws: WebSocket, message: SocketMsg, peerId: string, currentTs: number) {
         switch (message.type) {
+            case SocketMsgTypes.MSG_GOSSIP_ALLOC:
+                let gossipInfo = message.data as SocketMsgGossip
+                if (gossipInfo.peerId === this.peerId.toString() || gossipInfo.data.type === SocketMsgTypes.MSG_GOSSIP_ALLOC)
+                    return
+                await this.handleSocketMsg(null, gossipInfo.data, gossipInfo.peerId, gossipInfo.data.ts)
+                break
             case SocketMsgTypes.PEER_INFO:
                 let peerInfo = message.data as SocketMsgPeerInfo
                 if (!ws || typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
@@ -479,6 +488,9 @@ export class StorageClusterAllocator extends StorageCluster {
 
                 // handle authenticated peers messages
                 await this.handleSocketMsg(ws, message, peerId, currentTs)
+
+                // handle peer messages from allocators connected inbound from other peers
+                await this.wsPeerHandler(message)
             })
 
             ws.on('close', () => this.wsClosed(peerId))

@@ -8,7 +8,6 @@ export enum SocketMsgTypes {
     AUTH,
     AUTH_SUCCESS,
     MSG_GOSSIP_ALLOC,
-    MSG_GOSSIP_PEER,
     PEER_INFO,
     PIN_ALLOCATION,
     PIN_COMPLETED,
@@ -54,6 +53,8 @@ export type SocketMsgPin = {
     cid: string
     size?: number
 }
+
+export type WSPeerHandler = (message: SocketMsg) => Promise<void>
 
 export class StorageCluster {
     protected unionDb: Db

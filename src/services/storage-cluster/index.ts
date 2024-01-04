@@ -1,4 +1,3 @@
-import { StorageClusterAllocator } from './allocator.js'
 import { StorageClusterPeer } from './peer.js'
 import { mongo } from '../db.js'
 import { create } from 'kubo-rpc-client'
