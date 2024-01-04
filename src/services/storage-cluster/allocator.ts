@@ -8,6 +8,7 @@ export class StorageClusterAllocator extends StorageCluster {
     private peers: {
         [peerId: string]: {
             ws: WebSocket,
+            discovery?: string,
             totalSpaceMB?: number,
             freeSpaceMB?: number,
         }
@@ -15,10 +16,10 @@ export class StorageClusterAllocator extends StorageCluster {
     private wss: WebSocketServer
     private wsPort: number
 
-    constructor(unionDb: Db, secret: string, wsPort: number) {
+    constructor(unionDb: Db, secret: string, peerId: string, wsPort: number) {
         if (wsPort < 1024 || wsPort > 65535)
             throw new Error('wsPort must be between 1024 and 65535')
-        super(unionDb, secret)
+        super(unionDb, secret, peerId)
         this.peers = {}
         this.wsPort = wsPort
     }
@@ -377,11 +378,11 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
-    private async handleSocketMsg(ws: WebSocket, message: SocketMsg, peerId: string, currentTs: number) {
+    async handleSocketMsg(ws: WebSocket, message: SocketMsg, peerId: string, currentTs: number) {
         switch (message.type) {
             case SocketMsgTypes.PEER_INFO:
                 let peerInfo = message.data as SocketMsgPeerInfo
-                if (typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
+                if (!ws || typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
                     return
                 await this.handlePeerInfoAndAllocate(ws, peerInfo, peerId, message.ts, currentTs)
                 break
@@ -403,6 +404,26 @@ export class StorageClusterAllocator extends StorageCluster {
             default:
                 break
         }
+    }
+
+    addPeer(peerId: string, ws: WebSocket, discovery: string) {
+        if (!this.hasPeerById(peerId))
+            this.peers[peerId] = {
+                ws: ws,
+                discovery: discovery
+            }
+    }
+
+    hasPeerById(peerId: string): boolean {
+        return !!this.peers[peerId]
+    }
+
+    private getDiscoveryPeers(peerId: string): string[] {
+        let result = []
+        for (let i in this.peers)
+            if (i !== peerId && this.peers[i].discovery)
+                result.push(this.peers[i].discovery)
+        return result
     }
 
     /**
@@ -428,6 +449,8 @@ export class StorageClusterAllocator extends StorageCluster {
 
                 // handle authentication of peers
                 if (message.type === SocketMsgTypes.AUTH) {
+                    if (authenticated)
+                        return
                     let incomingPeerId = (message.data as SocketMsgAuth).peerId
                     if ((message.data as SocketMsgAuth).secret === this.secret) {
                         try {
@@ -443,7 +466,10 @@ export class StorageClusterAllocator extends StorageCluster {
                         Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
                         ws.send(JSON.stringify({
                             type: SocketMsgTypes.AUTH_SUCCESS,
-                            data: {},
+                            data: {
+                                discoveryPeers: this.getDiscoveryPeers(peerId),
+                                peerId: this.peerId
+                            },
                             ts: currentTs
                         }))
                     }
@@ -470,7 +496,7 @@ export class StorageClusterAllocator extends StorageCluster {
         Logger.log('IPFS storage cluster WSS started at port '+this.wss.options.port, 'storage-cluster')
     }
 
-    private wsClosed(peerId: string) {
+    wsClosed(peerId: string) {
         Logger.debug('Peer '+peerId+' left', 'storage-cluster')
         if (peerId)
             delete this.peers[peerId]

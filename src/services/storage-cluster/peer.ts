@@ -1,27 +1,29 @@
 import { Db } from 'mongodb'
 import WebSocket from 'ws'
 import disk from 'diskusage'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuthSuccess, SocketMsgGossip, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
 import { Logger } from '@nestjs/common'
 import { multiaddr, CID } from 'kubo-rpc-client'
 import type { IPFSHTTPClient } from 'kubo-rpc-client'
-import type { Multiaddr } from 'kubo-rpc-client/dist/src/types.js'
+import { StorageClusterAllocator } from './allocator.js'
 
 export class StorageClusterPeer extends StorageCluster {
     private ws: WebSocket
     private wsUrl: string
     private ipfs: IPFSHTTPClient
-    private peerId: Multiaddr
     private ipfsPath: string
+    private wsDiscovery: string
+    private allocator: StorageClusterAllocator
 
-    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, peerId: string, wsUrl: string, ipfsPath: string) {
+    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, ipfsPath: string, peerId: string, wsUrl: string, wsPort: number, wsDiscovery?: string) {
         if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://'))
             throw new Error('wsUrl must start with ws:// or wss://')
-        super(unionDb, secret)
+        super(unionDb, secret, peerId)
         this.ipfs = ipfs
-        this.peerId = multiaddr(peerId)
         this.wsUrl = wsUrl
         this.ipfsPath = ipfsPath
+        this.wsDiscovery = wsDiscovery
+        this.allocator = new StorageClusterAllocator(this.unionDb, this.secret, this.peerId.toString(), wsPort)
     }
 
     async getDiskInfo() {
@@ -257,20 +259,34 @@ export class StorageClusterPeer extends StorageCluster {
         }))
     }
 
-    private initWs() {
-        this.ws = new WebSocket(this.wsUrl)
-        this.ws.on('error', (err) => Logger.error(err, 'storage-peer'))
-        this.ws.on('open', async () => {
-            this.ws.send(JSON.stringify({
+    private async handleSocketMsg(message: SocketMsg, peerId: string = this.peerId.toString()) {
+        switch (message.type) {
+            case SocketMsgTypes.PIN_ALLOCATION:
+                await this.handlePinAlloc(message.data as SocketMsgPinAlloc, message.ts)
+                break
+            case SocketMsgTypes.PIN_REMOVE:
+                await this.handleUnpinRequest((message.data as SocketMsgPin).cid, message.ts)
+                break
+            default:
+                break
+        }
+    }
+
+    private initWs(isDiscovery: boolean, wsUrl: string) {
+        let ws = new WebSocket(wsUrl)
+        ws.on('error', (err) => Logger.error(err, 'storage-peer'))
+        ws.on('open', async () => {
+            ws.send(JSON.stringify({
                 type: SocketMsgTypes.AUTH,
                 data: {
                     secret: this.secret,
-                    peerId: this.peerId.toString()
+                    peerId: this.peerId.toString(),
+                    discovery: this.wsDiscovery
                 },
                 ts: new Date().getTime()
             }))
         })
-        this.ws.on('message', async (data) => {
+        ws.on('message', async (data) => {
             let message: SocketMsg
             try {
                 message = JSON.parse(data.toString())
@@ -280,32 +296,37 @@ export class StorageClusterPeer extends StorageCluster {
             if (!message || typeof message.type === 'undefined' || !message.data)
                 return
 
-            switch (message.type) {
-                case SocketMsgTypes.AUTH_SUCCESS:
-                    Logger.log('Authentication success', 'storage-peer')
-                    await this.sendPeerInfo()
-                    break
-                case SocketMsgTypes.PIN_ALLOCATION:
-                    await this.handlePinAlloc(message.data as SocketMsgPinAlloc, message.ts)
-                    break
-                case SocketMsgTypes.PIN_REMOVE:
-                    await this.handleUnpinRequest((message.data as SocketMsgPin).cid, message.ts)
-                    break
-                default:
-                    break
+            if (!isDiscovery && message.type === SocketMsgTypes.AUTH_SUCCESS) {
+                Logger.log('Authentication success', 'storage-peer')
+                let allocPeerInfo = message.data as SocketMsgAuthSuccess
+                this.allocator.addPeer(allocPeerInfo.peerId, ws, wsUrl)
+                ws.on('close', () => {
+                    this.allocator.wsClosed(allocPeerInfo.peerId)
+                })
+                for (let p in allocPeerInfo.discoveryPeers)
+                    if (allocPeerInfo.discoveryPeers[p] !== this.wsDiscovery)
+                        this.initWs(true, allocPeerInfo.discoveryPeers[p])
+                setTimeout(() => this.sendPeerInfo(), 5000)
+            } else if (message.type === SocketMsgTypes.MSG_GOSSIP_ALLOC) {
+                let gossipInfo = message.data as SocketMsgGossip
+                if (gossipInfo.peerId === this.peerId.toString())
+                    return
+                await this.allocator.handleSocketMsg(null, gossipInfo.data, gossipInfo.peerId, gossipInfo.data.ts)
+            } else if (message.type === SocketMsgTypes.MSG_GOSSIP_PEER) {
+                let gossipInfo = message.data as SocketMsgGossip
+                if (gossipInfo.peerId === this.peerId.toString())
+                    return
+                await this.handleSocketMsg(gossipInfo.data, gossipInfo.peerId)
+            } else {
+                await this.handleSocketMsg(message, this.peerId.toString())
             }
         })
-        this.ws.on('close', (code) => {
-            if (code === 1006) {
-                Logger.warn('Connection closed abnormally, attempting to reconnect in 10 seconds...', 'storage-peer')
-                setTimeout(() => {
-                    this.initWs()
-                }, 10000)
-            }
-        })
+        if (!isDiscovery)
+            this.ws = ws
     }
 
     start() {
-        this.initWs()
+        this.initWs(false, this.wsUrl)
+        this.allocator.start()
     }
 }
