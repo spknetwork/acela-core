@@ -421,7 +421,7 @@ export class StorageClusterAllocator extends StorageCluster {
     private getDiscoveryPeers(peerId: string): string[] {
         let result = []
         for (let i in this.peers)
-            if (i !== peerId && this.peers[i].discovery)
+            if (i !== peerId && this.peers[i].discovery && i !== this.peerId.toString())
                 result.push(this.peers[i].discovery)
         return result
     }
@@ -468,7 +468,7 @@ export class StorageClusterAllocator extends StorageCluster {
                             type: SocketMsgTypes.AUTH_SUCCESS,
                             data: {
                                 discoveryPeers: this.getDiscoveryPeers(peerId),
-                                peerId: this.peerId
+                                peerId: this.peerId.toString()
                             },
                             ts: currentTs
                         }))
