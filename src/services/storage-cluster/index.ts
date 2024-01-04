@@ -24,5 +24,5 @@ const db = mongo.db(dbName)
 const ipfs = create({
     url: process.env.IPFS_CLUSTER_KUBO_API || 'http://localhost:5001'
 })
-const peer = new StorageClusterPeer(db, process.env.IPFS_CLUSTER_SECRET, ipfs, process.env.IPFS_CLUSTER_PATH, process.env.IPFS_CLUSTER_PEER_ID, process.env.IPFS_CLUSTER_WS_URL || '', process.env.IPFS_CLUSTER_WSS_PORT)
+const peer = new StorageClusterPeer(db, process.env.IPFS_CLUSTER_SECRET, ipfs, process.env.IPFS_CLUSTER_PATH, process.env.IPFS_CLUSTER_PEER_ID, process.env.IPFS_CLUSTER_WS_URL || '', process.env.IPFS_CLUSTER_WSS_PORT, process.env.IPFS_CLUSTER_WS_DISCOVERY)
 peer.start()
