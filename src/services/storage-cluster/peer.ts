@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket from 'ws'
 import disk from 'diskusage'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgAuthSuccess, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, PinMetadata, SocketMsg, SocketMsgAuthSuccess, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
 import { Logger } from '@nestjs/common'
 import { multiaddr, CID } from 'kubo-rpc-client'
 import type { IPFSHTTPClient } from 'kubo-rpc-client'
@@ -40,7 +40,7 @@ export class StorageClusterPeer extends StorageCluster {
      * CID must not already exist in the cluster prior to calling this function.
      * @param cid CID to be added to the cluster
      */
-    async addToCluster(cid: string | CID) {
+    async addToCluster(cid: string | CID, metadata?: PinMetadata) {
         if (typeof cid === 'string')
             cid = CID.parse(cid)
         let isPinned = false
@@ -58,14 +58,15 @@ export class StorageClusterPeer extends StorageCluster {
             throw new Error('CID not pinned in node')
         }
         let isAdded = await this.pins.findOne({_id: cid.toString()})
-        if (isAdded) {
+        if (isAdded && isAdded.status !== 'deleted') {
             Logger.error(cid.toString()+' is already exists in the cluster, ignoring request', 'storage-peer')
             throw new Error('CID already exists in cluster')
         }
         let created_at = new Date().getTime()
         let info = await this.ipfs.files.stat('/ipfs/'+cid.toString())
-        await this.pins.insertOne({
-            _id: cid.toString(),
+        await this.pins.updateOne({
+            _id: cid.toString()
+        }, { $set: {
             status: 'pinned',
             created_at,
             last_updated: created_at,
@@ -77,13 +78,17 @@ export class StorageClusterPeer extends StorageCluster {
             }],
             allocationCount: 1,
             size: info.cumulativeSize,
-            median_size: info.cumulativeSize
+            median_size: info.cumulativeSize,
+            metadata
+        }}, {
+            upsert: true
         })
         this.ws.send(JSON.stringify({
             type: SocketMsgTypes.PIN_NEW,
             data: {
                 cid: cid.toString(),
-                size: info.cumulativeSize
+                size: info.cumulativeSize,
+                metadata
             },
             ts: created_at
         }))
@@ -136,11 +141,13 @@ export class StorageClusterPeer extends StorageCluster {
                     _id: allocs.allocations[a]._id
                 }, {
                     $setOnInsert: {
-                        owner: allocs.allocations[a].owner,
-                        permlink: allocs.allocations[a].permlink,
-                        network: allocs.allocations[a].network,
-                        type: allocs.allocations[a].type,
-                        created_at: allocs.allocations[a].created_at
+                        created_at: allocs.allocations[a].created_at,
+                        metadata: {
+                            owner: allocs.allocations[a].owner,
+                            permlink: allocs.allocations[a].permlink,
+                            network: allocs.allocations[a].network,
+                            type: allocs.allocations[a].type,
+                        }
                     },
                     $set: {
                         status: 'queued',

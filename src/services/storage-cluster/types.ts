@@ -53,6 +53,7 @@ export type SocketMsgPinAlloc = {
 export type SocketMsgPin = {
     cid: string
     size?: number
+    metadata?: PinMetadata
 }
 
 export type WSPeerHandler = (message: SocketMsg) => Promise<void>
@@ -93,4 +94,11 @@ export interface Pin {
     allocationCount: number
     median_size?: number
     size?: number
+}
+
+export interface PinMetadata {
+    type: string
+    network: string
+    owner: string
+    permlink: string
 }

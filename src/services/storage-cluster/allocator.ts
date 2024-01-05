@@ -53,10 +53,12 @@ export class StorageClusterAllocator extends StorageCluster {
                             $setOnInsert: {
                                 status: 'new',
                                 last_updated: ts,
-                                type: src.type,
-                                network: video.TYPE,
-                                owner: video.author,
-                                permlink: video.permlink,
+                                metadata: {
+                                    type: src.type,
+                                    network: video.TYPE,
+                                    owner: video.author,
+                                    permlink: video.permlink
+                                },
                                 created_at: ts,
                                 allocations: []
                             }
