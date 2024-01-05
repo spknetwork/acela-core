@@ -23,6 +23,12 @@ export type SocketMsg = {
     ts: number
 }
 
+export type SocketMsgTyped<T> = {
+    type: SocketMsgTypes
+    data: T
+    ts: number
+}
+
 export type SocketMsgAuth = {
     secret: string
     peerId: string
@@ -51,6 +57,7 @@ export type SocketMsgPinAlloc = {
 }
 
 export type SocketMsgPin = {
+    peerId?: string
     cid: string
     size?: number
     metadata?: PinMetadata

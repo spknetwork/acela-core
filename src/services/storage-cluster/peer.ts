@@ -83,7 +83,7 @@ export class StorageClusterPeer extends StorageCluster {
         }}, {
             upsert: true
         })
-        this.ws.send(JSON.stringify({
+        this.allocator.broadcast({
             type: SocketMsgTypes.PIN_NEW,
             data: {
                 cid: cid.toString(),
@@ -91,7 +91,7 @@ export class StorageClusterPeer extends StorageCluster {
                 metadata
             },
             ts: created_at
-        }))
+        })
     }
 
     async unpinFromPeer(cid: string | CID) {
@@ -104,13 +104,24 @@ export class StorageClusterPeer extends StorageCluster {
         }})
         await this.ipfs.pin.rm(cid)
         Logger.log('Unpinned '+cid.toString()+' from peer', 'storage-peer')
-        this.ws.send(JSON.stringify({
+        this.allocator.broadcast({
             type: SocketMsgTypes.PIN_REMOVE_PEER,
             data: {
                 cid: cid.toString()
             },
             ts: unpinnedTs
-        }))
+        })
+    }
+
+    /**
+     * Unpin CID from the cluster
+     * @param cid CID to unpin from cluster
+     */
+    async unpinFromCluster(cid: string | CID) {
+        if (typeof cid === 'string')
+            cid = CID.parse(cid)
+        await this.ipfs.pin.rm(cid)
+        await this.allocator.removePin(cid.toString())
     }
 
     private async sendPeerInfo() {
@@ -212,14 +223,14 @@ export class StorageClusterPeer extends StorageCluster {
                         }
                     }
                 })
-                this.ws.send(JSON.stringify({
+                this.allocator.broadcast({
                     type: SocketMsgTypes.PIN_COMPLETED,
                     data: {
                         cid: cids[cid],
                         size: size
                     },
                     ts: pinnedTs
-                }))
+                })
                 Logger.log('Pinned '+cids[cid]+', size: '+size, 'storage-peer')
             } catch (e) {
                 Logger.verbose(e)
@@ -235,11 +246,8 @@ export class StorageClusterPeer extends StorageCluster {
      * @param cid CID to unpin
      */
     private async handleUnpinRequest(cid: string, msgTs: number) {
-        await this.pins.updateOne({_id: cid}, {$set: {
-            status: 'deleted',
-            last_updated: msgTs
-        }})
         await this.ipfs.pin.rm(CID.parse(cid))
+        await this.allocator.removePin(cid, true)
         Logger.debug('Unpinned '+cid, 'storage-peer')
     }
 
@@ -259,13 +267,13 @@ export class StorageClusterPeer extends StorageCluster {
                 }
             })
         } catch {}
-        this.ws.send(JSON.stringify({
+        this.allocator.broadcast({
             type: SocketMsgTypes.PIN_FAILED,
             data: {
                 cid: cid
             },
             ts: failedTs
-        }))
+        })
     }
 
     private async handleSocketMsg(message: SocketMsg) {

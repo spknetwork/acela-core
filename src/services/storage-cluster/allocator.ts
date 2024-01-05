@@ -1,7 +1,7 @@
 import { Db, Filter } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin, SocketMsgTyped } from './types.js'
 import { multiaddr, CID } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
@@ -104,6 +104,8 @@ export class StorageClusterAllocator extends StorageCluster {
                 }, {
                     median_size: { $lt: (this.peers[peerId].freeSpaceMB!-(this.peers[peerId].totalSpaceMB!*ALLOCATION_DISK_THRESHOLD/100))*1048576 }
                 }]
+            }, {
+                status: { $ne: 'deleted' }
             }]
         }).sort({
             allocationCount: 1,
@@ -115,7 +117,7 @@ export class StorageClusterAllocator extends StorageCluster {
      * Unpin CID from the cluster
      * @param cid CID to unpin from cluster
      */
-    async removePin(cid: string) {
+    async removePin(cid: string, received: boolean = false) {
         let toRm = await this.pins.findOne({_id: cid})
         if (!toRm) {
             Logger.error('Unable to remove non-existent pin ',cid)
@@ -124,13 +126,15 @@ export class StorageClusterAllocator extends StorageCluster {
         let ts = new Date().getTime()
         await this.pins.updateOne({_id: cid}, {
             $set: {
-                status: 'unpinned',
+                status: 'deleted',
+                allocations: [],
+                allocationCount: 0,
                 last_updated: ts
             }
         })
-        for (let a in toRm.allocations)
-            if (this.peers[toRm.allocations[a].id])
-                this.peers[toRm.allocations[a].id].ws.send(JSON.stringify({
+        if (!received)
+            for (let p in this.peers)
+                this.peers[p].ws.send(JSON.stringify({
                     type: SocketMsgTypes.PIN_REMOVE,
                     data: { cid },
                     ts
@@ -181,6 +185,16 @@ export class StorageClusterAllocator extends StorageCluster {
             let alloc = {
                 peerIds,
                 allocations: toAllocate
+            }
+            for (let p in this.peers) {
+                if (p !== this.getPeerId() && p !== peerId)
+                    this.peers[p].ws.send(JSON.stringify({
+                        type: SocketMsgTypes.MSG_GOSSIP_ALLOC,
+                        data: {
+                            peerId, allocations: alloc, ts: currentTs
+                        },
+                        ts: currentTs
+                    }))
             }
             if (peerId !== this.getPeerId() && this.peers[peerId]) {
                 this.peers[peerId].ws.send(JSON.stringify({
@@ -379,6 +393,13 @@ export class StorageClusterAllocator extends StorageCluster {
             Logger.debug('Allocating pins for ourselves', 'storage-cluster')
             return await this.handlePeerInfoAndAllocate(peerInfo, this.getPeerId(), currentTs, currentTs)
         }
+    }
+
+    broadcast(message: SocketMsgTyped<SocketMsgPin>) {
+        message.data.peerId = this.getPeerId()
+        for (let p in this.peers)
+            if (p !== this.getPeerId())
+                this.peers[p].ws.send(JSON.stringify(message))
     }
 
     async handleSocketMsg(message: SocketMsg, peerId: string, currentTs: number) {
