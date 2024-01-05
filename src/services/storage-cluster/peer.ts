@@ -298,17 +298,20 @@ export class StorageClusterPeer extends StorageCluster {
             if (!message || typeof message.type === 'undefined' || !message.data)
                 return
 
-            if (!isDiscovery && message.type === SocketMsgTypes.AUTH_SUCCESS) {
-                Logger.log('Authentication success', 'storage-peer')
+            if (message.type === SocketMsgTypes.AUTH_SUCCESS) {
                 let allocPeerInfo = message.data as SocketMsgAuthSuccess
                 this.allocator.addPeer(allocPeerInfo.peerId, ws, wsUrl)
                 ws.on('close', () => {
                     this.allocator.wsClosed(allocPeerInfo.peerId)
                 })
-                for (let p in allocPeerInfo.discoveryPeers)
-                    if (allocPeerInfo.discoveryPeers[p] !== this.wsDiscovery)
-                        this.initWs(true, allocPeerInfo.discoveryPeers[p])
-                setTimeout(() => this.sendPeerInfo(), 5000)
+                if (!isDiscovery) {
+                    Logger.log('Authentication success', 'storage-peer')
+                    for (let p in allocPeerInfo.discoveryPeers)
+                        if (allocPeerInfo.discoveryPeers[p] !== this.wsDiscovery)
+                            this.initWs(true, allocPeerInfo.discoveryPeers[p])
+                    setTimeout(() => this.sendPeerInfo(), 2000)
+                } else
+                    Logger.debug('Discovered peer '+allocPeerInfo.peerId, 'storage-peer')
             }
 
             // handle this peer's messages from allocators connected outbound
