@@ -113,14 +113,14 @@ export class StorageClusterPeer extends StorageCluster {
         let totalSpaceMB = Math.floor(diskInfo.total/1048576)
         let freeSpaceMB = Math.floor(diskInfo.available/1048576)
         Logger.log('Available disk space: '+Math.floor(freeSpaceMB/1024)+' GB ('+Math.floor(100*freeSpaceMB/totalSpaceMB)+'%), total: '+Math.floor(totalSpaceMB/1024)+' GB', 'storage-peer')
-        this.ws.send(JSON.stringify({
-            type: SocketMsgTypes.PEER_INFO,
-            data: {
-                totalSpaceMB,
-                freeSpaceMB
-            },
-            ts: new Date().getTime()
-        }))
+        let allocations = await this.allocator.requestAllocations({
+            totalSpaceMB,
+            freeSpaceMB
+        })
+        if (allocations) {
+            // locally assigned
+            await this.handlePinAlloc(allocations.allocations, allocations.ts)
+        }
     }
 
     private async handlePinAlloc(allocs: SocketMsgPinAlloc, msgTs: number) {
@@ -135,13 +135,15 @@ export class StorageClusterPeer extends StorageCluster {
                 await this.pins.updateOne({
                     _id: allocs.allocations[a]._id
                 }, {
-                    $set: {
-                        status: 'queued',
+                    $setOnInsert: {
                         owner: allocs.allocations[a].owner,
                         permlink: allocs.allocations[a].permlink,
                         network: allocs.allocations[a].network,
                         type: allocs.allocations[a].type,
-                        created_at: allocs.allocations[a].created_at,
+                        created_at: allocs.allocations[a].created_at
+                    },
+                    $set: {
+                        status: 'queued',
                         last_updated: msgTs
                     },
                     $push: {
@@ -318,7 +320,7 @@ export class StorageClusterPeer extends StorageCluster {
             await this.handleSocketMsg(message)
 
             // handle allocator messages (including gossips) from peers connected outbound
-            await this.allocator.handleSocketMsg(ws, message, this.peerId.toString(), new Date().getTime())
+            await this.allocator.handleSocketMsg(message, this.peerId.toString(), new Date().getTime())
         })
         if (!isDiscovery)
             this.ws = ws

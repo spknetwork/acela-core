@@ -36,7 +36,8 @@ export type SocketMsgAuthSuccess = {
 
 export type SocketMsgGossip = {
     peerId: string
-    data: SocketMsg
+    allocations: Pin[]
+    ts: number
 }
 
 export type SocketMsgPeerInfo = {

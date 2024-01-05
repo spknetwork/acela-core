@@ -1,7 +1,7 @@
-import { Db } from 'mongodb'
+import { Db, Filter } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin } from './types.js'
 import { multiaddr, CID } from 'kubo-rpc-client'
 
 export class StorageClusterAllocator extends StorageCluster {
@@ -110,50 +110,6 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     /**
-     * Add a CID to the cluster pinned by a peer to be pinned by other peers
-     * @param cid CID to be added to the cluster
-     * @param pinned_in The peer ID where the CID is already pinned on
-     */
-    async addToCluster(cid: string | CID, pinned_in: string) {
-        if (typeof cid === 'string')
-            cid = CID.parse(cid)
-        let toAdd = await this.pins.findOne({_id: cid.toString()})
-        if (toAdd)
-            throw new Error('CID already exists in cluster')
-        else if (!this.peers[pinned_in])
-            throw new Error('Peer where CID is pinned in isn\'t currently connected to the cluster')
-        let ts = new Date().getTime()
-        await this.pins.insertOne({
-            _id: cid.toString(),
-            status: 'new',
-            created_at: ts,
-            last_updated: ts,
-            allocations: [{
-                id: pinned_in,
-                allocated_at: ts
-                
-            }],
-            allocationCount: 1
-        })
-        // trigger db update in pinned_in peer
-        let peerIds = []
-        for (let p in this.peers)
-            if (p !== pinned_in)
-                peerIds.push(p)
-        this.peers[pinned_in].ws.send(JSON.stringify({
-            type: SocketMsgTypes.PIN_ALLOCATION,
-            data: {
-                peerIds,
-                allocations: [{
-                    _id: cid.toString(),
-                    created_at: ts
-                }]
-            },
-            ts
-        }))
-    }
-
-    /**
      * Unpin CID from the cluster
      * @param cid CID to unpin from cluster
      */
@@ -179,7 +135,30 @@ export class StorageClusterAllocator extends StorageCluster {
                 }))
     }
 
-    private async handlePeerInfoAndAllocate(ws: WebSocket, peerInfo: SocketMsgPeerInfo, peerId: string, msgTs: number, currentTs: number) {
+    private async pushAllocations(peerId: string, allocations: Pin[], ts: number, skipDupDetect: boolean = false) {
+        let cids = allocations.map(val => val._id)
+        let filter: Filter<Pin> = {
+            _id: { $in: cids }
+        }
+        if (!skipDupDetect)
+            filter['allocations.id'] = { $ne: peerId }
+        await this.pins.updateMany(filter, {
+            $set: {
+                last_updated: ts
+            },
+            $push: {
+                allocations: {
+                    id: peerId,
+                    allocated_at: ts
+                }
+            },
+            $inc: {
+                allocationCount: 1
+            }
+        })
+    }
+
+    private async handlePeerInfoAndAllocate(peerInfo: SocketMsgPeerInfo, peerId: string, msgTs: number, currentTs: number): Promise<{ allocations: SocketMsgPinAlloc, ts: number } | null> {
         this.peers[peerId].freeSpaceMB = peerInfo.freeSpaceMB
         this.peers[peerId].totalSpaceMB = peerInfo.totalSpaceMB
         Logger.debug('Peer '+peerId+' disk available: '+Math.floor(this.peers[peerId].freeSpaceMB/1024)+' GB, total: '+Math.floor(this.peers[peerId].totalSpaceMB/1024)+' GB', 'storage-cluster')
@@ -191,35 +170,29 @@ export class StorageClusterAllocator extends StorageCluster {
                 delete toAllocate[a].allocationCount
                 delete toAllocate[a].status
             }
-            let cids = toAllocate.map(val => val._id)
             let peerIds = []
             for (let p in this.peers)
                 if (p !== peerId)
                     peerIds.push(p)
-            await this.pins.updateMany({ _id: { $in: cids } }, {
-                $set: {
-                    last_updated: currentTs
-                },
-                $push: {
-                    allocations: {
-                        id: peerId,
-                        allocated_at: currentTs
-                    }
-                },
-                $inc: {
-                    allocationCount: 1
-                }
-            })
+            await this.pushAllocations(peerId, toAllocate, currentTs, true)
             Logger.log('Allocated '+toAllocate.length+' pins to peer '+peerId, 'storage-cluster')
-            ws.send(JSON.stringify({
-                type: SocketMsgTypes.PIN_ALLOCATION,
-                data: {
-                    peerIds,
-                    allocations: toAllocate
-                },
+            let alloc = {
+                peerIds,
+                allocations: toAllocate
+            }
+            if (peerId !== this.peerId.toString() && this.peers[peerId]) {
+                this.peers[peerId].ws.send(JSON.stringify({
+                    type: SocketMsgTypes.PIN_ALLOCATION,
+                    data: alloc,
+                    ts: currentTs
+                }))
+            }
+            return {
+                allocations: alloc,
                 ts: currentTs
-            }))
-        }
+            }
+        } else
+            return null
     }
 
     private async handlePinComplete(completedPin: SocketMsgPin, peerId: string, msgTs: number, currentTs: number) {
@@ -381,21 +354,47 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
-    async handleSocketMsg(ws: WebSocket, message: SocketMsg, peerId: string, currentTs: number) {
+    private getCurrentAllocator() {
+        let currentMinute = new Date().getMinutes()
+        let peers = Object.keys(this.peers)
+        peers.push(this.peerId.toString())
+        let sortedPeers = peers.sort()
+        return sortedPeers[currentMinute%sortedPeers.length]
+    }
+
+    async requestAllocations(peerInfo: SocketMsgPeerInfo): Promise<{ allocations: SocketMsgPinAlloc, ts: number } | null> {
+        let currentTs = new Date().getTime()
+        let currentAllocator = this.getCurrentAllocator()
+        if (currentAllocator !== this.peerId.toString()) {
+            Logger.debug('Request allocs from '+currentAllocator, 'storage-cluster')
+            this.peers[currentAllocator].ws.send(JSON.stringify({
+                type: SocketMsgTypes.PEER_INFO,
+                data: peerInfo,
+                ts: currentTs
+            }))
+            return null
+        } else {
+            Logger.debug('Allocating pins for ourselves', 'storage-cluster')
+            return await this.handlePeerInfoAndAllocate(peerInfo, this.peerId.toString(), currentTs, currentTs)
+        }
+    }
+
+    async handleSocketMsg(message: SocketMsg, peerId: string, currentTs: number) {
         switch (message.type) {
             case SocketMsgTypes.MSG_GOSSIP_ALLOC:
                 let gossipInfo = message.data as SocketMsgGossip
-                if (gossipInfo.peerId === this.peerId.toString() || gossipInfo.data.type === SocketMsgTypes.MSG_GOSSIP_ALLOC)
+                if (gossipInfo.peerId === this.peerId.toString())
                     return
-                await this.handleSocketMsg(null, gossipInfo.data, gossipInfo.peerId, gossipInfo.data.ts)
+                await this.pushAllocations(gossipInfo.peerId, gossipInfo.allocations, gossipInfo.ts, false)
                 break
             case SocketMsgTypes.PEER_INFO:
                 let peerInfo = message.data as SocketMsgPeerInfo
-                if (!ws || typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
+                if (typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
                     return
-                await this.handlePeerInfoAndAllocate(ws, peerInfo, peerId, message.ts, currentTs)
+                await this.handlePeerInfoAndAllocate(peerInfo, peerId, message.ts, currentTs)
                 break
             case SocketMsgTypes.PIN_COMPLETED:
+                // peer completed pin successfully
                 await this.handlePinComplete(message.data as SocketMsgPin, peerId, message.ts, currentTs)
                 break
             case SocketMsgTypes.PIN_FAILED:
@@ -416,7 +415,7 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     addPeer(peerId: string, ws: WebSocket, discovery: string) {
-        if (!this.hasPeerById(peerId))
+        if (!this.hasPeerById(peerId) && peerId !== this.peerId.toString())
             this.peers[peerId] = {
                 ws: ws,
                 discovery: discovery
@@ -469,10 +468,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         }
                         authenticated = true
                         peerId = incomingPeerId
-                        this.peers[peerId] = {
-                            ws: ws,
-                            discovery: (message.data as SocketMsgAuth).discovery
-                        }
+                        this.addPeer(peerId, ws, (message.data as SocketMsgAuth).discovery)
                         Logger.debug('Peer '+peerId+' authenticated, peer count: '+Object.keys(this.peers).length, 'storage-cluster')
                         ws.send(JSON.stringify({
                             type: SocketMsgTypes.AUTH_SUCCESS,
@@ -487,7 +483,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 }
 
                 // handle authenticated peers messages
-                await this.handleSocketMsg(ws, message, peerId, currentTs)
+                await this.handleSocketMsg(message, peerId, currentTs)
 
                 // handle peer messages from allocators connected inbound from other peers
                 await this.wsPeerHandler(message)
