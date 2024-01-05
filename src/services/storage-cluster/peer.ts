@@ -23,7 +23,7 @@ export class StorageClusterPeer extends StorageCluster {
         this.wsUrl = wsUrl
         this.ipfsPath = ipfsPath
         this.wsDiscovery = wsDiscovery
-        this.allocator = new StorageClusterAllocator(this.unionDb, this.secret, this.peerId.toString(), wsPort, this.handleSocketMsg)
+        this.allocator = new StorageClusterAllocator(this.unionDb, this.secret, this.getPeerId(), wsPort, this.handleSocketMsg)
     }
 
     async getDiskInfo() {
@@ -71,7 +71,7 @@ export class StorageClusterPeer extends StorageCluster {
             created_at,
             last_updated: created_at,
             allocations: [{
-                id: this.peerId.toString(),
+                id: this.getPeerId(),
                 allocated_at: created_at,
                 pinned_at: created_at,
                 reported_size: info.cumulativeSize
@@ -135,7 +135,7 @@ export class StorageClusterPeer extends StorageCluster {
         }
         Logger.log('Received '+allocs.allocations.length+' pin allocations', 'storage-peer')
         for (let a in allocs.allocations) {
-            let exists = await this.pins.findOne({_id: allocs.allocations[a]._id, 'allocations.id': this.peerId.toString()})
+            let exists = await this.pins.findOne({_id: allocs.allocations[a]._id, 'allocations.id': this.getPeerId()})
             if (!exists)
                 await this.pins.updateOne({
                     _id: allocs.allocations[a]._id
@@ -155,7 +155,7 @@ export class StorageClusterPeer extends StorageCluster {
                     },
                     $push: {
                         allocations: {
-                            id: this.peerId.toString(),
+                            id: this.getPeerId(),
                             allocated_at: msgTs
                         }
                     },
@@ -197,7 +197,7 @@ export class StorageClusterPeer extends StorageCluster {
                 let pinnedTs = new Date().getTime()
                 await this.pins.updateOne({
                     _id: cids[cid],
-                    'allocations.id': this.peerId.toString()
+                    'allocations.id': this.getPeerId()
                 }, {
                     $set: {
                         status: 'pinned',
@@ -205,7 +205,7 @@ export class StorageClusterPeer extends StorageCluster {
                         size: size,
                         median_size: size,
                         'allocations.$': {
-                            id: this.peerId.toString(),
+                            id: this.getPeerId(),
                             allocated_at: allocatedTs,
                             pinned_at: pinnedTs,
                             reported_size: size
@@ -291,7 +291,7 @@ export class StorageClusterPeer extends StorageCluster {
                 type: SocketMsgTypes.AUTH,
                 data: {
                     secret: this.secret,
-                    peerId: this.peerId.toString(),
+                    peerId: this.getPeerId(),
                     discovery: this.wsDiscovery
                 },
                 ts: new Date().getTime()
@@ -327,7 +327,7 @@ export class StorageClusterPeer extends StorageCluster {
             await this.handleSocketMsg(message)
 
             // handle allocator messages (including gossips) from peers connected outbound
-            await this.allocator.handleSocketMsg(message, this.peerId.toString(), new Date().getTime())
+            await this.allocator.handleSocketMsg(message, this.getPeerId(), new Date().getTime())
         })
         if (!isDiscovery)
             this.ws = ws

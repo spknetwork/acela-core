@@ -182,7 +182,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 peerIds,
                 allocations: toAllocate
             }
-            if (peerId !== this.peerId.toString() && this.peers[peerId]) {
+            if (peerId !== this.getPeerId() && this.peers[peerId]) {
                 this.peers[peerId].ws.send(JSON.stringify({
                     type: SocketMsgTypes.PIN_ALLOCATION,
                     data: alloc,
@@ -359,7 +359,7 @@ export class StorageClusterAllocator extends StorageCluster {
     private getCurrentAllocator() {
         let currentMinute = new Date().getMinutes()
         let peers = Object.keys(this.peers)
-        peers.push(this.peerId.toString())
+        peers.push(this.getPeerId())
         let sortedPeers = peers.sort()
         return sortedPeers[currentMinute%sortedPeers.length]
     }
@@ -367,7 +367,7 @@ export class StorageClusterAllocator extends StorageCluster {
     async requestAllocations(peerInfo: SocketMsgPeerInfo): Promise<{ allocations: SocketMsgPinAlloc, ts: number } | null> {
         let currentTs = new Date().getTime()
         let currentAllocator = this.getCurrentAllocator()
-        if (currentAllocator !== this.peerId.toString()) {
+        if (currentAllocator !== this.getPeerId()) {
             Logger.debug('Request allocs from '+currentAllocator, 'storage-cluster')
             this.peers[currentAllocator].ws.send(JSON.stringify({
                 type: SocketMsgTypes.PEER_INFO,
@@ -377,7 +377,7 @@ export class StorageClusterAllocator extends StorageCluster {
             return null
         } else {
             Logger.debug('Allocating pins for ourselves', 'storage-cluster')
-            return await this.handlePeerInfoAndAllocate(peerInfo, this.peerId.toString(), currentTs, currentTs)
+            return await this.handlePeerInfoAndAllocate(peerInfo, this.getPeerId(), currentTs, currentTs)
         }
     }
 
@@ -385,7 +385,7 @@ export class StorageClusterAllocator extends StorageCluster {
         switch (message.type) {
             case SocketMsgTypes.MSG_GOSSIP_ALLOC:
                 let gossipInfo = message.data as SocketMsgGossip
-                if (gossipInfo.peerId === this.peerId.toString())
+                if (gossipInfo.peerId === this.getPeerId())
                     return
                 await this.pushAllocations(gossipInfo.peerId, gossipInfo.allocations, gossipInfo.ts, false)
                 break
@@ -417,7 +417,7 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     addPeer(peerId: string, ws: WebSocket, discovery: string) {
-        if (!this.hasPeerById(peerId) && peerId !== this.peerId.toString())
+        if (!this.hasPeerById(peerId) && peerId !== this.getPeerId())
             this.peers[peerId] = {
                 ws: ws,
                 discovery: discovery
@@ -431,7 +431,7 @@ export class StorageClusterAllocator extends StorageCluster {
     private getDiscoveryPeers(peerId: string): string[] {
         let result = []
         for (let i in this.peers)
-            if (i !== peerId && this.peers[i].discovery && i !== this.peerId.toString())
+            if (i !== peerId && this.peers[i].discovery && i !== this.getPeerId())
                 result.push(this.peers[i].discovery)
         return result
     }
@@ -476,7 +476,7 @@ export class StorageClusterAllocator extends StorageCluster {
                             type: SocketMsgTypes.AUTH_SUCCESS,
                             data: {
                                 discoveryPeers: this.getDiscoveryPeers(peerId),
-                                peerId: this.peerId.toString()
+                                peerId: this.getPeerId()
                             },
                             ts: currentTs
                         }))

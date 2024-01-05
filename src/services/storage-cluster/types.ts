@@ -72,6 +72,10 @@ export class StorageCluster {
         this.secret = secret
         this.peerId = multiaddr(peerId)
     }
+
+    getPeerId(): string {
+        return this.peerId.toString()
+    }
 }
 
 interface PinAllocate {
