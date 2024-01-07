@@ -4,6 +4,9 @@ import { Logger } from '@nestjs/common'
 import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin, SocketMsgTyped } from './types.js'
 import { multiaddr, CID } from 'kubo-rpc-client'
 
+/**
+ * Storage allocator to be used within a storage cluster peer
+ */
 export class StorageClusterAllocator extends StorageCluster {
     private peers: {
         [peerId: string]: {
@@ -141,6 +144,13 @@ export class StorageClusterAllocator extends StorageCluster {
                 }))
     }
 
+    /**
+     * Push new allocations of the cluster
+     * @param peerId Peer ID of the new allocation
+     * @param allocations Array of pins
+     * @param ts Timestamp when the allocation was made
+     * @param skipDupDetect Skip duplicate allocation detection for performance
+     */
     private async pushAllocations(peerId: string, allocations: Pin[], ts: number, skipDupDetect: boolean = false) {
         let cids = allocations.map(val => val._id)
         let filter: Filter<Pin> = {
@@ -370,6 +380,12 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
+    /**
+     * Calculates the allocator that should be used for the time slot.
+     * The allocator is sorted alphabetically by peer ID and each peer take turns by the minute.
+     * May not be ideal when not all peers are connected among each other for various reasons (i.e. just joined, or broken peer discovery on one peer)
+     * @returns The current peer ID of the allocator within the current slot
+     */
     private getCurrentAllocator() {
         let currentMinute = new Date().getMinutes()
         let peers = Object.keys(this.peers)
@@ -378,6 +394,11 @@ export class StorageClusterAllocator extends StorageCluster {
         return sortedPeers[currentMinute%sortedPeers.length]
     }
 
+    /**
+     * Request new pin allocations from the cluster
+     * @param peerInfo SocketMsgPeerInfo containing disk space information
+     * @returns If allocated locally, returns the allocation details. Else returns null.
+     */
     async requestAllocations(peerInfo: SocketMsgPeerInfo): Promise<{ allocations: SocketMsgPinAlloc, ts: number } | null> {
         let currentTs = new Date().getTime()
         let currentAllocator = this.getCurrentAllocator()
@@ -395,6 +416,10 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
+    /**
+     * Beroadcast a message to all our peers
+     * @param message SocketMsg with SocketMsgPin data type
+     */
     broadcast(message: SocketMsgTyped<SocketMsgPin>) {
         message.data.peerId = this.getPeerId()
         for (let p in this.peers)
@@ -402,6 +427,12 @@ export class StorageClusterAllocator extends StorageCluster {
                 this.peers[p].ws.send(JSON.stringify(message))
     }
 
+    /**
+     * Handle incoming messages as allocator
+     * @param message Incoming SocketMsg
+     * @param peerId Source peer ID
+     * @param currentTs Current timestamp
+     */
     async handleSocketMsg(message: SocketMsg, peerId: string, currentTs: number) {
         switch (message.type) {
             case SocketMsgTypes.MSG_GOSSIP_ALLOC:
@@ -437,6 +468,12 @@ export class StorageClusterAllocator extends StorageCluster {
         }
     }
 
+    /**
+     * Register an authenticated peer in the allocator
+     * @param peerId Peer ID of the peer
+     * @param ws WebSocket object
+     * @param discovery Peer discovery WSS URL
+     */
     addPeer(peerId: string, ws: WebSocket, discovery: string) {
         if (!this.hasPeerById(peerId) && peerId !== this.getPeerId())
             this.peers[peerId] = {
@@ -445,10 +482,20 @@ export class StorageClusterAllocator extends StorageCluster {
             }
     }
 
+    /**
+     * Returns whether a peer ID is registered in the allocator or not
+     * @param peerId Peer ID
+     * @returns boolean
+     */
     hasPeerById(peerId: string): boolean {
         return !!this.peers[peerId]
     }
 
+    /**
+     * Retrieve a list of discovery URLs of our peers
+     * @param peerId Target peer ID that are discovering peers
+     * @returns Array of strings
+     */
     private getDiscoveryPeers(peerId: string): string[] {
         let result = []
         for (let i in this.peers)
@@ -528,12 +575,19 @@ export class StorageClusterAllocator extends StorageCluster {
         Logger.log('IPFS storage cluster WSS started at port '+this.wss.options.port, 'storage-cluster')
     }
 
+    /**
+     * Deregister a peer from the allocator (i.e. WS disconnected)
+     * @param peerId Peer ID to deregister
+     */
     wsClosed(peerId: string) {
         Logger.debug('Peer '+peerId+' left', 'storage-cluster')
         if (peerId)
             delete this.peers[peerId]
     }
 
+    /**
+     * Invocation function for the storage allocator
+     */
     start() {
         this.initWss()
     }

@@ -7,6 +7,9 @@ import { multiaddr, CID } from 'kubo-rpc-client'
 import type { IPFSHTTPClient } from 'kubo-rpc-client'
 import { StorageClusterAllocator } from './allocator.js'
 
+/**
+ * Storage cluster peer node
+ */
 export class StorageClusterPeer extends StorageCluster {
     private ws: WebSocket
     private wsUrl: string
@@ -94,6 +97,10 @@ export class StorageClusterPeer extends StorageCluster {
         })
     }
 
+    /**
+     * Unpin a CID from the peer. Does not remove the pin from other peers in the cluster.
+     * @param cid CID to be unpinned
+     */
     async unpinFromPeer(cid: string | CID) {
         if (typeof cid === 'string')
             cid = CID.parse(cid)
@@ -124,6 +131,9 @@ export class StorageClusterPeer extends StorageCluster {
         await this.allocator.removePin(cid.toString())
     }
 
+    /**
+     * Send peer info to an allocator for new pin allocations
+     */
     private async sendPeerInfo() {
         let diskInfo = await this.getDiskInfo()
         let totalSpaceMB = Math.floor(diskInfo.total/1048576)
@@ -276,6 +286,10 @@ export class StorageClusterPeer extends StorageCluster {
         })
     }
 
+    /**
+     * Handle incoming socket messages targeted towards this peer
+     * @param message SocketMsg object
+     */
     private async handleSocketMsg(message: SocketMsg) {
         switch (message.type) {
             case SocketMsgTypes.PIN_ALLOCATION:
@@ -289,6 +303,11 @@ export class StorageClusterPeer extends StorageCluster {
         }
     }
 
+    /**
+     * Initialize WebSocket connection to a peer
+     * @param isDiscovery Whether peer is known through discovery
+     * @param wsUrl WS URL of the peer
+     */
     private initWs(isDiscovery: boolean, wsUrl: string) {
         if (!wsUrl)
             return // first peer does not require wsUrl for now, but add the urls of other peers when they join the cluster later
@@ -341,6 +360,9 @@ export class StorageClusterPeer extends StorageCluster {
             this.ws = ws
     }
 
+    /**
+     * Invocation function for the storage peer
+     */
     start() {
         this.initWs(false, this.wsUrl)
         this.allocator.start()
