@@ -17,9 +17,11 @@ export class StorageClusterPeer extends StorageCluster {
     private wsDiscovery: string
     private allocator: StorageClusterAllocator
 
-    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, ipfsPath: string, peerId: string, wsUrl: string, wsPort: number, wsDiscovery?: string) {
+    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, ipfsPath: string, peerId: string, wsUrl: string, wsPort: number, wsDiscovery: string) {
         if (wsUrl && !wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://'))
             throw new Error('wsUrl must start with ws:// or wss://')
+        if (wsDiscovery && !wsDiscovery.startsWith('ws://') && !wsDiscovery.startsWith('wss://'))
+            throw new Error('wsDiscovery must start with ws:// or wss://')
         super(unionDb, secret, peerId)
         this.ipfs = ipfs
         this.wsUrl = wsUrl
