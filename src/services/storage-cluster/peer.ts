@@ -11,7 +11,6 @@ import { StorageClusterAllocator } from './allocator.js'
  * Storage cluster peer node
  */
 export class StorageClusterPeer extends StorageCluster {
-    private ws: WebSocket
     private wsUrl: string
     private ipfs: IPFSHTTPClient
     private ipfsPath: string
@@ -356,8 +355,6 @@ export class StorageClusterPeer extends StorageCluster {
             // handle allocator messages (including gossips) from peers connected outbound
             await this.allocator.handleSocketMsg(message, this.getPeerId(), new Date().getTime())
         })
-        if (!isDiscovery)
-            this.ws = ws
     }
 
     /**
