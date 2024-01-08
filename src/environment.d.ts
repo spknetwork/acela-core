@@ -33,6 +33,7 @@ declare global {
         IPFS_CLUSTER_PATH: string
         IPFS_CLUSTER_KUBO_API: string
         IPFS_CLUSTER_PEER_ID: string
+        IPFS_CLUSTER_NEST_API_ENABLE: string
 
         MAIL_GUN_KEY: string
         MAIL_GUN_SECRET: string
