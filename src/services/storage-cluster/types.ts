@@ -1,6 +1,6 @@
 import { Collection, Db } from 'mongodb'
 import { multiaddr } from 'kubo-rpc-client'
-import type { Multiaddr } from 'kubo-rpc-client/dist/src/types.js'
+import type { Multiaddr, IPFSHTTPClient } from 'kubo-rpc-client/dist/src/types.js'
 
 export const ALLOCATION_DISK_THRESHOLD = 20 // minimum free space % to allocate pins
 
@@ -69,14 +69,16 @@ export class StorageCluster {
     protected unionDb: Db
     protected pins: Collection<Pin>
     protected secret: string
+    protected ipfs: IPFSHTTPClient
     protected peerId: Multiaddr
 
-    constructor(unionDb: Db, secret: string, peerId: string) {
+    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, peerId: string) {
         if (!secret)
             throw new Error('secret is required')
         this.unionDb = unionDb
         this.pins = this.unionDb.collection('pins')
         this.secret = secret
+        this.ipfs = ipfs
         this.peerId = multiaddr(peerId)
     }
 

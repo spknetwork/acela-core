@@ -2,7 +2,7 @@ import { Db, Filter } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
 import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin, PinAllocate, SocketMsgTyped } from './types.js'
-import { multiaddr, CID } from 'kubo-rpc-client'
+import { multiaddr, IPFSHTTPClient, CID } from 'kubo-rpc-client'
 
 /**
  * Storage allocator to be used within a storage cluster peer
@@ -18,10 +18,10 @@ export class StorageClusterAllocator extends StorageCluster {
     private wsPort: number
     private wsPeerHandler: WSPeerHandler
 
-    constructor(unionDb: Db, secret: string, peerId: string, wsPort: number, wsPeerHandler?: WSPeerHandler) {
+    constructor(unionDb: Db, secret: string, ipfs: IPFSHTTPClient, peerId: string, wsPort: number, wsPeerHandler?: WSPeerHandler) {
         if (wsPort < 1024 || wsPort > 65535)
             throw new Error('wsPort must be between 1024 and 65535')
-        super(unionDb, secret, peerId)
+        super(unionDb, secret, ipfs, peerId)
         this.peers = {}
         this.wsPort = wsPort
         if (typeof wsPeerHandler === 'function')
@@ -118,13 +118,12 @@ export class StorageClusterAllocator extends StorageCluster {
      * Unpin CID from the cluster
      * @param cid CID to unpin from cluster
      */
-    async removePin(cid: string, received: boolean = false) {
+    async removePin(cid: string, ts: number = new Date().getTime(), received: boolean = false) {
         let toRm = await this.pins.findOne({_id: cid})
         if (!toRm) {
             Logger.error('Unable to remove non-existent pin ',cid)
             throw new Error('Pin does not exist')
         }
-        let ts = new Date().getTime()
         await this.pins.updateOne({_id: cid}, {
             $set: {
                 status: 'deleted',
@@ -387,6 +386,16 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     /**
+     * Handle unpin request from allocator
+     * @param cid CID to unpin
+     */
+    private async handleUnpinRequest(cid: string, msgTs: number) {
+        await this.ipfs.pin.rm(CID.parse(cid))
+        await this.removePin(cid, msgTs, true)
+        Logger.debug('Unpinned '+cid, 'storage-peer')
+    }
+
+    /**
      * Calculates the allocator that should be used for the time slot.
      * The allocator is sorted alphabetically by peer ID and each peer take turns by the minute.
      * May not be ideal when not all peers are connected among each other for various reasons (i.e. just joined, or broken peer discovery on one peer)
@@ -468,6 +477,9 @@ export class StorageClusterAllocator extends StorageCluster {
             case SocketMsgTypes.PIN_REMOVE_PEER:
                 // unpinned from a peer (not to be confused as removed from entire cluster)
                 await this.handlePinRmFromPeer(message.data as SocketMsgPin, peerId, message.ts, currentTs)
+                break
+            case SocketMsgTypes.PIN_REMOVE:
+                await this.handleUnpinRequest((message.data as SocketMsgPin).cid, message.ts)
                 break
             default:
                 break

@@ -12,7 +12,6 @@ import { StorageClusterAllocator } from './allocator.js'
  */
 export class StorageClusterPeer extends StorageCluster {
     private wsUrl: string
-    private ipfs: IPFSHTTPClient
     private ipfsPath: string
     private wsDiscovery: string
     private allocator: StorageClusterAllocator
@@ -22,12 +21,11 @@ export class StorageClusterPeer extends StorageCluster {
             throw new Error('wsUrl must start with ws:// or wss://')
         if (wsDiscovery && !wsDiscovery.startsWith('ws://') && !wsDiscovery.startsWith('wss://'))
             throw new Error('wsDiscovery must start with ws:// or wss://')
-        super(unionDb, secret, peerId)
-        this.ipfs = ipfs
+        super(unionDb, secret, ipfs, peerId)
         this.wsUrl = wsUrl
         this.ipfsPath = ipfsPath
         this.wsDiscovery = wsDiscovery
-        this.allocator = new StorageClusterAllocator(this.unionDb, this.secret, this.getPeerId(), wsPort, this.handleSocketMsg)
+        this.allocator = new StorageClusterAllocator(this.unionDb, this.secret, this.ipfs, this.getPeerId(), wsPort, this.handleSocketMsg)
     }
 
     async getDiskInfo() {
@@ -247,16 +245,6 @@ export class StorageClusterPeer extends StorageCluster {
     }
 
     /**
-     * Handle unpin request from allocator
-     * @param cid CID to unpin
-     */
-    private async handleUnpinRequest(cid: string, msgTs: number) {
-        await this.ipfs.pin.rm(CID.parse(cid))
-        await this.allocator.removePin(cid, true)
-        Logger.debug('Unpinned '+cid, 'storage-peer')
-    }
-
-    /**
      * Handle pin failures
      * @param cid CID that failed to pin
      */
@@ -289,9 +277,6 @@ export class StorageClusterPeer extends StorageCluster {
         switch (message.type) {
             case SocketMsgTypes.PIN_ALLOCATION:
                 await this.handlePinAlloc(message.data as SocketMsgPinAlloc, message.ts)
-                break
-            case SocketMsgTypes.PIN_REMOVE:
-                await this.handleUnpinRequest((message.data as SocketMsgPin).cid, message.ts)
                 break
             default:
                 break
