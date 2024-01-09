@@ -143,15 +143,17 @@ export class StorageClusterPeer extends StorageCluster {
             totalSpaceMB,
             freeSpaceMB
         })
-        if (allocations && allocations.allocations.allocations.length > 0) {
+        if (allocations) {
             // locally assigned
             await this.handlePinAlloc(allocations.allocations, allocations.ts)
-        } else {
-            setTimeout(() => this.sendPeerInfo(), 60000)
         }
     }
 
     private async handlePinAlloc(allocs: SocketMsgPinAlloc, msgTs: number) {
+        if (allocs.allocations.length === 0) {
+            setTimeout(() => this.sendPeerInfo(), 30000)
+            return
+        }
         Logger.log('Received '+allocs.allocations.length+' pin allocations', 'storage-peer')
         for (let a in allocs.allocations) {
             let exists = await this.pins.findOne({_id: allocs.allocations[a]._id, 'allocations.id': this.getPeerId()})
