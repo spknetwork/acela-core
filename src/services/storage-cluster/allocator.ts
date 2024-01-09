@@ -140,6 +140,7 @@ export class StorageClusterAllocator extends StorageCluster {
                     data: { cid },
                     ts
                 }))
+        Logger.log('Unpinned '+cid+' from cluster', 'storage-cluster')
     }
 
     /**
@@ -310,9 +311,10 @@ export class StorageClusterAllocator extends StorageCluster {
             pinned_at: msgTs,
             reported_size: newPin.size
         }
-        if (!alreadyExists)
-            await this.pins.insertOne({
+        if (!alreadyExists || alreadyExists.status === 'deleted')
+            await this.pins.updateOne({
                 _id: newPin.cid,
+            }, { $set: {
                 status: 'pinned',
                 created_at: msgTs,
                 last_updated: msgTs,
@@ -320,6 +322,8 @@ export class StorageClusterAllocator extends StorageCluster {
                 allocationCount: 1,
                 median_size: newPin.size,
                 metadata: newPin.metadata
+            }}, {
+                upsert: true
             })
         else {
             let isAllocated = false

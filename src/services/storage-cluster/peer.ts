@@ -96,6 +96,7 @@ export class StorageClusterPeer extends StorageCluster {
             },
             ts: created_at
         })
+        Logger.log('Added new CID '+cid, 'storage-peer')
     }
 
     /**
