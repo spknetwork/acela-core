@@ -1,7 +1,7 @@
 import { Db, Filter } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin, SocketMsgTyped } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin, PinAllocate, SocketMsgTyped } from './types.js'
 import { multiaddr, CID } from 'kubo-rpc-client'
 
 /**
@@ -304,7 +304,7 @@ export class StorageClusterAllocator extends StorageCluster {
 
     private async handleNewPinFromPeer(newPin: SocketMsgPin, peerId: string, msgTs: number, currentTs: number) {
         let alreadyExists = await this.pins.findOne({_id: newPin.cid})
-        let newAlloc = {
+        let newAlloc: PinAllocate = {
             id: peerId,
             allocated_at: msgTs,
             pinned_at: msgTs,
@@ -318,7 +318,8 @@ export class StorageClusterAllocator extends StorageCluster {
                 last_updated: msgTs,
                 allocations: [newAlloc],
                 allocationCount: 1,
-                median_size: newPin.size
+                median_size: newPin.size,
+                metadata: newPin.metadata
             })
         else {
             let isAllocated = false

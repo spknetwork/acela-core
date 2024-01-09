@@ -85,7 +85,7 @@ export class StorageCluster {
     }
 }
 
-interface PinAllocate {
+export interface PinAllocate {
     id: string
     allocated_at: number
     pinned_at?: number
@@ -97,10 +97,12 @@ export interface Pin {
     status: "new" | "queued" | "failed" | "unpinned" | "pinned" | "deleted"
     created_at: number
     last_updated: number
-    owner?: string
-    permlink?: string
-    network?: string
-    type?: string
+    metadata: {
+        owner?: string
+        permlink?: string
+        network?: string
+        type?: string
+    }
     allocations: Array<PinAllocate>
     allocationCount: number
     median_size?: number

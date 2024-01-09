@@ -162,12 +162,7 @@ export class StorageClusterPeer extends StorageCluster {
                 }, {
                     $setOnInsert: {
                         created_at: allocs.allocations[a].created_at,
-                        metadata: {
-                            owner: allocs.allocations[a].owner,
-                            permlink: allocs.allocations[a].permlink,
-                            network: allocs.allocations[a].network,
-                            type: allocs.allocations[a].type,
-                        }
+                        metadata: allocs.allocations[a].metadata
                     },
                     $set: {
                         status: 'queued',
