@@ -186,32 +186,37 @@ export class StorageClusterAllocator extends StorageCluster {
             for (let p in this.peers)
                 if (p !== peerId)
                     peerIds.push(p)
-            await this.pushAllocations(peerId, toAllocate, currentTs, true)
-            Logger.log('Allocated '+toAllocate.length+' pins to peer '+peerId, 'storage-cluster')
-            let alloc = {
-                peerIds,
-                allocations: toAllocate
-            }
-            for (let p in this.peers) {
-                if (p !== this.getPeerId() && p !== peerId)
-                    this.peers[p].ws.send(JSON.stringify({
-                        type: SocketMsgTypes.MSG_GOSSIP_ALLOC,
-                        data: {
-                            peerId, allocations: alloc, ts: currentTs
-                        },
+            if (Array.isArray(toAllocate) && toAllocate.length > 0) {
+                await this.pushAllocations(peerId, toAllocate, currentTs, true)
+                Logger.log('Allocated '+toAllocate.length+' pins to peer '+peerId, 'storage-cluster')
+                let alloc = {
+                    peerIds,
+                    allocations: toAllocate
+                }
+                for (let p in this.peers) {
+                    if (p !== this.getPeerId() && p !== peerId)
+                        this.peers[p].ws.send(JSON.stringify({
+                            type: SocketMsgTypes.MSG_GOSSIP_ALLOC,
+                            data: {
+                                peerId, allocations: alloc, ts: currentTs
+                            },
+                            ts: currentTs
+                        }))
+                }
+                if (peerId !== this.getPeerId() && this.peers[peerId]) {
+                    this.peers[peerId].ws.send(JSON.stringify({
+                        type: SocketMsgTypes.PIN_ALLOCATION,
+                        data: alloc,
                         ts: currentTs
                     }))
-            }
-            if (peerId !== this.getPeerId() && this.peers[peerId]) {
-                this.peers[peerId].ws.send(JSON.stringify({
-                    type: SocketMsgTypes.PIN_ALLOCATION,
-                    data: alloc,
+                }
+                return {
+                    allocations: alloc,
                     ts: currentTs
-                }))
-            }
-            return {
-                allocations: alloc,
-                ts: currentTs
+                }
+            } else {
+                Logger.verbose('No new pin allocations for '+peerId, 'storage-cluster')
+                return null
             }
         } else
             return null
