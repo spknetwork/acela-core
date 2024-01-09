@@ -315,6 +315,7 @@ export class StorageClusterPeer extends StorageCluster {
             return // first peer does not require wsUrl for now, but add the urls of other peers when they join the cluster later
         }
         let ws = new WebSocket(wsUrl)
+        let peerId: string
         ws.on('error', (err) => Logger.error(err, 'storage-peer'))
         ws.on('open', async () => {
             ws.send(JSON.stringify({
@@ -340,6 +341,7 @@ export class StorageClusterPeer extends StorageCluster {
             if (message.type === SocketMsgTypes.AUTH_SUCCESS) {
                 let allocPeerInfo = message.data as SocketMsgAuthSuccess
                 this.allocator.addPeer(allocPeerInfo.peerId, ws, wsUrl)
+                peerId = allocPeerInfo.peerId
                 ws.on('close', () => {
                     this.allocator.wsClosed(allocPeerInfo.peerId)
                 })
@@ -353,11 +355,13 @@ export class StorageClusterPeer extends StorageCluster {
                     Logger.debug('Discovered peer '+allocPeerInfo.peerId, 'storage-peer')
             }
 
-            // handle this peer's messages from allocators connected outbound
-            await this.handleSocketMsg(message)
+            if (peerId) {
+                // handle this peer's messages from allocators connected outbound
+                await this.handleSocketMsg(message)
 
-            // handle allocator messages (including gossips) from peers connected outbound
-            await this.allocator.handleSocketMsg(message, this.getPeerId(), new Date().getTime())
+                // handle allocator messages (including gossips) from peers connected outbound
+                await this.allocator.handleSocketMsg(message, peerId, new Date().getTime())
+            }
         })
     }
 
