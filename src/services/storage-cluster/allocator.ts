@@ -11,9 +11,7 @@ export class StorageClusterAllocator extends StorageCluster {
     private peers: {
         [peerId: string]: {
             ws: WebSocket,
-            discovery?: string,
-            totalSpaceMB?: number,
-            freeSpaceMB?: number,
+            discovery?: string
         }
     }
     private wss: WebSocketServer
@@ -95,7 +93,7 @@ export class StorageClusterAllocator extends StorageCluster {
      * @param peerId Peer ID to allocate pins to
      * @returns Array of pins yet to be allocated to the peer
      */
-    async getNewAllocations(peerId: string) {
+    async getNewAllocations(peerId: string, peerInfo: SocketMsgPeerInfo) {
         return await this.pins.find({
             $and: [{
                 allocations: {
@@ -105,7 +103,7 @@ export class StorageClusterAllocator extends StorageCluster {
                 $or: [{
                     median_size: { $exists: false }
                 }, {
-                    median_size: { $lt: (this.peers[peerId].freeSpaceMB!-(this.peers[peerId].totalSpaceMB!*ALLOCATION_DISK_THRESHOLD/100))*1048576 }
+                    median_size: { $lt: (peerInfo.freeSpaceMB!-(peerInfo.totalSpaceMB!*ALLOCATION_DISK_THRESHOLD/100))*1048576 }
                 }]
             }, {
                 status: { $ne: 'deleted' }
@@ -175,12 +173,10 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     private async handlePeerInfoAndAllocate(peerInfo: SocketMsgPeerInfo, peerId: string, msgTs: number, currentTs: number): Promise<{ allocations: SocketMsgPinAlloc, ts: number } | null> {
-        this.peers[peerId].freeSpaceMB = peerInfo.freeSpaceMB
-        this.peers[peerId].totalSpaceMB = peerInfo.totalSpaceMB
-        Logger.debug('Peer '+peerId+' disk available: '+Math.floor(this.peers[peerId].freeSpaceMB/1024)+' GB, total: '+Math.floor(this.peers[peerId].totalSpaceMB/1024)+' GB', 'storage-cluster')
-        if (100*this.peers[peerId].freeSpaceMB/this.peers[peerId].totalSpaceMB > ALLOCATION_DISK_THRESHOLD) {
+        Logger.debug('Peer '+peerId+' disk available: '+Math.floor(peerInfo.freeSpaceMB/1024)+' GB, total: '+Math.floor(peerInfo.totalSpaceMB/1024)+' GB', 'storage-cluster')
+        if (100*peerInfo.freeSpaceMB/peerInfo.totalSpaceMB > ALLOCATION_DISK_THRESHOLD) {
             // allocate new pins if above free space threshold
-            let toAllocate = await this.getNewAllocations(peerId)
+            let toAllocate = await this.getNewAllocations(peerId, peerInfo)
             for (let a in toAllocate) {
                 delete toAllocate[a].allocations
                 delete toAllocate[a].allocationCount
