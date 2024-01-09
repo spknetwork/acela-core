@@ -390,9 +390,10 @@ export class StorageClusterAllocator extends StorageCluster {
      * @param cid CID to unpin
      */
     private async handleUnpinRequest(cid: string, msgTs: number) {
-        await this.ipfs.pin.rm(CID.parse(cid))
+        try {
+            await this.ipfs.pin.rm(CID.parse(cid))
+        } catch {}
         await this.removePin(cid, msgTs, true)
-        Logger.debug('Unpinned '+cid, 'storage-peer')
     }
 
     /**
