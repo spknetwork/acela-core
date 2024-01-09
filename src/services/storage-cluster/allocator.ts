@@ -198,7 +198,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         this.peers[p].ws.send(JSON.stringify({
                             type: SocketMsgTypes.MSG_GOSSIP_ALLOC,
                             data: {
-                                peerId, allocations: alloc, ts: currentTs
+                                peerId, allocations: toAllocate, ts: currentTs
                             },
                             ts: currentTs
                         }))
