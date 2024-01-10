@@ -1,42 +1,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Client } from '@hiveio/dhive';
 import { HiveClient } from '../../utils/hiveClient';
-import hiveJsPackage from '@hiveio/hive-js';
+
 import { VideoToPublishDto } from './dto/video-to-publish.dto';
 import { APP_BUNNY_IPFS_CDN, APP_IMAGE_CDN_DOMAIN } from '../../consts';
-import { PostBeneficiary, CommentOption, HiveAccountMetadata, CustomJsonOperation, OperationsArray } from './types';
+import { PostBeneficiary, CommentOption, HiveAccountMetadata, CustomJsonOperation, OperationsArray } from "../../repositories/hive/types";
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { DbVideoToPublishDto } from '../../repositories/video/dto/videos-to-publish.dto';
+import { HiveRepository } from '../../repositories/hive/hive.repository';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const VideoPostTemplate = readFileSync(join(__dirname, 'templates/video.md'), 'utf-8');
 
-
-hiveJsPackage.api.setOptions({
-  useAppbaseApi: true,
-  rebranded_api: true,
-  url: `https://hive-api.web3telekom.xyz`
-});
-hiveJsPackage.config.set('rebranded_api','true');
-
 @Injectable()
 export class PublishingService {
   readonly #logger: Logger;
   readonly #videoRepository: VideoRepository;
   readonly #creatorRepository: CreatorRepository;
-  readonly #hive: Client = HiveClient;
-  readonly #hiveJs = hiveJsPackage
+  readonly #hiveRepository: HiveRepository;
 
-  constructor(videoRepository: VideoRepository, creatorRepository: CreatorRepository) {
+  constructor(videoRepository: VideoRepository, creatorRepository: CreatorRepository, hiveRepository: HiveRepository) {
     this.#videoRepository = videoRepository;
     this.#creatorRepository = creatorRepository;
-    this.#logger = new Logger(PublishingService.name)
+    this.#hiveRepository = hiveRepository
+    this.#logger = new Logger(PublishingService.name);
   }
 
   async normalVideoPublish() {
@@ -50,20 +43,9 @@ export class PublishingService {
     return this.#logger;
   }
 
-  async _broadcastOperations(operations: OperationsArray) {
-    return await this.#hiveJs.broadcast.sendAsync({
-      operations
-    }, {
-      posting: process.env.DELEGATED_ACCOUNT_POSTING
-    }).catch((e: any) => {
-      this.#logger.error(`Error publishing operations to chain!`, operations, e)
-      return e;
-    });
-  }
-
   async #publish(video: DbVideoToPublishDto): Promise<void> {
     try {
-      if (await this.#hivePostExists({ author: video.owner, permlink: video.permlink })) {
+      if (await this.#hiveRepository.hivePostExists({ author: video.owner, permlink: video.permlink })) {
         await this.#videoRepository.setPostedToChain(video.owner, video.ipfs);
         this.#logger.warn(`## SKIPPED ${video.owner}/${video.permlink} ALREADY PUBLISHED!`);
         return;
@@ -115,22 +97,12 @@ export class PublishingService {
     }
   }
 
-  async #hivePostExists({ author, permlink }: {author: string, permlink: string }) {
-    try {
-      const content = await this.#hiveJs.api.getContent(author, permlink);
   
-      // Check if the content is an object and has a body. This implicitly checks for non-empty strings.
-      return typeof content === "object" && !!content.body;
-    } catch (e) {
-      this.#logger.error("Error checking Steem post existence:", e);
-      return false;
-    }
-  }
 
   async #publishVideoToChain(detail: VideoToPublishDto) {
     const operations = await this.#formatOperations(detail, true)
 
-    return await this._broadcastOperations(operations)
+    return await this.#hiveRepository.broadcastOperations(operations)
   }
 
   async #formatOperations(detail: VideoToPublishDto, comment_options: boolean) {
@@ -253,7 +225,7 @@ export class PublishingService {
     ];
 
     // Fetch hive account and parse json_metadata
-    const [hiveAccount] = await this.#hive.database.call('lookup_accounts',[detail.author, 1]);
+    const hiveAccount = await this.#hiveRepository.getAccount(detail.author);
     if (hiveAccount?.json_metadata) {
       let json: HiveAccountMetadata = JSON.parse(hiveAccount.json_metadata);
       json.beneficiaries?.forEach(bene => {

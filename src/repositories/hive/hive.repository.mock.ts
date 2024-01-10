@@ -1,18 +1,21 @@
-import { Injectable } from "@nestjs/common";
-import { PublishingService } from "./publishing.service";
-import { CreatorRepository } from "../../repositories/creator/creator.repository";
+import { Injectable, Logger } from "@nestjs/common";
+import { HiveRepository } from "./hive.repository";
 import { OperationsArray } from "./types";
-import { VideoRepository } from "../../repositories/video/video.repository";
 
 @Injectable()
-export class MockPublishingService extends PublishingService {
+export class MockHiveRepository extends HiveRepository {
+  readonly #logger: Logger = new Logger(MockHiveRepository.name);
 
-  constructor(videoService: VideoRepository, creatorService: CreatorRepository) {
-    super(videoService, creatorService);
+  constructor() {
+    super();
   }
 
-  async _broadcastOperations(operations: OperationsArray) {
-    this.getLogger().log('Mocking broadcastOperations');
+  async broadcastOperations(operations: OperationsArray) {
+    this.#logger.log('Mocking broadcastOperations');
+
+    if (!operations) {
+      throw new Error('No operations suppplied')
+    }
 
     // List of potential error messages.
     const errorMessages = [
