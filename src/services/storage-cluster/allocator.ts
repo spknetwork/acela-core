@@ -1,7 +1,7 @@
 import { Db, Filter } from 'mongodb'
 import WebSocket, { WebSocketServer } from 'ws'
 import { Logger } from '@nestjs/common'
-import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin, PinAllocate, SocketMsgTyped } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, SocketMsg, SocketMsgGossip, SocketMsgAuth, SocketMsgPeerInfo, SocketMsgPin, SocketMsgTypes, StorageCluster, WSPeerHandler, SocketMsgPinAlloc, Pin, PinAllocate, SocketMsgTyped, LatestPin, SocketMsgSyncReq } from './types.js'
 import { multiaddr, IPFSHTTPClient, CID } from 'kubo-rpc-client'
 
 /**
@@ -11,6 +11,7 @@ export class StorageClusterAllocator extends StorageCluster {
     private peers: {
         [peerId: string]: {
             ws: WebSocket,
+            synced: boolean,
             discovery?: string
         }
     }
@@ -86,6 +87,61 @@ export class StorageClusterAllocator extends StorageCluster {
         const half = Math.floor(values.length / 2)
     
         return values[half]
+    }
+
+    async getLatestPin(): Promise<number> {
+        let result = await this.pins.find({
+            status: { $ne: 'deleted' }
+        }).sort({
+            created_at: -1
+        }).limit(1).toArray()
+
+        if (result.length > 0)
+            return result[0].created_at
+        else
+            return -1
+    }
+
+    async getLatestUnpin(): Promise<number> {
+        let result = await this.pins.find({
+            status: { $eq: 'deleted' }
+        }).sort({
+            last_updated: -1
+        }).limit(1).toArray()
+        if (result.length > 0)
+            return result[0].last_updated
+        else
+            return -1
+    }
+
+    async syncResponse(peerId: string, msg: SocketMsgSyncReq) {
+        let pins = await this.pins.find({
+            $and: [{
+                status: { $ne: 'deleted' }
+            }, {
+                created_at: { $gt: msg.lastPin }
+            }]
+        }).sort({
+            created_at: 1
+        }).limit(50).toArray()
+
+        let unpins = await this.pins.find({
+            $and: [{
+                status: { $eq: 'deleted' }
+            }, {
+                last_updated: { $gt: msg.lastUnpin }
+            }]
+        }).sort({
+            last_updated: 1
+        }).limit(50).toArray()
+
+        this.peers[peerId].ws.send(JSON.stringify({
+            type: SocketMsgTypes.SYNC_RESP,
+            data: {
+                pins, unpins
+            },
+            ts: new Date().getTime()
+        }))
     }
 
     /**
@@ -174,6 +230,7 @@ export class StorageClusterAllocator extends StorageCluster {
 
     private async handlePeerInfoAndAllocate(peerInfo: SocketMsgPeerInfo, peerId: string, msgTs: number, currentTs: number): Promise<{ allocations: SocketMsgPinAlloc, ts: number } | null> {
         Logger.debug('Peer '+peerId+' disk available: '+Math.floor(peerInfo.freeSpaceMB/1024)+' GB, total: '+Math.floor(peerInfo.totalSpaceMB/1024)+' GB', 'storage-cluster')
+        this.setPeerSynced(peerId)
         if (100*peerInfo.freeSpaceMB/peerInfo.totalSpaceMB > ALLOCATION_DISK_THRESHOLD) {
             // allocate new pins if above free space threshold
             let toAllocate = await this.getNewAllocations(peerId, peerInfo)
@@ -402,10 +459,11 @@ export class StorageClusterAllocator extends StorageCluster {
      * May not be ideal when not all peers are connected among each other for various reasons (i.e. just joined, or broken peer discovery on one peer)
      * @returns The current peer ID of the allocator within the current slot
      */
-    private getCurrentAllocator() {
+    private getCurrentAllocator(excludeThis = false) {
         let currentMinute = new Date().getMinutes()
         let peers = Object.keys(this.peers)
-        peers.push(this.getPeerId())
+        if (!excludeThis)
+            peers.push(this.getPeerId())
         let sortedPeers = peers.sort()
         return sortedPeers[currentMinute%sortedPeers.length]
     }
@@ -439,8 +497,12 @@ export class StorageClusterAllocator extends StorageCluster {
     broadcast(message: SocketMsgTyped<SocketMsgPin>) {
         message.data.peerId = this.getPeerId()
         for (let p in this.peers)
-            if (p !== this.getPeerId())
+            if (p !== this.getPeerId() && this.peers[p].synced)
                 this.peers[p].ws.send(JSON.stringify(message))
+    }
+
+    sendSyncReq(msg: SocketMsgTyped<SocketMsgSyncReq>) {
+        this.peers[this.getCurrentAllocator(true)].ws.send(JSON.stringify(msg))
     }
 
     /**
@@ -482,6 +544,9 @@ export class StorageClusterAllocator extends StorageCluster {
             case SocketMsgTypes.PIN_REMOVE:
                 await this.handleUnpinRequest((message.data as SocketMsgPin).cid, message.ts)
                 break
+            case SocketMsgTypes.SYNC_REQ:
+                await this.syncResponse(peerId, message.data as SocketMsgSyncReq)
+                break
             default:
                 break
         }
@@ -493,12 +558,18 @@ export class StorageClusterAllocator extends StorageCluster {
      * @param ws WebSocket object
      * @param discovery Peer discovery WSS URL
      */
-    addPeer(peerId: string, ws: WebSocket, discovery: string) {
+    addPeer(peerId: string, ws: WebSocket, discovery: string, synced: boolean = false) {
         if (!this.hasPeerById(peerId) && peerId !== this.getPeerId())
             this.peers[peerId] = {
                 ws: ws,
-                discovery: discovery
+                discovery: discovery,
+                synced: synced
             }
+    }
+
+    setPeerSynced(peerId: string) {
+        if (this.hasPeerById(peerId))
+            this.peers[peerId].synced = true
     }
 
     /**

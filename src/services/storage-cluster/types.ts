@@ -14,12 +14,14 @@ export enum SocketMsgTypes {
     PIN_FAILED,
     PIN_NEW,
     PIN_REMOVE,
-    PIN_REMOVE_PEER
+    PIN_REMOVE_PEER,
+    SYNC_REQ,
+    SYNC_RESP
 }
 
 export type SocketMsg = {
     type: SocketMsgTypes
-    data: SocketMsgAuth | SocketMsgAuthSuccess | SocketMsgPeerInfo | SocketMsgPinAlloc | SocketMsgPin | SocketMsgGossip
+    data: SocketMsgAuth | SocketMsgAuthSuccess | SocketMsgPeerInfo | SocketMsgPinAlloc | SocketMsgPin | SocketMsgGossip | SocketMsgSyncResp
     ts: number
 }
 
@@ -38,6 +40,8 @@ export type SocketMsgAuth = {
 export type SocketMsgAuthSuccess = {
     discoveryPeers: string[]
     peerId: string
+    lastPin: number
+    lastUnpin: number
 }
 
 export type SocketMsgGossip = {
@@ -61,6 +65,16 @@ export type SocketMsgPin = {
     cid: string
     size?: number
     metadata?: PinMetadata
+}
+
+export type SocketMsgSyncReq = {
+    lastPin: number,
+    lastUnpin: number
+}
+
+export type SocketMsgSyncResp = {
+    pins: Pin[],
+    unpins: Pin[]
 }
 
 export type WSPeerHandler = (message: SocketMsg) => Promise<void>
@@ -116,4 +130,10 @@ export interface PinMetadata {
     network: string
     owner: string
     permlink: string
+}
+
+export interface LatestPin {
+    _id: string
+    created_at: number
+    last_updated: number
 }

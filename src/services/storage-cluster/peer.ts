@@ -1,7 +1,7 @@
 import { Db } from 'mongodb'
 import WebSocket from 'ws'
 import disk from 'diskusage'
-import { ALLOCATION_DISK_THRESHOLD, PinMetadata, SocketMsg, SocketMsgAuthSuccess, SocketMsgPin, SocketMsgPinAlloc, SocketMsgTypes, StorageCluster } from './types.js'
+import { ALLOCATION_DISK_THRESHOLD, Pin, PinMetadata, SocketMsg, SocketMsgAuthSuccess, SocketMsgPinAlloc, SocketMsgSyncResp, SocketMsgTyped, SocketMsgTypes, StorageCluster } from './types.js'
 import { Logger } from '@nestjs/common'
 import { multiaddr, CID } from 'kubo-rpc-client'
 import type { IPFSHTTPClient } from 'kubo-rpc-client'
@@ -271,6 +271,53 @@ export class StorageClusterPeer extends StorageCluster {
         })
     }
 
+    private requestSync(lastPin: number, lastUnpin: number) {
+        this.allocator.sendSyncReq({
+            type: SocketMsgTypes.SYNC_REQ,
+            data: {
+                lastPin, lastUnpin
+            },
+            ts: new Date().getTime()
+        })
+    }
+
+    private async responseSync(message: SocketMsgSyncResp) {
+        message.pins = message.pins.sort((a, b) => a.created_at - b.created_at)
+        message.unpins = message.unpins.sort((a, b) => a.created_at - b.created_at)
+
+        if (message.pins.length === 0 && message.unpins.length === 0) {
+            await this.sendPeerInfo()
+            return
+        }
+
+        for (let p in message.pins)
+            await this.pins.updateOne({
+                _id: message.pins[p]._id,
+            }, { $set: {
+                status: 'pinned',
+                created_at: message.pins[p].created_at,
+                last_updated: message.pins[p].last_updated,
+                allocations: message.pins[p].allocations,
+                allocationCount: message.pins[p].allocationCount,
+                median_size: message.pins[p].median_size,
+                metadata: message.pins[p].metadata
+            }}, {
+                upsert: true
+            })
+        
+        for (let u in message.unpins) {
+            try {
+                await this.ipfs.pin.rm(CID.parse(message.unpins[u]._id))
+                this.allocator.removePin(message.unpins[u]._id, message.unpins[u].last_updated, true)
+            } catch {}
+        }
+
+        this.requestSync(
+            message.pins.length > 0 ? message.pins[message.pins.length-1].created_at : new Date().getTime()+100000,
+            message.unpins.length > 0 ? message.unpins[message.unpins.length-1].last_updated : new Date().getTime()+100000
+        )
+    }
+
     /**
      * Handle incoming socket messages targeted towards this peer
      * @param message SocketMsg object
@@ -279,6 +326,9 @@ export class StorageClusterPeer extends StorageCluster {
         switch (message.type) {
             case SocketMsgTypes.PIN_ALLOCATION:
                 await this.handlePinAlloc(message.data as SocketMsgPinAlloc, message.ts)
+                break
+            case SocketMsgTypes.SYNC_RESP:
+                await this.responseSync(message.data as SocketMsgSyncResp)
                 break
             default:
                 break
@@ -324,6 +374,7 @@ export class StorageClusterPeer extends StorageCluster {
             if (message.type === SocketMsgTypes.AUTH_SUCCESS) {
                 let allocPeerInfo = message.data as SocketMsgAuthSuccess
                 this.allocator.addPeer(allocPeerInfo.peerId, ws, wsUrl)
+                this.allocator.setPeerSynced(allocPeerInfo.peerId)
                 peerId = allocPeerInfo.peerId
                 ws.on('close', () => {
                     this.allocator.wsClosed(allocPeerInfo.peerId)
@@ -333,7 +384,10 @@ export class StorageClusterPeer extends StorageCluster {
                     for (let p in allocPeerInfo.discoveryPeers)
                         if (allocPeerInfo.discoveryPeers[p] !== this.wsDiscovery)
                             this.initWs(true, allocPeerInfo.discoveryPeers[p])
-                    setTimeout(() => this.sendPeerInfo(), 2000)
+                    setTimeout(async () => this.requestSync(
+                        await this.allocator.getLatestPin(),
+                        await this.allocator.getLatestUnpin()
+                    ), 2000)
                 } else
                     Logger.debug('Discovered peer '+allocPeerInfo.peerId, 'storage-peer')
             }
