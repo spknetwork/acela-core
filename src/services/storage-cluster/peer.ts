@@ -312,6 +312,8 @@ export class StorageClusterPeer extends StorageCluster {
             } catch {}
         }
 
+        Logger.log('Synced '+message.pins.length+' pins and '+message.unpins.length+' unpins', 'storage-cluster')
+
         this.requestSync(
             message.pins.length > 0 ? message.pins[message.pins.length-1].created_at : new Date().getTime()+100000,
             message.unpins.length > 0 ? message.unpins[message.unpins.length-1].last_updated : new Date().getTime()+100000
