@@ -7,7 +7,7 @@ import { StorageClusterService } from './cluster.service.js'
     providers: [{
         provide: StorageClusterService,
         useFactory: () => {
-            const dbName = 'cluster'
+            const dbName = process.env.IPFS_CLUSTER_DB_NAME || 'cluster'
             return new StorageClusterService(dbName);
         }
     }],

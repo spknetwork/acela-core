@@ -26,6 +26,7 @@ declare global {
         HIVE_ONBOARD_TOKEN: string
         
         IPFS_CLUSTER_URL: string
+        IPFS_CLUSTER_DB_NAME: string
         IPFS_CLUSTER_SECRET: string
         IPFS_CLUSTER_WS_DISCOVERY: string
         IPFS_CLUSTER_WS_URL: string
