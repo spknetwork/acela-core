@@ -21,7 +21,6 @@ indexVersion=`cat deploy/index-flag`
 echo "$indexVersion $indexVersionDeployed"
 
 docker-compose build
-docker-compose down
 
 if [ "$indexVersion" -ne "$indexVersionDeployed" ];
 then 
