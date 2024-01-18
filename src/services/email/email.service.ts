@@ -1,31 +1,28 @@
-import Mailgun from 'mailgun-js'
-import { Injectable } from '@nestjs/common';
+import FormData from 'form-data';
+import Mailgun from 'mailgun.js'
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { IMailgunClient } from 'mailgun.js/Interfaces';
 
 @Injectable()
 export class EmailService {
-  readonly #mailGun: Mailgun;
+  readonly #mailGun: IMailgunClient;
+  readonly #logger: Logger = new Logger(EmailService.name);
 
   constructor(private configService: ConfigService) {
-    // console.log(this.configService.get<string>('MAIL_GUN_SECRET'))
-    // this.#mailGun = new Mailgun({
-    //   apiKey: this.configService.get<string>('MAIL_GUN_SECRET'),
-    //   domain: this.configService.get<string>('MAIL_GUN_DOMAIN'),
-    // })
+    const mailGun = new Mailgun(FormData);
+    this.#mailGun = mailGun.client({username: 'api', key: this.configService.get('MAIL_GUN_KEY', 'key-yourkeyhere')});
   }
 
   async send(email: string, subject: string, html: string) { 
-    await this.#mailGun.messages().send(
-      {
-        from: `noreply@${this.configService.get('MAIL_GUN_DOMAIN')}`,
-        to: email,
-        subject,
-        html,
-      },
-      (err: any, info: any) => {
-        console.log('[mailer]', 'confirm_signup', err, info)
-      },
-    )
+    await this.#mailGun.messages.create(this.configService.get('MAIL_GUN_DOMAIN'), {
+      from: `Threespeak <noreply@${this.configService.get('MAIL_GUN_DOMAIN')}>`,
+      to: [email],
+      subject,
+      html,
+    }).catch((err: any) => {
+      this.#logger.log('[mailer]', 'confirm_signup', err)
+    })
   }
 
   async sendRegistration(email: string, email_code) {
