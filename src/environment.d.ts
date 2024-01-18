@@ -2,6 +2,7 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
         CORE_MONGODB_URL: string
+        CORE_MONGODB_PARAMS: string
         INDEXER_MONGODB_URL: string
 
         DELEGATED_ACCOUNT: string

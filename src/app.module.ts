@@ -25,14 +25,14 @@ import { UploaderModule } from './services/uploader/upload.module';
     ConfigModule.forRoot({
       envFilePath: '.env',
     }),
-    MongooseModule.forRoot(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017', {
+    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/3speakAuth${process.env.CORE_MONGODB_PARAMS}`, {
       connectionName: 'threespeak',
       autoIndex: true,
     }),
-    MongooseModule.forRoot('mongodb://127.0.0.1:27017/3speakAuth', {
+    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/3speakAuth${process.env.CORE_MONGODB_PARAMS}`, {
       connectionName: '3speakAuth'
     }),
-    MongooseModule.forRoot('mongodb://127.0.0.1:27017/acela-core', {
+    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/acela-core${process.env.CORE_MONGODB_PARAMS}`, {
       connectionName: 'acela-core'
     }),
     ScheduleModule.forRoot(),
