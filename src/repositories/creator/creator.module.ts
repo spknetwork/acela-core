@@ -8,14 +8,14 @@ import { Model } from 'mongoose';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: ContentCreator.name, schema: ContentCreatorSchema }]),
+    MongooseModule.forFeature([{ name: ContentCreator.name, schema: ContentCreatorSchema }], 'threespeak'),
     ConfigModule, // Needed if you're using ConfigService
   ],
   controllers: [],
   providers: [
     {
       provide: CreatorRepository,
-      inject: [ConfigService, getModelToken(ContentCreator.name)],
+      inject: [ConfigService, getModelToken(ContentCreator.name, 'threespeak')],
       useFactory: (configService: ConfigService, creatorModel: Model<ContentCreator>) => {
         const env = configService.get<string>('ENVIRONMENT');
         if (env !== 'prod') {

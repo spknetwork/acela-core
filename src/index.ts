@@ -1,19 +1,24 @@
 import { NestFactory } from '@nestjs/core';
 import { AcelaCore } from './services';
-import { ApiModule } from './services/api';
 import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function startup(): Promise<void> {
 
-  const core = new AcelaCore()
+  // const core = new AcelaCore()
 
-  await core.start();
-
-  const apiListener = new ApiModule(core, 4569)
-  await apiListener.listen()
+  // await core.start();
   
-  const app = await NestFactory.create(AppModule);
-  await app.init()
+  const app = await NestFactory.create(AppModule, {
+    cors: true
+  });
+  app.enableShutdownHooks()
+  app.useGlobalPipes(new ValidationPipe());
+  const config = new DocumentBuilder().build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('/api/v1/docs', app, document);
+  await app.listen(4569)
 }
 
 void startup()

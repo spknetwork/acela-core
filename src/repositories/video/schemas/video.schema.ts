@@ -53,6 +53,9 @@ export class Video {
   @Prop({ required: true, default: () => Date.now() })
   created: Date;
 
+  @Prop({ required: true, default: () => Date.now() })
+  updated: Date;
+
   @Prop()
   published?: Date;
 

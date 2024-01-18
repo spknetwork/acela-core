@@ -4,8 +4,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Video } from './schemas/video.schema';
 import { DbVideoToPublishDto, dbVideoToPublishProjection } from './dto/videos-to-publish.dto';
 import { UpdateResult } from 'mongodb';
+import { UploadDto } from '../upload/dto/upload.dto';
+import moment from 'moment';
 
-type TrendingChainResponse = Array<({ 
+type TrendingChainResponse = Array<({
   permlink: string;
   title: string;
   duration: number;
@@ -23,7 +25,7 @@ type TrendingChainResponse = Array<({
 
 @Injectable()
 export class VideoRepository {
-  constructor(@InjectModel(Video.name) private videoModel: Model<Video>) {}
+  constructor(@InjectModel(Video.name, 'threespeak') private videoModel: Model<Video>) { }
 
   async getVideosToPublish(): Promise<DbVideoToPublishDto[]> {
     return await this.videoModel.find({
@@ -44,5 +46,64 @@ export class VideoRepository {
 
   async setPostedToChain(owner: Video['owner'], ipfs?: Video['ipfs']): Promise<UpdateResult> {
     return await this.videoModel.updateOne({ owner }, { $set: { steemPosted: true, lowRc: false, needsHiveUpdate: !!ipfs } }).exec()
+  }
+
+  async setThumbnail(video_id: string, thumbnail: string) {
+    return await this.videoModel.findOneAndUpdate({
+      id: video_id
+    }, {
+      $set: {
+        "upload_links.thumbnail": thumbnail,
+      }
+    })
+  }
+
+  async createNewHiveVideoPost({
+    video_id,
+    user,
+    title,
+    description,
+    tags,
+    community,
+    language,
+    videoUploadLink
+  }: {
+    video_id: string;
+    user: { 
+      sub: string; 
+      username: string;
+    };
+    title: string;
+    description: string;
+    tags: string[];
+    community: string;
+    language: string;
+    videoUploadLink: string;
+  }): Promise<Video> {
+    return await this.videoModel.create({
+      video_id,
+      owner: user.username,
+      title: title,
+      description,
+      beneficiaries: [],
+      tags: tags || [],
+      community,
+      language: language || 'en',
+      video_details: {
+        duration: 0,
+      },
+      posting_options: {
+        publish_type: "immediate",
+        publish_date: null
+      },
+      created_by: user.sub,
+      expires: moment().add('1', 'day').toDate(),
+      upload_links: {
+        video: videoUploadLink
+      },
+      network: "hive",
+      __flags: [],
+      __v: '0.1'
+    });
   }
 }

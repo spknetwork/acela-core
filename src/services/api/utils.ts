@@ -1,6 +1,5 @@
-import { CallHandler, CanActivate, ExecutionContext, Injectable, NestInterceptor, NestMiddleware } from "@nestjs/common";
-import { map, Observable, tap } from "rxjs";
-import { NextFunction } from 'express'
+import { CallHandler, CanActivate, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
+import { Observable} from "rxjs";
 
 @Injectable()
 export class RequireHiveVerify implements CanActivate {
@@ -19,15 +18,6 @@ export class RequireHiveVerify implements CanActivate {
     
     
     return true;
-  }
-}
-
-
-@Injectable()
-export class LoggerMiddleware implements NestMiddleware {
-  use(req: Request, res: Response, next: NextFunction) {
-    // console.log('Request...');
-    next();
   }
 }
 

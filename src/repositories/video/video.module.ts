@@ -8,14 +8,14 @@ import { Model } from 'mongoose';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Video.name, schema: VideoSchema }]),
+    MongooseModule.forFeature([{ name: Video.name, schema: VideoSchema }], 'threespeak'),
     ConfigModule,
   ],
   controllers: [],
   providers: [
     {
       provide: VideoRepository,
-      inject: [ConfigService, getModelToken(Video.name)],
+      inject: [ConfigService, getModelToken(Video.name, 'threespeak')],
       useFactory: (configService: ConfigService, videoModel: Model<VideoDocument>) => {
         const env = configService.get<string>('ENVIRONMENT');
         if (env !== 'prod') {

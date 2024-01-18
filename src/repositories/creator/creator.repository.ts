@@ -5,7 +5,7 @@ import { ContentCreator } from './schemas/creator.schema';
 
 @Injectable()
 export class CreatorRepository {
-  constructor(@InjectModel(ContentCreator.name) private creatorModel: Model<ContentCreator>) {}
+  constructor(@InjectModel(ContentCreator.name, 'threespeak') private creatorModel: Model<ContentCreator>) {}
 
   async getContentCreatorByUsername(username: string) {
     return this.creatorModel.findOne({ username }).exec()

@@ -4,9 +4,6 @@ import {
   Request,
   Post,
   UseGuards,
-  CanActivate,
-  Injectable,
-  ExecutionContext,
   Body,
   BadRequestException,
   Response,
@@ -14,194 +11,40 @@ import {
   HttpStatus,
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
-import { Observable } from 'rxjs'
-import { appContainer } from '.'
 import { HiveClient } from '../../utils/hiveClient'
-import { AuthService } from './auth/auth.service'
-import * as DHive from '@hiveio/dhive'
-import hive from '@hiveio/hive-js'
+import { AuthService } from '../auth/auth.service'
 import bcrypt from 'bcryptjs'
 import { v4 as uuid } from 'uuid'
-import Mailgun from 'mailgun-js'
-import Crypto from 'crypto'
-import { IsEmail, IsNotEmpty, isString } from 'class-validator'
 import { RequireHiveVerify } from './utils'
 import { cryptoUtils } from '@hiveio/dhive'
-import moment, { invalid } from 'moment'
+import moment from 'moment'
 import { authenticator } from 'otplib'
-import { ApiBadRequestResponse, ApiBody, ApiCookieAuth, ApiHeader, ApiInternalServerErrorResponse, ApiMovedPermanentlyResponse, ApiOkResponse, ApiOperation, ApiParam, ApiProperty, ApiResponseProperty, ApiUnauthorizedResponse } from '@nestjs/swagger'
-
-const mg = new Mailgun({
-  apiKey: process.env.MAIL_GUN_SECRET,
-  domain: process.env.MAIL_GUN_DOMAIN,
-})
-
-async function createAccountWithAuthority(newAccountname, authorityAccountname, options?: {
-  posting_auths?: string[]
-  active_auths?: string[]
-}) {
-  const owner = {
-    weight_threshold: 1,
-    account_auths: [[authorityAccountname, 1]],
-    key_auths: [],
-  }
-  const active = {
-    weight_threshold: 1,
-    account_auths: [[authorityAccountname, 1], ...(options?.active_auths || []).map(e => {
-      return [e, 1]
-    })],
-    key_auths: [],
-  }
-  const posting = {
-    weight_threshold: 1,
-    account_auths: [[authorityAccountname, 1], ...(options?.posting_auths || []).map(e => {
-      return [e, 1]
-    })],
-    key_auths: [],
-  }
-  const memo_key = 'STM7C9FCSZ6ntNsrwkU5MCvAB7TV44bUF8J4pwWLWpGY5Z7Ba7Q6e'
-
-  const accountData = {
-    creator: authorityAccountname,
-    new_account_name: newAccountname,
-    owner,
-    active,
-    posting,
-    memo_key,
-    json_metadata: JSON.stringify({
-      // beneficiaries: [
-      //   {
-      //     name: 'spk.beneficiary',
-      //     weight: 500,
-      //     label: 'provider',
-      //   },
-      // ],
-    }),
-    extensions: [],
-  }
-
-  const operations: DHive.Operation[] = [['create_claimed_account', accountData]]
-
-  return await HiveClient.broadcast.sendOperations(
-    operations,
-    DHive.PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE),
-  )
-}
-
-class LoginSingletonDt {
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Username of the account',
-    default: "test-account",
-  })
-  username: string
-
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Network of the identity; Can be HIVE or CERAMIC',
-    default: "HIVE",
-  })
-  network: string
-
-  @IsNotEmpty()
-  @ApiProperty({
-
-  })
-  authority_type: string
-
-  proof_payload: string
-  proof: string
-}
-
-class LoginDto {
-  @ApiProperty({
-    default: "test-account@fakedomain.com"
-  })
-  username: string
-
-  @ApiProperty({
-    default: "user-generated-password"
-  })
-  password: string
-}
-
-class LoginResponseDto {
-  @ApiProperty({
-    description: "JWT login token",
-    default: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-  }) 
-  access_token: string
-}
-
-class VotePostDto {
-  @ApiProperty({
-    default: "sagarkothari88"
-  })
-  author: string
-
-  @ApiProperty({
-    default: "actifit-sagarkothari88-20230211t122818265z"
-  })
-  permlink: string
-}
-
-class VotePostResponseDto {
-  @ApiProperty({
-    default: "f555e5e690aefa99f5d6c1fe47c08db6ad79af1f"
-  })
-  id: string
-}
-
-
-
-
-enum LoginErrorPossibles {
-  unsupportedNetwork = "UNSUPPORTED_NETWORK",
-  invalidSignature = "INVALID_SIGNATURE"
-}
-
-enum LoginErrorReasonEnum {
-  "Unsupported network type" = "Unsupported network type",
-  "Invalid Signature" = "Invalid Signature"
-}
-
-class LoginErrorResponseDto {
-  @ApiProperty({
-    description: "Reason for failed response",
-    enum: LoginErrorReasonEnum
-  })
-  reason: "Unsupported network type" | "Invalid Signature"
-
-  @ApiProperty({
-    description: "Error type enum - use this for application logic",
-    enum: LoginErrorPossibles,
-    isArray: false,
-  })
-  errorType: LoginErrorPossibles
-}
-
-class LinkAccountPost {
-  @IsNotEmpty()
-  username: string
-}
-
-function verifyHiveMessage(message, signature: string, account: DHive.ExtendedAccount): boolean {
-  for (let auth of account.posting.key_auths) {
-
-    const sigValidity = DHive.PublicKey.fromString(auth[0].toString()).verify(
-      Buffer.from(message),
-      DHive.Signature.fromBuffer(Buffer.from(signature, 'hex')),
-    )
-    if (sigValidity) {
-      return true
-    }
-  }
-  return false
-}
+import { ApiBadRequestResponse, ApiBody, ApiHeader, ApiInternalServerErrorResponse, ApiMovedPermanentlyResponse, ApiOkResponse, ApiOperation, ApiParam, ApiUnauthorizedResponse } from '@nestjs/swagger'
+import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository'
+import { UserRepository } from '../../repositories/user/user.repository'
+import { HiveRepository } from '../../repositories/hive/hive.repository'
+import { DelegatedAuthorityRepository } from '../../repositories/delegated-authority/delegated-authority.repository'
+import { LinkAccountPostDto } from './dto/LinkAccountPost.dto'
+import { LoginErrorResponseDto } from './dto/LoginErrorResponse.dto'
+import { VotePostResponseDto } from './dto/VotePostResponse.dto'
+import { VotePostDto } from './dto/VotePost.dto'
+import { LoginResponseDto } from './dto/LoginResponse.dto'
+import { LoginDto } from './dto/Login.dto'
+import { LoginSingletonDto } from './dto/LoginSingleton.dto'
+import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository'
+import { EmailService } from '../email/email.service'
 
 @Controller('/api/v1')
-export class AppController {
-  constructor(private readonly authService: AuthService) {}
+export class ApiController {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly hiveAccountRepository: HiveAccountRepository,
+    private readonly userRepository: UserRepository,
+    private readonly hiveRepository: HiveRepository,
+    //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
+    private readonly linkedAccountsRepository: LinkedAccountRepository,
+    private readonly emailService: EmailService
+  ) {}
 
   @UseGuards(AuthGuard('local'))
   @Post('/auth/login')
@@ -226,35 +69,17 @@ export class AppController {
     description: "Internal Server Error - unrelated to request body"
   })
   @Post('/auth/login_singleton')
-  async loginSingletonReturn(@Body() body: LoginSingletonDt) {
+  async loginSingletonReturn(@Body() body: LoginSingletonDto) {
     // console.log(req)
     if (body.network === 'hive') {
       const proof_payload = JSON.parse(body.proof_payload)
-      const [accountDetails] = await HiveClient.database.getAccounts([proof_payload.account])
+      const accountDetails = await this.hiveRepository.getAccount(proof_payload.account)
 
       if (
-        verifyHiveMessage(cryptoUtils.sha256(body.proof_payload), body.proof, accountDetails) &&
+        this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(proof_payload), body.proof, accountDetails) &&
         new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
       ) {
-        const id = uuid()
-        const access_token = await this.authService.jwtService.sign({
-          id: id,
-          type: 'singleton',
-          sub: `singleton/${proof_payload.account}`,
-          username: proof_payload.account,
-        })
-
-        await appContainer.self.authSessions.insertOne({
-          id: id,
-          type: 'singleton',
-          sub: `singleton/${proof_payload.account}`,
-          date: new Date(),
-          expires: moment().add('1', 'month').toDate(),
-        })
-
-        return {
-          access_token,
-        }
+        return await this.authService.authenticateUser(proof_payload.account)
       } else {
         throw new HttpException(
           {
@@ -368,20 +193,11 @@ export class AppController {
         token: otp_code,
         secret: body.secret
       })) {
-        await appContainer.self.hiveAccountsDb.insertOne({
-          status: "requested",
-          username,
-          keys_requested: false,
-          created_by: null,
-          requested_at: new Date(),
-          request_type: 'otp-login',
-          created_at: new Date(),
-          secret: body.secret
-        })
         // const accountCreation = await createAccountWithAuthority(
         //   username,
         //   process.env.ACCOUNT_CREATOR
         // )
+        await this.hiveAccountRepository.createLite(username, body.secret)
 
         const jwt = await this.authService.jwtService.signAsync({
           username,
@@ -450,11 +266,7 @@ export class AppController {
     const {email} = req.body;
     const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10))
 
-
-
-    const existingRecord = await appContainer.self.usersDb.findOne({
-      email
-    })
+    const existingRecord = await this.userRepository.findOneByEmail(email)
 
     if(existingRecord) {
       throw new HttpException(
@@ -462,36 +274,10 @@ export class AppController {
         HttpStatus.BAD_REQUEST,
       ) 
     } else {
-      const email_code = uuid()
       
-      await appContainer.self.usersDb.insertOne({
-        status: 'unverified',
-        email_status: 'unverified',
-        user_id: uuid(),
-        email: req.body.email,
-        email_code,
-        auth_methods: {
-          password: {
-            value: hashedPassword
-          }
-        },
-        type: 'multi',
-        created_at: new Date(),
-        updated_at: new Date(),
-        last_login_at: new Date(),
-        password_reset_at: null
-      })
-      mg.messages().send(
-        {
-          from: `test@${process.env.MAIL_GUN_DOMAIN}`,
-          to: req.body.email,
-          subject: 'test registration',
-          html: `test registration. Click <a href=\"http://${process.env.PUBLIC_CALLBACK_URL || "localhost:4569"}/api/v1/auth/verifyemail?code=${email_code}\">here</a> to verify email address.`,
-        },
-        (err, info) => {
-          console.log('[mailer]', 'confirm_signup', err, info)
-        },
-      )
+      const { email_code } = await this.authService.createUser(email, hashedPassword)
+
+      await this.emailService.sendRegistration(email, email_code);
       return {
         ok: true
       }
@@ -509,18 +295,13 @@ export class AppController {
   @Get('/auth/verifyemail')
   async verifyEmail(@Request() req, @Response() res) {
     const verifyCode = req.query.code
-    // console.log(verifyCode)
 
-    await appContainer.self.usersDb.findOneAndUpdate(
-      {
-        email_code: verifyCode,
-      },
-      {
-        $set: {
-          email_status: 'verified',
-        },
-      },
-    )
+    if (!verifyCode) {
+      throw new BadRequestException('Verification code is required');
+    }
+
+    await this.userRepository.verifyEmail(verifyCode);
+
     return res.redirect('https://3speak.tv')
   }
 
@@ -556,9 +337,7 @@ export class AppController {
   @UseGuards(AuthGuard('jwt'))
   @Post('/auth/request_hive_account')
   async requestHiveAccount(@Request() req) {
-    const existingAcocunt = await appContainer.self.hiveAccountsDb.findOne({
-      created_by: req.user.user_id,
-    })
+    const existingAcocunt = await this.hiveAccountRepository.findOneByOwner(req.user.user_id)
     if (existingAcocunt) {
       throw new HttpException(
         { reason: 'You have already created the maximum of 1 free Hive account' },
@@ -570,21 +349,13 @@ export class AppController {
     // console.log(output)
     if (output.length === 0) {
       try {
-        const accountCreation = await createAccountWithAuthority(
+        const accountCreation = await this.hiveRepository.createAccountWithAuthority(
           req.body.username,
           process.env.ACCOUNT_CREATOR,
         )
         //Here will be thrown if failed at this point
   
-        await appContainer.self.hiveAccountsDb.insertOne({
-          status: 'created',
-          username: req.body.username,
-          keys_requested: false,
-          created_by: req.user.user_id,
-          requested_at: new Date(),
-          created_at: new Date(),
-        })
-  
+        await this.hiveAccountRepository.insertCreated(req.body.username, req.user.user_id)
         
         return accountCreation
       } catch(ex) {
@@ -647,20 +418,7 @@ export class AppController {
     // console.log(body)
 
     //TODO: Do validation of account ownership before doing operation
-    return await HiveClient.broadcast.comment(
-      {
-        parent_author,
-        parent_permlink,
-        author,
-        permlink: Crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
-        title: '',
-        body,
-        json_metadata: JSON.stringify({
-          app: 'threespeak.beta/0.1',
-        }),
-      },
-      DHive.PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
-    )
+    return await this.hiveRepository.comment(author, body, { parent_author, parent_permlink })
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -711,24 +469,15 @@ export class AppController {
   })
   @UseGuards(AuthGuard('jwt'))
   @Post(`/hive/linkaccount`)
-  async linkAccount(@Body() data: LinkAccountPost, @Request() req: any) {
-    const { user_id } = req.user
-    const linkedAccount = await appContainer.self.linkedAccountsDb.findOne({
+  async linkAccount(@Body() data: LinkAccountPostDto, @Request() req: any) {
+    const { user_id } = req.user // TODO: security
+    const linkedAccount = await this.linkedAccountsRepository.findOneByUserIdAndAccountName({
       user_id: user_id,
       account: data.username,
     })
     if (!linkedAccount) {
       const challenge = uuid()
-      await appContainer.self.linkedAccountsDb.insertOne({
-        status: 'unverified',
-        user_id: user_id,
-        account: data.username,
-        network: 'HIVE',
-        challenge,
-        linked_at: new Date(),
-        verified_at: null,
-        type: 'native'
-      })
+      await this.linkedAccountsRepository.linkHiveAccount(user_id, data.username, challenge)
 
       return {
         challenge,
@@ -773,49 +522,32 @@ export class AppController {
   @UseGuards(AuthGuard('jwt'))
   @Post(`/hive/verify_linked_account`)
   async verifyLinkedAccount(@Body() data: any, @Request() req: any) {
-    const { memo } = data
-    console.log(memo)
-
-    const decoded = hive.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo)
-    const message = JSON.parse(decoded.substr(1))
-    const pubKeys = hive.memo.getPubKeys(memo)
-
-    const [account] = await HiveClient.database.getAccounts([message.account])
-    console.log(account[message.authority], pubKeys)
-
-    let signatureValid = false
-
-    for (const key_auth of account[message.authority].key_auths) {
-      if (key_auth[0] === pubKeys[0]) {
-        signatureValid = true
-      }
+    const { memo } = data;
+    console.log(memo);
+  
+    const message = await this.hiveRepository.getPublicKeys(memo);
+    const pubKeys = await this.hiveRepository.getPublicKeys(memo);
+  
+    const [account] = await HiveClient.database.getAccounts([message.account]);
+    console.log(account[message.authority], pubKeys);
+  
+    // Check if the signature is not valid
+    const signatureValid = account[message.authority].key_auths.some(key_auth => key_auth[0] === pubKeys[0]);
+    if (!signatureValid) {
+      throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST);
     }
-
-    const identityChallenge = await appContainer.self.linkedAccountsDb.findOne({
+  
+    const identityChallenge = await this.linkedAccountsRepository.findOneByChallenge({
       challenge: message.message,
-    })
-    console.log(signatureValid, account, message.message, identityChallenge)
-    if (signatureValid === true) {
-      if (identityChallenge.account === account.name) {
-        await appContainer.self.linkedAccountsDb.updateOne(
-          {
-            _id: identityChallenge._id,
-          },
-          {
-            $set: {
-              status: 'verified',
-            },
-          },
-        )
-        return {
-          ok: true
-        }
-      } else {
-        throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST)
-      }
-    } else {
-      throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST)
+    });
+    console.log(signatureValid, account, message.message, identityChallenge);
+    
+    if (identityChallenge.account !== account.name) {
+      throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST);
     }
+  
+    await this.linkedAccountsRepository.verify(identityChallenge._id);
+    return { ok: true };
   }
 
   @ApiOperation({
@@ -829,24 +561,18 @@ export class AppController {
   @UseGuards(RequireHiveVerify)
   @Post(`/hive/vote`)
   async votePost(@Body() data: VotePostDto) {
-    // console.log(data)
-    const delegatedAuth = await appContainer.self.delegatedAuthority.findOne({
-      // to: 'threespeak.beta',
-      // from: 'vaultec'
-    })
+    const { author, permlink } = data;
+    // const delegatedAuth = await this.delegatedAuthorityRepository.findOne({
+    //   to: 'threespeak.beta',
+    //   from: 
+    // })
+    // TODO: get hive username from auth
+    const delegatedAuth = true;
+    const voter = 'vaultec';
     if (!!delegatedAuth) {
       try {
-        const out = await HiveClient.broadcast.vote(
-          {
-            author: data.author,
-            permlink: data.permlink,
-            voter: 'vaultec',
-            weight: 10_000,
-          },
-          DHive.PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
-        )
         // console.log(out)
-        return out
+        return this.hiveRepository.vote({ author, permlink, voter, weight: 500 })
       } catch (ex) {
         console.log(ex)
         console.log(ex.message)
