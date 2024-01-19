@@ -6,7 +6,7 @@ import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class LinkedAccountRepository {
-  constructor(@InjectModel(LinkedAccount.name, 'threespeak') private readonly linkedAccountModel: Model<LinkedAccount>) {}
+  constructor(@InjectModel(LinkedAccount.name, 'acela-core') private readonly linkedAccountModel: Model<LinkedAccount>) {}
 
   async linkHiveAccount(user_id: string, account: string, challenge: string) {
     return await this.linkedAccountModel.create({

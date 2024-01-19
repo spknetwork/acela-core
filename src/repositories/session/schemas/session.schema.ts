@@ -23,3 +23,6 @@ export class Session {
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);
+
+// Add TTL index
+SessionSchema.index({ expires: 1 }, { expireAfterSeconds: 0 });

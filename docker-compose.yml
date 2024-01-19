@@ -1,8 +1,20 @@
 version: "3.3"
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./data/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - /data/caddy/data:/data
+      - /data/caddy/config:/config
+    networks:
+      - web
+      - acela-core
   acela-core: # name of the service
     build: .
-    image: acela-core # the image to use
     container_name: acela-core # what to label the container for docker ps
     restart: always # restart if failed, until we stop it ourselves
     env_file:
@@ -61,3 +73,6 @@ volumes:
 networks:
   acela-core:
     driver: bridge
+    external: false
+  web:
+    external: true

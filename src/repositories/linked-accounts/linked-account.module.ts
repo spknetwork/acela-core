@@ -6,7 +6,7 @@ import { Model } from 'mongoose';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: LinkedAccount.name, schema: LinkedAccountSchema }], 'threespeak'),
+    MongooseModule.forFeature([{ name: LinkedAccount.name, schema: LinkedAccountSchema }], 'acela-core'),
   ],
   controllers: [],
   providers: [LinkedAccountRepository],

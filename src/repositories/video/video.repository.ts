@@ -53,7 +53,7 @@ export class VideoRepository {
       id: video_id
     }, {
       $set: {
-        "upload_links.thumbnail": thumbnail,
+        thumbnail,
       }
     })
   }

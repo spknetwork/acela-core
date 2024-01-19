@@ -5,7 +5,7 @@ import { DelegatedAuthority as DelegatedAuthority } from './schemas/delegated-au
 
 @Injectable()
 export class DelegatedAuthorityRepository {
-  constructor(@InjectModel(DelegatedAuthority.name, 'threespeak') private readonly delegatedAuthorityModel: Model<DelegatedAuthority>) {}
+  constructor(@InjectModel(DelegatedAuthority.name, 'acela-core') private readonly delegatedAuthorityModel: Model<DelegatedAuthority>) {}
 
   async create(query: { to: string; from: string; }) {
     await this.delegatedAuthorityModel.create(query);

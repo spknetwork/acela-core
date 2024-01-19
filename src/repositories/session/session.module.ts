@@ -6,7 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: 'auth_sessions', schema: SessionSchema }], 'threespeak'),
+    MongooseModule.forFeature([{ name: 'auth_sessions', schema: SessionSchema }], 'acela-core'),
     ConfigModule,
   ],
   controllers: [],
