@@ -1,22 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Client } from '@hiveio/dhive';
-import { HiveClient } from '../../utils/hiveClient';
 
 import { VideoToPublishDto } from './dto/video-to-publish.dto';
 import { APP_BUNNY_IPFS_CDN, APP_IMAGE_CDN_DOMAIN } from '../../consts';
 import { PostBeneficiary, CommentOption, HiveAccountMetadata, CustomJsonOperation, OperationsArray } from "../../repositories/hive/types";
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { DbVideoToPublishDto } from '../../repositories/video/dto/videos-to-publish.dto';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const videoPostTemplate = `<center>
 
-const VideoPostTemplate = readFileSync(join(__dirname, 'templates/video.md'), 'utf-8');
+[![](@@@thumbnail@@@)](https://3speak.tv/watch?v=@@@author@@@/@@@permlink@@@)
+
+▶️ [Watch on 3Speak](https://3speak.tv/watch?v=@@@author@@@/@@@permlink@@@)
+
+</center>
+
+---
+
+@@@description@@@
+
+---
+
+▶️ [3Speak](https://3speak.tv/watch?v=@@@author@@@/@@@permlink@@@)`;
+
 
 @Injectable()
 export class PublishingService {
@@ -276,7 +283,7 @@ export class PublishingService {
     const [fullVideo] = this.#getbaseThumbnail([detail]);
     console.log(fullVideo)
   
-    return VideoPostTemplate
+    return videoPostTemplate
       .replace(/@@@thumbnail@@@/g, fullVideo.baseThumbUrl)
       .replace(/@@@author@@@/g, detail.author)
       .replace(/@@@permlink@@@/g, detail.permlink)
