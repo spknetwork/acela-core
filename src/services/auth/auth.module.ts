@@ -5,24 +5,30 @@ import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from './constants';
 import { JwtStrategy, LocalStrategy } from './auth.strategy';
 import { UserModule } from '../../repositories/user/user.module';
-import { UserRepository } from '../../repositories/user/user.repository';
-import { UserAccountRepository } from '../../repositories/userAccount/user-account.repository';
 import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
 import { SessionModule } from '../../repositories/session/session.module';
-import { SessionRepository } from '../../repositories/session/session.repository';
+import { AuthController } from './auth.controller';
+import { EmailModule } from '../email/email.module';
+import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
+import { HiveModule } from '../../repositories/hive/hive.module';
 
 @Module({
   imports: [
     UserModule,
     PassportModule,
     UserAccountModule,
+    UserModule,
+    HiveAccountModule,
+    HiveModule,
+    EmailModule,
     SessionModule,
     JwtModule.register({
       secret: jwtConstants.secret,
       signOptions: { expiresIn: '30d' },
     }),
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
-  exports: [AuthService],
+  providers: [ AuthService, LocalStrategy, JwtStrategy ],
+  controllers: [ AuthController ],
+  exports: [ AuthService ],
 })
 export class AuthModule {}

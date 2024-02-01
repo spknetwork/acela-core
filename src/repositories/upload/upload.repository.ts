@@ -20,6 +20,10 @@ export class UploadRepository {
     return this.uploadModel.findOne(filter).exec();
   }
 
+  async findAll(): Promise<UploadDto[]> {
+    return this.uploadModel.find().exec();
+  }
+
   async upsertThumbnailUpload(id: string, cid: string, video_id: string): Promise<UploadDocument> {
     return await this.uploadModel.findOneAndUpdate({
       id: id

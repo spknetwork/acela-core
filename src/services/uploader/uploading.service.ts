@@ -1,22 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
-import {v4 as uuid, v5 as uuidv5} from 'uuid'
-import * as IpfsClusterUtils from '../../utils/ipfsClusterUtils'
+import { v4 as uuid, v5 as uuidv5 } from 'uuid'
 import { ulid } from 'ulid';
 import moment from 'moment';
 import { CreateUploadDto } from './dto/create-upload.dto';
+import { IpfsService } from '../ipfs/ipfs.service';
 
 @Injectable()
 export class UploadingService {
 
-  constructor(private readonly uploadRepository: UploadRepository, private readonly videoRepository: VideoRepository) {}
+  constructor(private readonly uploadRepository: UploadRepository, private readonly videoRepository: VideoRepository, private readonly ipfsService: IpfsService) {}
 
   async uploadThumbnail(file: any, video_id: string) {
-    const id = uuidv5(`thumbnail`, video_id)
+    const id = uuidv5(video_id, 'thumbnail');
 
     console.log('uploaded thumbnail', file)
-    const { cid } = await IpfsClusterUtils.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
+    const { cid } = await this.ipfsService.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
       metadata: {
         key: `${video_id}/thumbnail`,
         app: "3speak-beta",

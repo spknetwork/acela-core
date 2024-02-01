@@ -10,7 +10,6 @@ import { UserModule } from './repositories/user/user.module';
 import { ApiModule } from './services/api/api.module';
 import { AuthModule } from './services/auth/auth.module';
 import { HiveModule } from './repositories/hive/hive.module';
-import { DelegatedAuthority } from './repositories/delegated-authority/schemas/delegated-authority.schema';
 import { DelegatedAuthorityModule } from './repositories/delegated-authority/delegated-auhthority.module';
 import { HiveAccountModule } from './repositories/hive-account/hive-account.module';
 import { LinkedAccountModule } from './repositories/linked-accounts/linked-account.module';
@@ -18,7 +17,8 @@ import { SessionModule } from './repositories/session/session.module';
 import { UploadModule } from './repositories/upload/upload.module';
 import { UserAccountModule } from './repositories/userAccount/user-account.module';
 import { EmailModule } from './services/email/email.module';
-import { UploaderModule } from './services/uploader/upload.module';
+import { UploadingModule } from './services/uploader/uploading.module';
+import { IpfsModule } from './services/ipfs/ipfs.module';
 
 @Module({
   imports: [
@@ -43,7 +43,8 @@ import { UploaderModule } from './services/uploader/upload.module';
     AuthModule,
     TasksModule,
     HiveModule,
-    UploaderModule,
+    IpfsModule,
+    UploadingModule,
     DelegatedAuthorityModule,
     HiveAccountModule,
     LinkedAccountModule,

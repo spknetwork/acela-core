@@ -15,18 +15,13 @@ import {
 } from '@nestjs/common'
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express'
 import { AuthGuard } from '@nestjs/passport'
-import moment from 'moment'
-import {v4 as uuid, v5 as uuidv5} from 'uuid'
-import * as IpfsClusterUtils from '../../utils/ipfsClusterUtils'
 import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils'
 import { ApiConsumes, ApiOperation, ApiProperty } from '@nestjs/swagger'
 import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto'
 import { CreateUploadDto } from './dto/create-upload.dto'
 import { StartEncodeDto } from './dto/start-encode.dto'
-import { UploadRepository } from '../../repositories/upload/upload.repository'
-import { ulid } from 'ulid'
-import { VideoRepository } from '../../repositories/video/video.repository'
-import { UploadingService } from './upload.service'
+import { UploadingService } from './uploading.service'
+import { v4 as uuid } from 'uuid'
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -34,13 +29,13 @@ MulterModule.registerAsync({
   }),
 });
 
-@Controller('/api/v1')
-export class UploaderController {
+@Controller('/api/v1/upload')
+export class UploadingController {
   constructor(private readonly uploadingService: UploadingService) {}
 
   @ApiConsumes('multipart/form-data', 'application/json')
-  @Post('upload_thumbnail')
-  @UseGuards(AuthGuard('jwt'))
+  @Post('thumbnail')
+  //@UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
   async uploadThumbnail(
     @Req() req, 
@@ -63,7 +58,7 @@ export class UploaderController {
      * TODO: do a bit more verification of user authority
      */
 
-    const cid = await this.uploadingService.createUpload(file, body.video_id)
+    const cid = await this.uploadingService.uploadThumbnail(file, body.video_id)
 
     return {
       status: 'ok',
