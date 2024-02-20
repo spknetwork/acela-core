@@ -1,36 +1,30 @@
 version: "3.3"
 services:
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - /data/caddy/data:/data
-      - /data/caddy/config:/config
-    networks:
-      - web
-      - acela-core
-  acela-core: # name of the service
-    build: .
+  acela-core: # name of the 
+    build:
+      context: . # the directory containing Docker context (".", meaning the current directory)
+      dockerfile: Dockerfile.local # specify the local Dockerfile
     container_name: acela-core # what to label the container for docker ps
     restart: always # restart if failed, until we stop it ourselves
     env_file:
-      - .env
+      - .env.local
     #external_links:
       #- mongo
     ports:
       - 4569:4569
+      - 9229:9229
     networks:
       - acela-core
     environment:
+      ENV_FILE: .env.local
       # MONGO_HOST: mongo:27017
       IPFS_HOST: ipfs:5001
       UPLOAD_PATH: /acela-uploads
     volumes:
-      - ./data/acela-uploads:/acela-uploads
+      - ./data/acela-uploads:/acela-
+      - .:/usr/app
+    depends_on:
+      - mongo
   tusd:
     image: tusproject/tusd:v1.9
     command: -s3-bucket mybucket -s3-endpoint http://minio:9000 -host=0.0.0.0 -port=1080 -behind-proxy -max-size 5000000000 -hooks-http http://acela-core:4569/api/v1/tus-callback
@@ -56,16 +50,16 @@ services:
       MINIO_ACCESS_KEY: AKIAIOSFODNN7EXAMPLE
       MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     command: server /data
-  # mongo:
-  #   container_name: mongo_acela
-  #   image: mongo:latest
-  #   restart: always
-  #   ports:
-  #     - 27417:27017
-  #   networks:
-  #     - acela-core
-  #   volumes:
-  #     - ./data/mongodb:/data/db
+  mongo:
+    container_name: mongo_acela
+    image: mongo:latest
+    restart: always
+    expose:
+      - "27017"
+    networks:
+      - acela-core
+    volumes:
+      - ./data/mongodb:/data/db
 
 volumes:
   tusd:

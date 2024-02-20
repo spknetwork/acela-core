@@ -4,6 +4,6 @@ coverage
 logs
 dist
 
-.env
+.env*
 .vscode
 data
