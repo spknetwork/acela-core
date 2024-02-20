@@ -29,7 +29,7 @@ export class AuthController {
 
 
   @UseGuards(AuthGuard('local'))
-  @Post('/auth/login')
+  @Post('/login')
   @ApiOkResponse({
     description: "Login success",
     type: LoginResponseDto
@@ -38,7 +38,7 @@ export class AuthController {
     return this.authService.login(req.user)
   }
 
-  // @UseGuards(AuthGuard('local'))
+  //@UseGuards(AuthGuard('local'))
   @ApiOkResponse({
     description: "Successfully logged in",
     type: LoginResponseDto
@@ -50,15 +50,14 @@ export class AuthController {
   @ApiInternalServerErrorResponse({
     description: "Internal Server Error - unrelated to request body"
   })
-  @Post('/auth/login_singleton')
+  @Post('/login_singleton')
   async loginSingletonReturn(@Body() body: LoginSingletonDto) {
-    // console.log(req)
     if (body.network === 'hive') {
       const proof_payload = JSON.parse(body.proof_payload)
       const accountDetails = await this.hiveRepository.getAccount(proof_payload.account)
 
       if (
-        this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(proof_payload), body.proof, accountDetails) &&
+        this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(JSON.stringify(proof_payload)), body.proof, accountDetails) &&
         new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
       ) {
         return await this.authService.authenticateUser(proof_payload.account)
@@ -108,7 +107,7 @@ export class AuthController {
     description: "Invalid or expired authentication token"
   })
   @UseGuards(AuthGuard('jwt'))
-  @Post('/auth/check')
+  @Post('/check')
   async checkAuth(@Request() req) {
     console.log('user details check', req.user)
     return {
@@ -163,7 +162,7 @@ export class AuthController {
   @ApiInternalServerErrorResponse({
     description: "Internal Server Error - unrelated to request body"
   })
-  @Post('/auth/lite/register-initial')
+  @Post('/lite/register-initial')
   async registerLite(@Body() body) {
     const { username, otp_code } = body
     const output = await HiveClient.database.getAccounts([username])
@@ -206,7 +205,7 @@ export class AuthController {
     }
 
   }
-  // @Post('/auth/lite/register-initial')
+  // @Post('/lite/register-initial')
   // async registerLiteFinish(@Body() body) {
   //   await appContainer.self.usersDb.insertOne({
   //     status: 'requested',
@@ -242,7 +241,7 @@ export class AuthController {
     }
   })
   // @UseGuards(AuthGuard('local'))
-  @Post('/auth/register')
+  @Post('/register')
   async register(@Request() req, @Body() body) {
     const password = req.body.password
     const {email} = req.body;
@@ -274,7 +273,7 @@ export class AuthController {
   @ApiMovedPermanentlyResponse({
     description: "Redirect user to 3Speak.tv",
   })
-  @Get('/auth/verifyemail')
+  @Get('/verifyemail')
   async verifyEmail(@Request() req, @Response() res) {
     const verifyCode = req.query.code
 
@@ -317,7 +316,7 @@ export class AuthController {
     }
   })
   @UseGuards(AuthGuard('jwt'))
-  @Post('/auth/request_hive_account')
+  @Post('/request_hive_account')
   async requestHiveAccount(@Request() req) {
     const existingAcocunt = await this.hiveAccountRepository.findOneByOwner(req.user.user_id)
     if (existingAcocunt) {

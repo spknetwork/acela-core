@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import hiveJsPackage from '@hiveio/hive-js';
 import { OperationsArray } from "./types";
 import { Client, ExtendedAccount, Operation, PrivateKey, PublicKey, Signature } from '@hiveio/dhive';
-import { HiveClient } from '../../utils/hiveClient';
 import crypto from 'crypto'
 
 hiveJsPackage.api.setOptions({
@@ -16,7 +15,7 @@ hiveJsPackage.config.set('rebranded_api','true');
 export class HiveRepository {
   readonly #logger: Logger;
   readonly #hiveJs = hiveJsPackage;
-  readonly #hive: Client = HiveClient;
+  readonly #hive: Client = new Client(process.env.HIVE_HOST?.split(',') || ["https://anyx.io", "https://hived.privex.io", "https://rpc.ausbit.dev", "https://techcoderx.com", "https://api.openhive.network", "https://api.hive.blog", "https://api.c0ff33a.uk"]);
 
   constructor() {}
 
@@ -44,7 +43,7 @@ export class HiveRepository {
   }
 
   async getAccount(author: string) {
-    const [hiveAccount] = await this.#hive.database.call('lookup_accounts',[author, 1]);
+    const [hiveAccount] = await this.#hive.database.getAccounts([author]);
     return hiveAccount;
   }
 
@@ -134,7 +133,7 @@ export class HiveRepository {
   }
 
   async comment(author: string, content: string, comment_options: { parent_author: string; parent_permlink: string; }) {
-    return await HiveClient.broadcast.comment(
+    return await this.#hive.broadcast.comment(
       {
         parent_author: comment_options.parent_author || '',
         parent_permlink: comment_options.parent_permlink || '',
