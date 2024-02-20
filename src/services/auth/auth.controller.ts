@@ -1,5 +1,5 @@
 import { cryptoUtils } from "@hiveio/dhive";
-import { BadRequestException, Body, Controller, Get, HttpException, HttpStatus, Post, Request, Response, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, HttpException, HttpStatus, Post, Request, Response, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { ApiOkResponse, ApiBadRequestResponse, ApiInternalServerErrorResponse, ApiHeader, ApiUnauthorizedResponse, ApiOperation, ApiBody, ApiParam, ApiMovedPermanentlyResponse } from "@nestjs/swagger";
 import moment from "moment";
@@ -15,9 +15,12 @@ import { UserRepository } from "../../repositories/user/user.repository";
 import { HiveRepository } from "../../repositories/hive/hive.repository";
 import { EmailService } from "../email/email.service";
 import bcrypt from 'bcryptjs'
+import { Magic } from '@magic-sdk/admin';
 
 @Controller('/api/v1/auth')
 export class AuthController {
+  readonly #magic = new Magic(process.env.MAGIC_SECRET_KEY);
+
   constructor(
     private readonly authService: AuthService,
     private readonly hiveAccountRepository: HiveAccountRepository,
@@ -51,7 +54,7 @@ export class AuthController {
     description: "Internal Server Error - unrelated to request body"
   })
   @Post('/login_singleton')
-  async loginSingletonReturn(@Body() body: LoginSingletonDto) {
+  async loginSingletonReturn(@Body() body: LoginSingletonDto, @Headers('authorization') didToken?: string) {
     if (body.network === 'hive') {
       const proof_payload = JSON.parse(body.proof_payload)
       const accountDetails = await this.hiveRepository.getAccount(proof_payload.account)
@@ -71,8 +74,19 @@ export class AuthController {
         )
       }
     } else if (body.network === 'did') {
-      return {
-        access_token: null,
+      try {
+        await this.#magic.token.validate(didToken)
+        return {
+          valid: true
+        }
+      } catch {
+        throw new HttpException(
+          {
+            reason: 'Invalid Decentralized ID',
+            errorType: "INVALID_DID"
+          },
+          HttpStatus.UNAUTHORIZED,
+        )
       }
     } else {
       throw new HttpException(
