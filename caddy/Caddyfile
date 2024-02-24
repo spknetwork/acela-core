@@ -1,0 +1,3 @@
+staging.3speak.tv {
+  reverse_proxy acela-core:4569
+}

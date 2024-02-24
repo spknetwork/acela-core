@@ -2,7 +2,7 @@ import NodeSchedule from 'node-schedule'
 import Slug from 'slug'
 import { AcelaCore } from "..";
 import * as DHive from '@hiveio/dhive'
-import { HiveClient } from '../../utils';
+import { HiveClient } from '../../utils/hiveClient';
 import { buildCommentOptions, buildJSONMetadata, buildPublishCustomJson, renderTemplate } from './utils';
 
 

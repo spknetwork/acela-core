@@ -1,6 +1,6 @@
 import { binary_to_base58 } from 'base58-js'
 import Slug from 'slug'
-import { HiveClient } from '../../utils'
+import { HiveClient } from '../../utils/hiveClient'
 
 const POST_TEMPLATE = `
 <center>

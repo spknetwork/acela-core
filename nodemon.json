@@ -1,0 +1,5 @@
+{
+  "delay": "2500",
+  "watch": ["src"],
+  "exec": "node --inspect=0.0.0.0:9229 --experimental-specifier-resolution=node --loader ts-node/esm src/index.ts"
+}

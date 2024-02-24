@@ -21,7 +21,7 @@ export class LockService {
         handler: Function
     }>
     identity: DID;
-    private _update_pid: NodeJS.Timer;
+    private _update_pid: ReturnType<typeof setTimeout>;
 
     constructor(self) {
         this.locks = self.locksDb
