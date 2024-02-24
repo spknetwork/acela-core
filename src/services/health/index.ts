@@ -1,7 +1,7 @@
 import { Collection } from "mongodb";
-import { CID, create } from 'ipfs-http-client'
+import { CID, create } from 'kubo-rpc-client'
 import { AcelaCore } from "..";
-import type { IPFSHTTPClient } from "ipfs-http-client/dist/src/types";
+import type { IPFSHTTPClient } from 'kubo-rpc-client';
 import Axios from "axios";
 import { ndjsonParse } from "./ipfs-cluster-utils";
 
@@ -21,8 +21,9 @@ interface PinAllocate {
     reported_size?: number
 }
 
-interface Pin {
-    status: "new" | "unpinned" | "active" | "deleted"
+export interface Pin {
+    _id: string
+    status: "new" | "queued" | "unpinned" | "active" | "deleted"
     owner: string
     permlink: string
     type: string
@@ -46,55 +47,6 @@ export class HealthCheckCore {
     async findTimedoutPins() {
 
     }
-
-    async createPinWeb() {
-        const posts = this.self.unionDb.collection('posts')
-        const latestPosts = await posts.find({
-            "json_metadata.app": {$regex: "3speak"}
-        }, {
-            sort: {
-                created_at: -1
-            },
-            limit: 250
-        }).toArray()
-        
-        let out = []
-        for(let video of latestPosts) {
-            const sourceMap = video.json_metadata.video.info.sourceMap
-            if(Array.isArray(sourceMap)) {
-                for(let src of sourceMap) {
-                    if(src.url.startsWith('ipfs://')) {
-                        const obj = {
-                            ...src, //...src should be always on top for safety reasons
-                            status: "new",
-                            owner: video.author,
-                            permlink: video.permlink,
-                            cid: src.url.replace('ipfs://', '').split('/')[0],
-
-                            
-
-                            allocations: []
-                        }
-                        await this.pins.findOneAndUpdate({
-                            status: "new",
-                            owner: video.author,
-                            permlink: video.permlink,
-                        }, {
-                            $set: {
-                                allocations: [],
-                                type: src.type,
-                                cid: obj.cid,
-                            }
-                        }, {
-                            upsert: true
-                        })
-                        out.push(obj)
-                    }
-                }
-            }
-        }
-    }
-
 
     /**
      * Pins directly to the local IPFS node skipping ipfs-cluster.
@@ -139,12 +91,6 @@ export class HealthCheckCore {
         }
         
     }
-    /**
-     * Pins directly to a ipfs-cluster of choice.
-     */
-    async pinToIpfsCluster() {
-
-    } 
 
     async verifyIpfsDirect() {
         const ipfsPins = await this.pins.find({
@@ -168,32 +114,8 @@ export class HealthCheckCore {
         }
     }
 
-    async verifyIpfsCluster() {
-        const response = await Axios.get(`${process.env.IPFS_CLUSTER_URL}/pins`, {
-            responseType: 'stream'
-        })
-        for await(let json of ndjsonParse(response.data)) {
-            console.log(json)
-        }
-    }
-
-
     async start() {
         this.pins = this.self.db.collection('pins')
-
         this.ipfs = create()
-
-        // await this.pins.updateMany({
-
-        // }, {
-        //     $set: {
-        //         allocations: []
-        //     }
-        // })
-
-        // await this.createPinWeb()
-        // await this.pinToIpfsDirect()
-        // await this.verifyIpfsDirect()
-        // await this.verifyIpfsCluster()
     }
 }

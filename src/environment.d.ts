@@ -27,7 +27,15 @@ declare global {
         HIVE_ONBOARD_TOKEN: string
         
         IPFS_CLUSTER_URL: string
+        IPFS_CLUSTER_DB_NAME: string
         IPFS_CLUSTER_SECRET: string
+        IPFS_CLUSTER_WS_DISCOVERY: string
+        IPFS_CLUSTER_WS_URL: string
+        IPFS_CLUSTER_WSS_PORT: number
+        IPFS_CLUSTER_PATH: string
+        IPFS_CLUSTER_KUBO_API: string
+        IPFS_CLUSTER_PEER_ID: string
+        IPFS_CLUSTER_NEST_API_ENABLE: string
 
         MAIL_GUN_KEY: string
         MAIL_GUN_SECRET: string

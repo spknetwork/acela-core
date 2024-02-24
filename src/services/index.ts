@@ -1,5 +1,5 @@
 import { Db, MongoClient, Collection } from 'mongodb'
-import * as IPFSHTTPClient from 'ipfs-http-client';
+import * as IPFSHTTPClient from 'kubo-rpc-client';
 import os from 'os'
 import Path from 'path'
 import Crypto from 'crypto'
