@@ -148,4 +148,18 @@ export class HiveRepository {
       PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
     )
   }
+
+  async doWeHavePostingAuth(account: any) {
+    let doWe = false
+    if (Array.isArray(account.posting.account_auths)) {
+      account.posting.account_auths.forEach(function (item) {
+        if (item[0] === 'threespeak') {
+          doWe = true
+        }
+      })
+      return doWe
+    } else {
+      return false
+    }
+  }
 }
