@@ -18,13 +18,19 @@ export class AuthService {
   }
 
   async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.userAccountRepository.findOne(email);
-    console.log(user)
+    const user = await this.userAccountRepository.findOneByEmail(email);
     if (user && bcrypt.compare(user.password, pass)) {
       const { password, ...result } = user;
       return result;
     }
     return null;
+  }
+
+  async getOrCreateUserByDid(did: string) {
+    const user = await this.userAccountRepository.findOneByDid(did);
+    if (!user) {
+      return await this.createDidUser(did)
+    }
   }
 
   async login(user: any) {
@@ -35,20 +41,16 @@ export class AuthService {
     };
   }
 
-  async authenticateUser(account: string) {
+  async authenticateUser(account: string, network: string) {
     const id = uuid()
-    const access_token = await this.jwtService.sign({
+    const access_token = this.jwtService.sign({
       id: id,
       type: 'singleton',
-      sub: `singleton/${account}`,
+      sub: `singleton/${network}/${account}`,
       username: account,
     })
 
-    await this.sessionRepository.insertOne({
-      id: id,
-      type: 'singleton',
-      sub: `singleton/${account}`,
-    })
+    await this.createSession(id, account);
 
     return {
       access_token,
@@ -63,7 +65,11 @@ export class AuthService {
     });
   }
 
-  async createUser(email: string, hashedPassword: string) {
-    return await this.userAccountRepository.createNewUser(email, hashedPassword)
+  async createEmailAndPasswordUser(email: string, hashedPassword: string) {
+    return await this.userAccountRepository.createNewEmailAndPasswordUser(email, hashedPassword)
+  }
+
+  async createDidUser(did: string) {
+    return await this.userAccountRepository.createNewDidUser(did)
   }
 }
