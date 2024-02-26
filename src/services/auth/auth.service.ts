@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { UserAccountRepository } from '../../repositories/userAccount/user-account.repository';
 import { v4 as uuid } from 'uuid'
 import { SessionRepository } from '../../repositories/session/session.repository';
+import { Network } from './types';
 
 @Injectable()
 export class AuthService {
@@ -41,27 +42,31 @@ export class AuthService {
     };
   }
 
-  async authenticateUser(account: string, network: string) {
+  generateSub(account: string, network: Network) {
+    return `singleton/${network}/${account}`
+  }
+
+  async authenticateUser(account: string, network: Network) {
     const id = uuid()
     const access_token = this.jwtService.sign({
       id: id,
       type: 'singleton',
-      sub: `singleton/${network}/${account}`,
+      sub: this.generateSub(account, network),
       username: account,
     })
 
-    await this.createSession(id, account);
+    await this.createSession(id, account, network);
 
     return {
       access_token,
     }
   }
 
-  async createSession(id: string, account: string) {
+  async createSession(id: string, account: string, network: Network) {
     return await this.sessionRepository.insertOne({
       id,
       type: 'singleton',
-      sub: `singleton/${account}`
+      sub: this.generateSub(account, network)
     });
   }
 
