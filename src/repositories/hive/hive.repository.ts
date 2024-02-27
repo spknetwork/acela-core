@@ -149,7 +149,7 @@ export class HiveRepository {
     )
   }
 
-  async doWeHavePostingAuth(account: any) {
+  async verifyPostingAuth(account: any) {
     let doWe = false
     if (Array.isArray(account.posting.account_auths)) {
       account.posting.account_auths.forEach(function (item) {
