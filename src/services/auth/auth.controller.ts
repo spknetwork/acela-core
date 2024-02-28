@@ -63,7 +63,7 @@ export class AuthController {
         this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(JSON.stringify(proof_payload)), body.proof, accountDetails) &&
         new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
       ) {
-        if (this.hiveRepository.doWeHavePostingAuth(accountDetails)) {
+        if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
           return await this.authService.authenticateUser(proof_payload.account)
         } else {
           throw new HttpException(
