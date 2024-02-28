@@ -12,6 +12,9 @@ import {
   HttpException,
   HttpStatus,
   Req,
+  Param,
+  Query,
+  Headers,
 } from '@nestjs/common'
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express'
 import { AuthGuard } from '@nestjs/passport'
@@ -101,9 +104,11 @@ export class UploadingController {
 
   @Post('tus-callback')
   @ApiOperation({ summary: 'TUSd uploader callback. Internal use only' })
-  async tusdCallback(@Body() body) {
+  async tusdCallback(@Body() body, @Headers() headers) {
     try {
-      await this.uploadingService.handleTusdCallback(body.Upload);
+      if (headers['hook-name'] === 'post-finish') {
+        await this.uploadingService.handleTusdCallback(body.Upload);
+      }
     } catch (error) {
       if (error.message === 'TestAuthorizationError') {
         throw new HttpException({ error: 'Test authorization used' }, HttpStatus.BAD_REQUEST);

@@ -40,7 +40,7 @@ export class UploadingService {
   async createUpload(user: { sub: string, username: string }, details: CreateUploadDto) {
     const video_id = ulid();
     const upload_id = ulid();
-    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
+    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '')
 
     await this.videoRepository.createNewHiveVideoPost({
       video_id,
