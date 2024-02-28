@@ -104,6 +104,9 @@ export class UploadingService {
       throw new Error('TestAuthorizationError');
     }
     if (uploadMetaData.Storage) {
+      if (uploadMetaData.Size >= 5000000000) {
+        throw new Error('File too big to be uploaded');
+      }
       await this.uploadRepository.setStorageDetails(
         uploadMetaData.MetaData.upload_id,
         uploadMetaData.Storage.Path,
