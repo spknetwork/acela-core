@@ -6,7 +6,6 @@ import { ulid } from 'ulid';
 import moment from 'moment';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
-import crypto from 'crypto'
 import ffmpeg from 'fluent-ffmpeg'
 
 @Injectable()
@@ -41,7 +40,6 @@ export class UploadingService {
   async createUpload(user: { sub: string, username: string }, details: CreateUploadDto) {
     const video_id = ulid();
     const upload_id = ulid();
-    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '')
 
     await this.videoRepository.createNewHiveVideoPost({
       video_id,
@@ -51,8 +49,7 @@ export class UploadingService {
       tags: details.tags || [],
       community: details.community, //'',
       language: details.language || 'en', //'en',
-      videoUploadLink: video_id,
-      permlink,
+      videoUploadLink: video_id
     })
 
     // console.log(localPost)

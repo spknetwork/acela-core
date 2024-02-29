@@ -80,20 +80,18 @@ export class VideoRepository {
     community: string;
     language: string;
     videoUploadLink: string;
-    permlink: string
   }): Promise<Video> {
     return await this.videoModel.create({
       video_id,
       owner: user.username,
       title: title,
       description,
-      beneficiaries: JSON.stringify([]),
-      tags: JSON.stringify(tags || []),
+      beneficiaries: [],
+      tags:  tags || [],
       size: 0,
       originalFilename: '',
       filename: '',
       community,
-      permlink: permlink,
       language: language || 'en',
       video_details: {
         duration: 0,

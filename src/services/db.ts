@@ -3,7 +3,7 @@ import { Schema } from 'mongoose'
 import 'dotenv/config'
 
 
-export const CORE_MONGODB_URL = process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017'
+export const CORE_MONGODB_URL = process.env.CORE_MONGODB_URL || 'mongodb://127.0.0.1:27017'
 
 export const mongo = new MongoClient(CORE_MONGODB_URL)
 
