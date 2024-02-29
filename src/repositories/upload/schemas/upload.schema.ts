@@ -30,6 +30,9 @@ export class Upload {
   @Prop({ type: String, required: true })
   created_by: string;
 
+  @Prop({ type: Boolean, required: true, default: false })
+  immediatePublish: boolean;
+
   // Add additional properties as needed
 }
 

@@ -7,6 +7,7 @@ import moment from 'moment';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
 import crypto from 'crypto'
+import ffmpeg from 'fluent-ffmpeg'
 
 @Injectable()
 export class UploadingService {
@@ -110,10 +111,29 @@ export class UploadingService {
       if (uploadMetaData.Size >= 5000000000) {
         throw new Error('File too big to be uploaded');
       }
+      const info = await new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(uploadMetaData.Storage.Path, (err: any, data: any) => {
+          if (err) {
+            reject(err)
+          }
+          resolve(data)
+        })
+      })
+      console.log(info)
+      const videoStreamInfo = info['streams'][0];
+      const formatInfo = info['format'];
+      let immediatePublish = false;
+      if (videoStreamInfo['codec_name'].toLowerCase()  == "h264") {
+        immediatePublish = true;
+      }
+      if (formatInfo['format_long_name'].toLowerCase().includes('mov')) {
+        immediatePublish = true;
+      }
       await this.uploadRepository.setStorageDetails(
         uploadMetaData.MetaData.upload_id,
         uploadMetaData.Storage.Path,
-        uploadMetaData.ID
+        uploadMetaData.ID,
+        immediatePublish,
       );
     }
   }

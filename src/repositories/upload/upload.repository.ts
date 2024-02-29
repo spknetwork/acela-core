@@ -52,13 +52,14 @@ export class UploadRepository {
     })
   }
 
-  async setStorageDetails(upload_id: string, path: string, filename: string) {
+  async setStorageDetails(upload_id: string, path: string, filename: string, immediatePublish: boolean) {
     this.uploadModel.findOneAndUpdate({
       id: upload_id
     }, {
       $set: {
         file_path: path,
-        file_name: filename
+        file_name: filename,
+        immediatePublish: immediatePublish,
       }
     })
   }
