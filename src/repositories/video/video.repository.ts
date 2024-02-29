@@ -66,8 +66,7 @@ export class VideoRepository {
     tags,
     community,
     language,
-    videoUploadLink,
-    permlink,
+    videoUploadLink
   }: {
     video_id: string;
     user: { 
