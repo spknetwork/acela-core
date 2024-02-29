@@ -12,8 +12,6 @@ import {
   HttpException,
   HttpStatus,
   Req,
-  Param,
-  Query,
   Headers,
 } from '@nestjs/common'
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express'
