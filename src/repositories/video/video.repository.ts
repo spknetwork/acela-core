@@ -86,7 +86,7 @@ export class VideoRepository {
       title: title,
       description,
       beneficiaries: [],
-      tags:  tags || [],
+      tags: tags || [],
       community,
       language: language || 'en',
       video_details: {
