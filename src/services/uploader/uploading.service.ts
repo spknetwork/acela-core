@@ -7,7 +7,7 @@ import moment from 'moment';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg'
-
+import crypto from 'crypto'
 @Injectable()
 export class UploadingService {
 
@@ -37,7 +37,7 @@ export class UploadingService {
     return cid;
   }
 
-  async createUpload(user: { sub: string, username: string }, details: CreateUploadDto) {
+  async createUpload(user: { sub: string, username: string, id?: string }, details: CreateUploadDto) {
     const video_id = ulid();
     const upload_id = ulid();
 
@@ -49,7 +49,9 @@ export class UploadingService {
       tags: details.tags || [],
       community: details.community, //'',
       language: details.language || 'en', //'en',
-      videoUploadLink: video_id
+      videoUploadLink: video_id,
+      beneficiaries: '[]',
+      permlink: crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
     })
 
     // console.log(localPost)
@@ -58,7 +60,7 @@ export class UploadingService {
     await this.uploadRepository.insertOne({
       video_id,
       expires: moment().add('1', 'day').toDate(),
-      created_by: user.sub,
+      created_by: user.id || user.sub,
       ipfs_status: 'pending',
       type: 'video'
     })

@@ -24,7 +24,7 @@ export class Video {
   title: string;
 
   @Prop()
-  tags?: string;
+  tags?: string[];
 
   @Prop()
   description: string;

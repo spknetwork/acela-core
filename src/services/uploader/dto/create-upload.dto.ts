@@ -21,7 +21,7 @@ export class CreateUploadDto {
 
   @ApiProperty({
     description: 'Community',
-    default: 'hive-101',
+    default: 'hive-181335',
   })
   community: string
 
