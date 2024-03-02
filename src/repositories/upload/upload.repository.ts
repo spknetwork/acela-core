@@ -24,9 +24,9 @@ export class UploadRepository {
     return this.uploadModel.find().exec();
   }
 
-  async upsertThumbnailUpload(id: string, cid: string, video_id: string): Promise<UploadDocument> {
+  async upsertThumbnailUpload(thumbnail_id: string, cid: string, video_id: string): Promise<UploadDocument> {
     return await this.uploadModel.findOneAndUpdate({
-      id: id
+      _id: thumbnail_id.replaceAll("-", ""),
     }, {
       $set: {
         video_id,
@@ -34,13 +34,35 @@ export class UploadRepository {
         file_name: null,
         file_path: null,
         ipfs_status: 'done',
-        cid,
+        cid: cid,
         type: 'thumbnail'
       }
     }, {
       upsert: true
     });
   }
+
+  async createThumbnailUpload(
+    id: string, 
+    cid: string, 
+    video_id: string, 
+    user: { 
+      sub: string; 
+      username: string;
+      id?: string;
+    }): Promise<UploadDocument> {
+    return await this.uploadModel.create({
+        id,
+        video_id,
+        expires: null,
+        file_name: null,
+        file_path: null,
+        ipfs_status: 'done',
+        cid: cid,
+        type: 'thumbnail',
+        created_by: user.id || user.sub,
+      });
+    }
 
   async setIpfsStatusToReady(uploadJobId) {
     return await this.uploadModel.findOneAndUpdate({

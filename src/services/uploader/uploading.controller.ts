@@ -36,7 +36,7 @@ export class UploadingController {
 
   @ApiConsumes('multipart/form-data', 'application/json')
   @Post('thumbnail')
-  //@UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
   async uploadThumbnail(
     @Req() req, 
@@ -59,7 +59,7 @@ export class UploadingController {
      * TODO: do a bit more verification of user authority
      */
 
-    const cid = await this.uploadingService.uploadThumbnail(file, body.video_id)
+    const cid = await this.uploadingService.uploadThumbnail(file, body.video_id, user)
 
     return {
       status: 'ok',
@@ -89,7 +89,7 @@ export class UploadingController {
   @ApiOperation({ summary: 'Updates the metadata of a pending upload [Work in progress]' })
   @Post('update_post')
   async postUpdate(@Body() body, @Req() req) {
-    console.log(req)
+    // console.log(req)
     try {
       await this.uploadingService.postUpdate(body.id)
     } catch (error) {

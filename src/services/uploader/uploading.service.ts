@@ -13,8 +13,12 @@ export class UploadingService {
 
   constructor(private readonly uploadRepository: UploadRepository, private readonly videoRepository: VideoRepository, private readonly ipfsService: IpfsService) {}
 
-  async uploadThumbnail(file: any, video_id: string) {
-    const id = uuidv5(video_id, 'thumbnail');
+  async uploadThumbnail(
+      file: any, 
+      video_id: string, 
+      user: { sub: string, username: string, id?: string }
+    ) {
+    const id = uuidv5('thumbnail', video_id);
 
     console.log('uploaded thumbnail', file)
     const { cid } = await this.ipfsService.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
@@ -23,11 +27,11 @@ export class UploadingService {
         app: "3speak-beta",
         message: "acela beta please ignore"
       },
-      replicationFactorMin: 1,
-      replicationFactorMax: 2,
+      // replicationFactorMin: 1,
+      // replicationFactorMax: 2,
     })
 
-    await this.uploadRepository.upsertThumbnailUpload(id, cid, video_id)
+    await this.uploadRepository.createThumbnailUpload(id, cid, video_id, user);
 
     await this.videoRepository.setThumbnail(video_id, id)
     
@@ -38,8 +42,8 @@ export class UploadingService {
   }
 
   async createUpload(user: { sub: string, username: string, id?: string }, details: CreateUploadDto) {
-    const video_id = ulid();
-    const upload_id = ulid();
+    const video_id = uuid();
+    const upload_id = uuid();
 
     await this.videoRepository.createNewHiveVideoPost({
       video_id,
@@ -118,7 +122,6 @@ export class UploadingService {
           resolve(data)
         })
       })
-      console.log(info)
       const videoStreamInfo = info['streams'][0];
       const formatInfo = info['format'];
       let immediatePublish = false;
