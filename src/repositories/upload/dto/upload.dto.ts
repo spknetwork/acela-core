@@ -7,4 +7,5 @@ export class UploadDto {
   readonly cid?: string;
   readonly type: 'video' | 'thumbnail' | 'other';
   readonly created_by: string;
+  readonly immediatePublish: boolean;
 }

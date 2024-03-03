@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
+import { PublishingService } from '../../services/publishing/publishing.service';
 import { v4 as uuid, v5 as uuidv5 } from 'uuid'
 import { ulid } from 'ulid';
 import moment from 'moment';
@@ -11,7 +12,7 @@ import crypto from 'crypto'
 @Injectable()
 export class UploadingService {
 
-  constructor(private readonly uploadRepository: UploadRepository, private readonly videoRepository: VideoRepository, private readonly ipfsService: IpfsService) {}
+  constructor(private readonly uploadRepository: UploadRepository, private readonly videoRepository: VideoRepository, private readonly ipfsService: IpfsService, private readonly publishingService: PublishingService) {}
 
   async uploadThumbnail(
       file: any, 
@@ -66,7 +67,8 @@ export class UploadingService {
       expires: moment().add('1', 'day').toDate(),
       created_by: user.id || user.sub,
       ipfs_status: 'pending',
-      type: 'video'
+      type: 'video',
+      immediatePublish: false,
     })
 
     return {
@@ -80,6 +82,11 @@ export class UploadingService {
       id: uploadId
     })
     if(uploadJob) {
+      if (uploadJob.immediatePublish) {
+        const video_id = uploadJob.video_id;
+        const publishData = await this.videoRepository.getVideoToPublish(video_id);
+        await this.publishingService.publish(publishData)
+      }
       await this.uploadRepository.setIpfsStatusToReady(uploadJob.video_id)
     }
   }

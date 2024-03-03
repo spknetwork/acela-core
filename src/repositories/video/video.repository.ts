@@ -40,6 +40,13 @@ export class VideoRepository {
     }, dbVideoToPublishProjection).sort('-created');
   }
 
+  async getVideoToPublish(video_id: string): Promise<DbVideoToPublishDto> {
+    const results = await this.videoModel.find({
+      id:  video_id
+    }, dbVideoToPublishProjection).sort('-created').limit(1);
+    return results[0]
+  }
+
   async updateVideoFailureStatus(owner: Video['owner'], failureStatuses: { lowRc: Video['lowRc']; publishFailed: Video['publishFailed']; }): Promise<UpdateResult> {
     return await this.videoModel.updateOne({ owner }, { $set: failureStatuses }).exec()
   }
