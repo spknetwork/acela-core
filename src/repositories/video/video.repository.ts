@@ -40,9 +40,10 @@ export class VideoRepository {
     }, dbVideoToPublishProjection).sort('-created');
   }
 
-  async getVideoToPublish(video_id: string): Promise<DbVideoToPublishDto> {
+  async getVideoToPublish(owner: string, permlink: string): Promise<DbVideoToPublishDto> {
     const results = await this.videoModel.find({
-      id:  video_id
+      owner: owner,
+      permlink: permlink,
     }, dbVideoToPublishProjection).sort('-created').limit(1);
     return results[0]
   }

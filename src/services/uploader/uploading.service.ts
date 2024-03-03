@@ -21,7 +21,6 @@ export class UploadingService {
     ) {
     const id = uuidv5('thumbnail', video_id);
 
-    console.log('uploaded thumbnail', file)
     const { cid } = await this.ipfsService.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
       metadata: {
         key: `${video_id}/thumbnail`,
@@ -35,16 +34,14 @@ export class UploadingService {
     await this.uploadRepository.createThumbnailUpload(id, cid, video_id, user);
 
     await this.videoRepository.setThumbnail(video_id, id)
-    
-    console.log('uploadedFile', file.path)
-    console.log('uploadedFile', file)
-
+  
     return cid;
   }
 
   async createUpload(user: { sub: string, username: string, id?: string }, details: CreateUploadDto) {
     const video_id = uuid();
     const upload_id = uuid();
+    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '');
 
     await this.videoRepository.createNewHiveVideoPost({
       video_id,
@@ -56,7 +53,7 @@ export class UploadingService {
       language: details.language || 'en', //'en',
       videoUploadLink: video_id,
       beneficiaries: '[]',
-      permlink: crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
+      permlink: permlink,
     })
 
     // console.log(localPost)
@@ -73,21 +70,22 @@ export class UploadingService {
 
     return {
       video_id,
-      upload_id
+      upload_id,
+      permlink,
     }
   }
 
-  async startEncode(uploadId: string) {
+  async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {
     let uploadJob = await this.uploadRepository.findOne({
-      id: uploadId
+      video_id: video_id,
+      type: 'video'
     })
     if(uploadJob) {
       if (uploadJob.immediatePublish) {
-        const video_id = uploadJob.video_id;
-        const publishData = await this.videoRepository.getVideoToPublish(video_id);
+        const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
         await this.publishingService.publish(publishData)
       }
-      await this.uploadRepository.setIpfsStatusToReady(uploadJob.video_id)
+      await this.uploadRepository.setIpfsStatusToReady(video_id)
     }
   }
 
@@ -139,7 +137,7 @@ export class UploadingService {
         immediatePublish = true;
       }
       await this.uploadRepository.setStorageDetails(
-        uploadMetaData.MetaData.upload_id,
+        uploadMetaData.MetaData.video_id,
         uploadMetaData.Storage.Path,
         uploadMetaData.ID,
         immediatePublish,

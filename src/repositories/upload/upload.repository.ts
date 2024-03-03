@@ -64,9 +64,9 @@ export class UploadRepository {
       });
     }
 
-  async setIpfsStatusToReady(uploadJobId) {
+  async setIpfsStatusToReady(video_id: string) {
     return await this.uploadModel.findOneAndUpdate({
-      _id: uploadJobId
+      video_id: video_id,
     }, {
       $set: {
         ipfs_status: "ready"
@@ -74,9 +74,10 @@ export class UploadRepository {
     })
   }
 
-  async setStorageDetails(upload_id: string, path: string, filename: string, immediatePublish: boolean) {
+  async setStorageDetails(video_id: string, path: string, filename: string, immediatePublish: boolean) {
     this.uploadModel.findOneAndUpdate({
-      id: upload_id
+      video_id: video_id,
+      type: 'video'
     }, {
       $set: {
         file_path: path,

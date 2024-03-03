@@ -80,9 +80,12 @@ export class UploadingController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @Post('start_encode')
-  async startEncode(@Body() body: StartEncodeDto) {
-    return await this.uploadingService.startEncode(body.upload_id);
+  async startEncode(@Body() body: StartEncodeDto, @Request() req) {
+    const user = req.user
+    const username = user.username
+    return await this.uploadingService.startEncode(body.upload_id, body.video_id, body.permlink, username);
   }
 
 
