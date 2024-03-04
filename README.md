@@ -30,7 +30,7 @@ On a server:
 
 In development mode, if using vs code you can attach a debugger by going to the debugger tab and pressing attach to docker.
 
-![alt text](image.png)
+![alt text](docs/debugging.png)
 
 ## Deploy
 ### Staging
