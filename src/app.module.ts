@@ -25,14 +25,14 @@ import { IpfsModule } from './services/ipfs/ipfs.module';
     ConfigModule.forRoot({
       envFilePath: process.env.ENV_FILE || '.env',
     }),
-    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/threespeak${process.env.CORE_MONGODB_PARAMS}`, {
+    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/threespeak`, {
       connectionName: 'threespeak',
       autoIndex: true,
     }),
-    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/3speakAuth${process.env.CORE_MONGODB_PARAMS}`, {
+    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/3speakAuth`, {
       connectionName: '3speakAuth'
     }),
-    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/acela-core${process.env.CORE_MONGODB_PARAMS}`, {
+    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/acela-core`, {
       connectionName: 'acela-core'
     }),
     ScheduleModule.forRoot(),

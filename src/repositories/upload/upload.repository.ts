@@ -74,8 +74,9 @@ export class UploadRepository {
     })
   }
 
-  async setStorageDetails(video_id: string, path: string, filename: string, immediatePublish: boolean) {
-    this.uploadModel.findOneAndUpdate({
+  async setStorageDetails(upload_id: string, video_id: string, path: string, filename: string, immediatePublish: boolean) {
+    await this.uploadModel.findOneAndUpdate({
+      upload_id: upload_id,
       video_id: video_id,
       type: 'video'
     }, {

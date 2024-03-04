@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
-import { v4 as uuid, v5 as uuidv5 } from 'uuid'
 import { ulid } from 'ulid';
 import moment from 'moment';
 import { CreateUploadDto } from './dto/create-upload.dto';
@@ -19,7 +18,7 @@ export class UploadingService {
       video_id: string, 
       user: { sub: string, username: string, id?: string }
     ) {
-    const id = uuidv5('thumbnail', video_id);
+    const id = ulid();
 
     const { cid } = await this.ipfsService.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
       metadata: {
@@ -39,8 +38,8 @@ export class UploadingService {
   }
 
   async createUpload(user: { sub: string, username: string, id?: string }, details: CreateUploadDto) {
-    const video_id = uuid();
-    const upload_id = uuid();
+    const video_id = ulid();
+    const upload_id = ulid();
     const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '');
 
     await this.videoRepository.createNewHiveVideoPost({
@@ -60,6 +59,7 @@ export class UploadingService {
 
 
     await this.uploadRepository.insertOne({
+      upload_id,
       video_id,
       expires: moment().add('1', 'day').toDate(),
       created_by: user.id || user.sub,
@@ -77,6 +77,7 @@ export class UploadingService {
 
   async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {
     let uploadJob = await this.uploadRepository.findOne({
+      upload_id: upload_id,
       video_id: video_id,
       type: 'video'
     })
@@ -137,6 +138,7 @@ export class UploadingService {
         immediatePublish = true;
       }
       await this.uploadRepository.setStorageDetails(
+        uploadMetaData.MetaData.upload_id,
         uploadMetaData.MetaData.video_id,
         uploadMetaData.Storage.Path,
         uploadMetaData.ID,

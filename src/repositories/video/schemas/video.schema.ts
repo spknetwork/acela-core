@@ -6,6 +6,9 @@ export type VideoDocument = HydratedDocument<Video>;
 @Schema()
 export class Video {
   @Prop({ required: true })
+  video_id: string;
+
+  @Prop({ required: true })
   filename: string;
 
   @Prop()

@@ -1,4 +1,5 @@
 export class UploadDto {
+  readonly upload_id: string;
   readonly video_id: string;
   readonly expires?: Date;
   readonly file_name?: string;

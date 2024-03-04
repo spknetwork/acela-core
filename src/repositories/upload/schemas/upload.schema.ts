@@ -1,12 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { v4 as uuid } from 'uuid'
+import { ulid } from 'ulid';
 
 export type UploadDocument = HydratedDocument<Upload>;
 
 @Schema()
 export class Upload {
-  @Prop({ type: String, required: true, default: () => uuid() })
+  @Prop({ type: String, required: true, default: () => ulid() })
+  upload_id: string;
+
+  @Prop({ type: String, required: true, default: () => ulid() })
   video_id: string;
 
   @Prop({ type: Date, default: Date.now })
