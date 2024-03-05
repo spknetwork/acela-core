@@ -1,13 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, HydratedDocument, Types } from 'mongoose';
 import { HiveAccount, HiveAccountSchema } from '../../hive-account/schemas/hive-account.schema';
-import { v4 as uuid } from 'uuid';
+import { ulid } from 'ulid';
 
 export type UserDocument = HydratedDocument<User>;
 
 @Schema()
 export class User extends Document {
-  @Prop({ type: String, unique: true, default: () => uuid() })
+  @Prop({ type: String, unique: true, default: () => ulid() })
   user_id: string;
 
   @Prop({ type: Boolean, required: true, default: false })

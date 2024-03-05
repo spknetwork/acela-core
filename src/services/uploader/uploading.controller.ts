@@ -21,7 +21,6 @@ import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto'
 import { CreateUploadDto } from './dto/create-upload.dto'
 import { StartEncodeDto } from './dto/start-encode.dto'
 import { UploadingService } from './uploading.service'
-import { v4 as uuid } from 'uuid'
 
 MulterModule.registerAsync({
   useFactory: () => ({

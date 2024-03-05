@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs'
 import { UserAccountRepository } from '../../repositories/userAccount/user-account.repository';
-import { v4 as uuid } from 'uuid'
+import { ulid } from 'ulid'
 import { SessionRepository } from '../../repositories/session/session.repository';
 import { Network } from './types';
 
@@ -47,7 +47,7 @@ export class AuthService {
   }
 
   async authenticateUser(account: string, network: Network) {
-    const id = uuid()
+    const id = ulid()
     const access_token = this.jwtService.sign({
       id: id,
       type: 'singleton',

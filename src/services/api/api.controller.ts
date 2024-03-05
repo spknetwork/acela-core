@@ -12,7 +12,7 @@ import {
 import { AuthGuard } from '@nestjs/passport'
 import { HiveClient } from '../../utils/hiveClient'
 import { AuthService } from '../auth/auth.service'
-import { v4 as uuid } from 'uuid'
+import { ulid } from 'ulid'
 import { RequireHiveVerify } from './utils'
 import { ApiBadRequestResponse, ApiBody, ApiHeader, ApiOkResponse, ApiOperation } from '@nestjs/swagger'
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository'
@@ -140,7 +140,7 @@ export class ApiController {
       account: data.username,
     })
     if (!linkedAccount) {
-      const challenge = uuid()
+      const challenge = ulid()
       await this.linkedAccountsRepository.linkHiveAccount(user_id, data.username, challenge)
 
       return {
