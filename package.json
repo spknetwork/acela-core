@@ -95,7 +95,7 @@
     "tsc:v": "tsc -v",
     "tsc": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
-    "dev": "nodemon",
+    "dev": "nodemon -L src/index.ts",
     "start": "node --experimental-specifier-resolution=node  dist/index.js",
     "lint:fix": "eslint --fix \"src/**/*.{ts,tsx}\"",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",

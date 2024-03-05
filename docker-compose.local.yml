@@ -21,7 +21,7 @@ services:
       IPFS_HOST: ipfs:5001
       UPLOAD_PATH: /acela-uploads
     volumes:
-      - ./data/acela-uploads:/acela-
+      - ./data/acela-uploads:/acela-uploads
       - .:/usr/app
     depends_on:
       - mongo

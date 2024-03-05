@@ -1,5 +1,5 @@
 import { cryptoUtils } from "@hiveio/dhive";
-import { BadRequestException, Body, Controller, Get, Headers, HttpException, HttpStatus, Post, Request, Response, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, HttpException, HttpStatus, Logger, Post, Request, Response, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { ApiOkResponse, ApiBadRequestResponse, ApiInternalServerErrorResponse, ApiHeader, ApiUnauthorizedResponse, ApiOperation, ApiBody, ApiParam, ApiMovedPermanentlyResponse } from "@nestjs/swagger";
 import moment from "moment";
@@ -14,12 +14,15 @@ import { HiveAccountRepository } from "../../repositories/hive-account/hive-acco
 import { UserRepository } from "../../repositories/user/user.repository";
 import { HiveRepository } from "../../repositories/hive/hive.repository";
 import { EmailService } from "../email/email.service";
-import bcrypt from 'bcryptjs'
-import { Magic } from '@magic-sdk/admin';
+import bcrypt from 'bcryptjs';
+import { DID } from 'dids'
+import KeyResolver from 'key-did-resolver'
+import { Ed25519Provider } from "key-did-provider-ed25519";
+import * as crypto from 'crypto';
 
 @Controller('/api/v1/auth')
 export class AuthController {
-  readonly #magic = new Magic(process.env.MAGIC_SECRET_KEY);
+  readonly #logger = new Logger(AuthController.name);
 
   constructor(
     private readonly authService: AuthService,
@@ -55,8 +58,9 @@ export class AuthController {
   })
   @Post('/login_singleton')
   async loginSingletonReturn(@Body() body: LoginSingletonDto, @Headers('authorization') didToken?: string) {
+    const proof_payload = JSON.parse(body.proof_payload)
+
     if (body.network === 'hive') {
-      const proof_payload = JSON.parse(body.proof_payload)
       const accountDetails = await this.hiveRepository.getAccount(proof_payload.account)
 
       if (
@@ -64,7 +68,7 @@ export class AuthController {
         new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
       ) {
         if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
-          return await this.authService.authenticateUser(proof_payload.account)
+          return await this.authService.authenticateUser(proof_payload.account, 'hive')
         } else {
           throw new HttpException(
             {
@@ -85,17 +89,52 @@ export class AuthController {
       }
     } else if (body.network === 'did') {
       try {
-        await this.#magic.token.validate(didToken)
-        return {
-          valid: true
+        if (!didToken) {
+          throw new HttpException(
+            {
+              reason: 'DID Token Missing',
+              errorType: "MISSING_DID_TOKEN"
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        };
+
+        const uint8Array = crypto.randomBytes(32);
+
+        const did = new DID({
+          provider: new Ed25519Provider(uint8Array),
+          resolver: KeyResolver.getResolver()
+        })
+
+        const verifyJWSResult = await did.verifyJWS(didToken);
+        const didVal = verifyJWSResult.kid.split('#')[0];
+
+        await did.resolve(didVal);
+        await did.authenticate();
+
+        const didIsInDate = new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate()
+
+        if (didIsInDate) {
+          this.authService.getOrCreateUserByDid(didVal);
+          return await this.authService.authenticateUser(didVal, 'did');
         }
-      } catch {
+
         throw new HttpException(
           {
-            reason: 'Invalid Decentralized ID',
-            errorType: "INVALID_DID"
+            reason: 'Invalid Signature',
+            errorType: "INVALID_SIGNATURE"
           },
-          HttpStatus.UNAUTHORIZED,
+          HttpStatus.BAD_REQUEST,
+        )
+
+      } catch (e) {
+        this.#logger.error(e)
+        throw new HttpException(
+          {
+            reason: e,
+            errorType: "UNKNOWN_SERVER_ERROR"
+          },
+          HttpStatus.SERVICE_UNAVAILABLE,
         )
       }
     } else {
@@ -280,7 +319,7 @@ export class AuthController {
       ) 
     } else {
       
-      const { email_code } = await this.authService.createUser(email, hashedPassword)
+      const { email_code } = await this.authService.createEmailAndPasswordUser(email, hashedPassword)
 
       await this.emailService.sendRegistration(email, email_code);
       return {
