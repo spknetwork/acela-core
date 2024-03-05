@@ -12,7 +12,7 @@ export class UserAccount {
   @Prop({ type: Date, required: true, default: Date.now })
   createdAt: Date;
   
-  @Prop({ type: String, required: true, unique: true })
+  @Prop({ type: String, unique: true })
   email: string;
 
   @Prop({ type: Boolean, required: true, default: false })
@@ -47,6 +47,9 @@ export class UserAccount {
 
   @Prop({ type: ['UNCONFIRMED', 'CONFIRMED'], default: 'UNCONFIRMED', required: true })
   userStatus: string;
+
+  @Prop({ type: String })
+  did: string;
 }
 
 export const UserAccountSchema = SchemaFactory.createForClass(UserAccount);

@@ -11,7 +11,7 @@ export class UserAccountRepository {
 
   constructor(@InjectModel(UserAccount.name, '3speakAuth') private userAccountModel: Model<UserAccount>) {}
     
-  async findOne(email: string): Promise<UserAccount | undefined> {
+  async findOneByEmail(email: string): Promise<UserAccount | undefined> {
     const query = { email };
     const authUser = await this.userAccountModel.findOne(query);
     this.#logger.log(authUser) // TODO: delete - not suitable for prod
@@ -19,7 +19,15 @@ export class UserAccountRepository {
     return authUser;
   }
 
-  async createNewUser(email: string, hashedPassword: string): Promise<CreateUserAccountDto> {
+  async findOneByDid(did: string) {
+    const query = { did };
+    const authUser = await this.userAccountModel.findOne(query);
+    this.#logger.log(authUser) // TODO: delete - not suitable for prod
+
+    return authUser;
+  }
+
+  async createNewEmailAndPasswordUser(email: string, hashedPassword: string): Promise<CreateUserAccountDto> {
     return this.userAccountModel.create({
       email,
       email_code: ulid(),
@@ -28,6 +36,12 @@ export class UserAccountRepository {
           value: hashedPassword
         }
       }
+    });
+  }
+
+  async createNewDidUser(did: string): Promise<CreateUserAccountDto> {
+    return this.userAccountModel.create({
+      did
     });
   }
 }
