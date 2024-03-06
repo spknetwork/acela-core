@@ -7,11 +7,8 @@ import { Ed25519Provider } from 'key-did-provider-ed25519';
 import { DID } from "dids";
 import KeyResolver from 'key-did-resolver'
 import { AuthSession, HiveAccountCreation, UserAccount, UserAccountLink } from '../types/auth';
-import { CommsCore } from './comms';
-import { VoterCore } from './comms/voter';
 import { CORE_MONGODB_URL } from './db';
 import { HealthCheckCore } from './health';
-import { LockService } from './lock-service';
 import { StorageEngine } from './storage-engine';
 import { VideoProcessService } from './video-process';
 import { Config } from './config';
@@ -28,12 +25,9 @@ export class AcelaCore {
     delegatedAuthority: Collection;
     authSessions: Collection<AuthSession>
     healthChecks: HealthCheckCore;
-    voter: VoterCore;
     uploadsDb: Collection<any>;
     storageEngine: StorageEngine;
     locksDb: Collection;
-    lockService: LockService;
-    comms: CommsCore;
     videoProcessService: VideoProcessService;
     localPosts: Collection;
     ipfs: IPFSHTTPClient.IPFSHTTPClient;
@@ -87,27 +81,14 @@ export class AcelaCore {
         this.unionDb = connection2.db('spk-union-indexer')
         this.delegatedAuthority = this.unionDb.collection('delegated-authority')
 
-
-        this.lockService = new LockService(this);
-
-        await this.lockService.start()
-
         //TODO: Move to separate microservice in the future
         this.healthChecks = new HealthCheckCore(this)
 
         await this.healthChecks.start();
-
-        this.voter = new VoterCore(this)
-
-        await this.voter.start()
         
         this.storageEngine = new StorageEngine(this)
 
         await this.storageEngine.start()
-
-        this.comms = new CommsCore(this)
-
-        await this.comms.start()
 
         this.videoProcessService = new VideoProcessService(this)
 
