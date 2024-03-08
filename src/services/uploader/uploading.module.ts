@@ -5,9 +5,10 @@ import { VideoModule } from '../../repositories/video/video.module';
 import { UploadingService } from './uploading.service';
 import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
+import { HiveModule } from '../../repositories/hive/hive.module';
 
 @Module({
-  imports: [ UploadModule, VideoModule, IpfsModule, PublishingModule ],
+  imports: [ UploadModule, VideoModule, IpfsModule, PublishingModule, HiveModule ],
   controllers: [ UploadingController ],
   providers: [ UploadingService ],
   exports: [ UploadingService ]

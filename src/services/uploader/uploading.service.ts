@@ -11,7 +11,12 @@ import crypto from 'crypto'
 @Injectable()
 export class UploadingService {
 
-  constructor(private readonly uploadRepository: UploadRepository, private readonly videoRepository: VideoRepository, private readonly ipfsService: IpfsService, private readonly publishingService: PublishingService) {}
+  constructor(
+    private readonly uploadRepository: UploadRepository, 
+    private readonly videoRepository: VideoRepository, 
+    private readonly ipfsService: IpfsService, 
+    private readonly publishingService: PublishingService,
+  ) {}
 
   async uploadThumbnail(
       file: any, 
@@ -88,6 +93,11 @@ export class UploadingService {
       }
       await this.uploadRepository.setIpfsStatusToReady(video_id)
     }
+  }
+
+  async getVideoTitleLength(permlink: string, owner: string): Promise<number> {
+    const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
+    return publishData.title.length;
   }
 
   async postUpdate(uploadId: any) {

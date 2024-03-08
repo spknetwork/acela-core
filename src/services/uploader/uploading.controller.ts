@@ -22,6 +22,7 @@ import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto'
 import { CreateUploadDto } from './dto/create-upload.dto'
 import { StartEncodeDto } from './dto/start-encode.dto'
 import { UploadingService } from './uploading.service'
+import { HiveRepository } from '../../repositories/hive/hive.repository'
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -31,7 +32,10 @@ MulterModule.registerAsync({
 
 @Controller('/api/v1/upload')
 export class UploadingController {
-  constructor(private readonly uploadingService: UploadingService) {}
+  constructor(
+    private readonly uploadingService: UploadingService,
+    private readonly hiveRepository: HiveRepository,
+  ) {}
 
   @ApiConsumes('multipart/form-data', 'application/json')
   @Post('thumbnail')
@@ -84,6 +88,28 @@ export class UploadingController {
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const user = req.user
     const username = user.username
+    const accountDetails = await this.hiveRepository.getAccount(username);
+    // Check 1: Do we have posting authority?
+    if (this.hiveRepository.verifyPostingAuth(accountDetails) === false) {
+      const reason = `Hive Account @${username} has not granted posting authority to @threespeak`;
+      const errorType = "MISSING_POSTING_AUTHORITY";
+      throw new HttpException({ reason: reason, errorType: errorType }, HttpStatus.BAD_REQUEST);
+    }
+    // Check 2: Is post title too big or too small?
+    const videoTitleLength = await this.uploadingService.getVideoTitleLength(body.permlink, username);
+    if (videoTitleLength === 0) {
+      throw new HttpException({ reason: 'Video title is not set', errorType: 'NO_VIDEO_TITLE'}, HttpStatus.BAD_REQUEST);
+    }
+    if (videoTitleLength >= 255) {
+      throw new HttpException({ reason: 'Video title is too big. Please update it.', errorType: 'BIG_VIDEO_TITLE'}, HttpStatus.BAD_REQUEST);
+    }
+    // Check 3: Is this post already published?
+    const postExists = await this.hiveRepository.hivePostExists({author: username, permlink: body.permlink});
+    if (postExists) {
+      throw new HttpException({ reason: 'Post already exists on Hive Blockchain', errorType: 'POST_EXISTS'}, HttpStatus.BAD_REQUEST);
+    }
+    // TO-DO: Check 4: Does user have enough RC?
+    // All check went well? let's encode & publish
     return await this.uploadingService.startEncode(body.upload_id, body.video_id, body.permlink, username);
   }
 

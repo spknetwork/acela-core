@@ -3,6 +3,7 @@ import hiveJsPackage from '@hiveio/hive-js'
 import { OperationsArray } from './types'
 import { Client, ExtendedAccount, Operation, PrivateKey, PublicKey, Signature } from '@hiveio/dhive'
 import crypto from 'crypto'
+import 'dotenv/config'
 
 hiveJsPackage.api.setOptions({
   useAppbaseApi: true,
@@ -65,14 +66,13 @@ export class HiveRepository {
     // ])
   }
 
-  async hivePostExists({ author, permlink }: { author: string; permlink: string }) {
+  async hivePostExists({ author, permlink }: { author: string; permlink: string }): Promise<Boolean> {
     try {
       const content = await this.#hiveJs.api.getContent(author, permlink)
-
       // Check if the content is an object and has a body. This implicitly checks for non-empty strings.
       return typeof content === 'object' && !!content.body
     } catch (e) {
-      this.#logger.error('Error checking Steem post existence:', e)
+      this.#logger.error('Error checking Hive post existence:', e)
       return false
     }
   }
@@ -197,11 +197,11 @@ export class HiveRepository {
     )
   }
 
-  async verifyPostingAuth(account: any) {
+  verifyPostingAuth(account: any): Boolean {
     let doWe = false
     if (Array.isArray(account.posting.account_auths)) {
       account.posting.account_auths.forEach(function (item) {
-        if (item[0] === 'threespeak') {
+        if (item[0] === process.env.VOTER_ACCOUNT) {
           doWe = true
         }
       })
