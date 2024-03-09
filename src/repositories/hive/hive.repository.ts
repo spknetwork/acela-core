@@ -77,6 +77,18 @@ export class HiveRepository {
     }
   }
 
+  async hasEnoughRC({author}: {author: string;}): Promise<Boolean> {
+    try {
+      const rc = await this.#hive.rc.findRCAccounts([author]);
+      const rcInBillion = rc[0].rc_manabar.current_mana / 1000000;
+      console.log(`Resource Credits for ${username}:`, rcInBillion);
+      return rcInBillion < 50;
+    } catch (e) {
+      this.#logger.error('Error checking Hive post existence:', e)
+      return false
+    }
+  }
+
   async getAccount(author: string) {
     const [hiveAccount] = await this.#hive.database.getAccounts([author])
     return hiveAccount
