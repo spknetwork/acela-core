@@ -79,9 +79,9 @@ export class HiveRepository {
 
   async hasEnoughRC({author}: {author: string;}): Promise<Boolean> {
     try {
-      const rc = await this.#hive.rc.findRCAccounts([author]);
+      const rc = await this.#hive.rc.findRCAccounts([author]) as any[];
       const rcInBillion = rc[0].rc_manabar.current_mana / 1000000;
-      console.log(`Resource Credits for ${username}:`, rcInBillion);
+      console.log(`Resource Credits for ${author}:`, rcInBillion);
       return rcInBillion < 50;
     } catch (e) {
       this.#logger.error('Error checking Hive post existence:', e)
