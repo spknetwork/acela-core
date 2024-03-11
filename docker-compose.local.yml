@@ -8,8 +8,8 @@ services:
     restart: always # restart if failed, until we stop it ourselves
     env_file:
       - .env.local
-    #external_links:
-      #- mongo
+    external_links:
+      - mongo
     ports:
       - 4569:4569
       - 9229:9229
@@ -17,7 +17,7 @@ services:
       - acela-core
     environment:
       ENV_FILE: .env.local
-      # MONGO_HOST: mongo:27017
+      MONGO_HOST: mongo:27017
       IPFS_HOST: ipfs:5001
       UPLOAD_PATH: /acela-uploads
     volumes:
