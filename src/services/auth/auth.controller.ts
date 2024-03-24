@@ -67,7 +67,17 @@ export class AuthController {
         this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(JSON.stringify(proof_payload)), body.proof, accountDetails) &&
         new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
       ) {
-        return await this.authService.authenticateUser(proof_payload.account, 'hive')
+        if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
+          return await this.authService.authenticateUser(proof_payload.account, 'hive')
+        } else {
+          throw new HttpException(
+            {
+              reason: `Hive Account @${proof_payload.account} has not granted posting authority to @threespeak`,
+              errorType: "MISSING_POSTING_AUTHORITY"
+            },
+            HttpStatus.BAD_REQUEST,
+          )
+        }
       } else {
         throw new HttpException(
           {
