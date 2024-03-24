@@ -11,8 +11,6 @@ Backend core for decentralized video applications on HIVE.
 
 Install docker using the reccommended steps for your system, then install docker compose.
 
-On ubuntu, `sudo ./installDockerCompose.sh`
-
 ### Create web network
 
 `docker network create web`
