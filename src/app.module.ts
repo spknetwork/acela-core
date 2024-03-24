@@ -19,6 +19,7 @@ import { UserAccountModule } from './repositories/userAccount/user-account.modul
 import { EmailModule } from './services/email/email.module';
 import { UploadingModule } from './services/uploader/uploading.module';
 import { IpfsModule } from './services/ipfs/ipfs.module';
+import { LockModule } from './services/lock/lock.module';
 
 @Module({
   imports: [
@@ -52,7 +53,8 @@ import { IpfsModule } from './services/ipfs/ipfs.module';
     UploadModule,
     EmailModule,
     UserAccountModule,
-    ApiModule
+    ApiModule,
+    LockModule
   ],
   controllers: [],
   providers: [],

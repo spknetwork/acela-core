@@ -2,7 +2,6 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { UserAccount, UserAccountSchema } from "./schemas/user-account.schema";
 import { UserAccountRepository } from "./user-account.repository";
-import { Model } from "mongoose";
 
 @Module({
   imports: [
