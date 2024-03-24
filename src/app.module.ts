@@ -21,20 +21,34 @@ import { UploadingModule } from './services/uploader/uploading.module';
 import { IpfsModule } from './services/ipfs/ipfs.module';
 import { LockModule } from './services/lock/lock.module';
 
+const mongoUrl = process.env.CORE_MONGODB_URL;
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: process.env.ENV_FILE || '.env',
     }),
-    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/threespeak${process.env.CORE_MONGODB_PARAMS}`, {
+    MongooseModule.forRoot(mongoUrl, {
+      ssl: false,
+      authSource: 'threespeak',
+      readPreference: 'primary',
       connectionName: 'threespeak',
-      autoIndex: true,
+      dbName: 'threespeak',
+      autoIndex: true
     }),
-    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/3speakAuth${process.env.CORE_MONGODB_PARAMS}`, {
-      connectionName: '3speakAuth'
+    MongooseModule.forRoot(mongoUrl, {
+      ssl: false,
+      authSource: 'threespeak',
+      readPreference: 'primary',
+      connectionName: '3speakAuth',
+      dbName: '3speakAuth',
     }),
-    MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/acela-core${process.env.CORE_MONGODB_PARAMS}`, {
-      connectionName: 'acela-core'
+    MongooseModule.forRoot(mongoUrl, {
+      ssl: false,
+      authSource: 'threespeak',
+      readPreference: 'primary',
+      connectionName: 'acela-core',
+      dbName: 'acela-core',
     }),
     ScheduleModule.forRoot(),
     VideoModule,
