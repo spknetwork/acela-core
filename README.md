@@ -4,13 +4,12 @@ Backend core for decentralized video applications on HIVE.
 
 ## Setup
 
+### Install
+`npm install`
+
 ### Have docker installed
 
 Install docker using the reccommended steps for your system, then install docker compose.
-
-On ubuntu, `sudo ./installDockerCompose.sh`
-
-`docker network create web`
 
 ### Create web network
 
@@ -18,14 +17,19 @@ On ubuntu, `sudo ./installDockerCompose.sh`
 
 ### Environment variables
 
-Rename `.example.env` to `.env` then fill it out with relevant information
+Rename `.example.env` to `.env.{STAGE}` then fill it out with relevant information
 
 On a server:
 `mv .env.example .env`
 `nano .env`
 
-### Start containers in dev environment
+## Development
 `sudo docker compose -f docker-compose.local.yml up --build`
 
-### Deploy to staging
+In development mode, if using vs code you can attach a debugger by going to the debugger tab and pressing attach to docker.
+
+![alt text](docs/debugging.png)
+
+## Deploy
+### Staging
 `sudo docker compose -f docker-compose.staging.yml up --build -d`
