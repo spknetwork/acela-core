@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import hiveJsPackage from '@hiveio/hive-js';
-import { OperationsArray } from "./types";
+import { AuthorPerm, OperationsArray } from "./types";
 import { Client, ExtendedAccount, Operation, PrivateKey, PublicKey, Signature } from '@hiveio/dhive';
 import crypto from 'crypto'
 
@@ -30,7 +30,7 @@ export class HiveRepository {
     });
   }
 
-  async hivePostExists({ author, permlink }: {author: string, permlink: string }) {
+  async hivePostExists({ author, permlink }: AuthorPerm) {
     try {
       const content = await this.#hiveJs.api.getContent(author, permlink);
   
@@ -40,6 +40,14 @@ export class HiveRepository {
       this.#logger.error("Error checking Steem post existence:", e);
       return false;
     }
+  }
+
+  async getCommentCount({ author, permlink }: AuthorPerm): Promise<number | undefined> {
+    const res = await this.#hive.database.call('get_content', [author, permlink]);
+    if (!res || isNaN(res.children)) {
+      return undefined;
+    }
+    return res.children;
   }
 
   async getAccount(author: string) {
@@ -114,11 +122,18 @@ export class HiveRepository {
   }
 
   async vote(options: { author: string, permlink: string, voter: string, weight: number }) {
-    if (options.weight < 0 || options.weight > 10_000)
+    if (options.weight < 0 || options.weight > 10_000) {
+      this.#logger.error(`Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`)
+      return;
+    }
     return this.#hive.broadcast.vote(
       options,
       PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
     )
+  }
+
+  async getActiveVotes({ author, permlink }: { author: string, permlink: string }) {
+    return await this.#hive.database.call('get_active_votes', [author, permlink])
   }
 
   async decodeMessageAndGetPublicKeys(memo: string) {
