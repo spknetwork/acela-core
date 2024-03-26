@@ -46,10 +46,6 @@ export class PublishingService {
     }
   }
 
-  protected getLogger(): Logger {
-    return this.#logger;
-  }
-
   async #publish(video: DbVideoToPublishDto): Promise<void> {
     try {
       if (await this.#hiveRepository.hivePostExists({ author: video.owner, permlink: video.permlink })) {

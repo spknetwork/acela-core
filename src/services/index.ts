@@ -10,7 +10,7 @@ import { AuthSession, HiveAccountCreation, UserAccount, UserAccountLink } from '
 import { CORE_MONGODB_URL } from './db';
 import { HealthCheckCore } from './health';
 import { StorageEngine } from './storage-engine';
-import { VideoProcessService } from './video-process';
+// import { VideoProcessService } from './video-process';
 import { Config } from './config';
 
 
@@ -28,7 +28,7 @@ export class AcelaCore {
     uploadsDb: Collection<any>;
     storageEngine: StorageEngine;
     locksDb: Collection;
-    videoProcessService: VideoProcessService;
+    // videoProcessService: VideoProcessService;
     localPosts: Collection;
     ipfs: IPFSHTTPClient.IPFSHTTPClient;
     config: Config;
@@ -90,9 +90,9 @@ export class AcelaCore {
 
         await this.storageEngine.start()
 
-        this.videoProcessService = new VideoProcessService(this)
+        // this.videoProcessService = new VideoProcessService(this)
 
-        await this.videoProcessService.start();
+        // await this.videoProcessService.start();
 
         this.ipfs = IPFSHTTPClient.create()
     }

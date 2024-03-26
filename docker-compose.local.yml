@@ -1,15 +1,13 @@
 version: "3.3"
 services:
-  acela-core: # name of the 
+  acela-core:
     build:
-      context: . # the directory containing Docker context (".", meaning the current directory)
+      context: .
       dockerfile: Dockerfile.local # specify the local Dockerfile
-    container_name: acela-core # what to label the container for docker ps
-    restart: always # restart if failed, until we stop it ourselves
+    container_name: acela-core
+    restart: always
     env_file:
       - .env.local
-    #external_links:
-      #- mongo
     ports:
       - 4569:4569
       - 9229:9229
@@ -17,7 +15,6 @@ services:
       - acela-core
     environment:
       ENV_FILE: .env.local
-      # MONGO_HOST: mongo:27017
       IPFS_HOST: ipfs:5001
       UPLOAD_PATH: /acela-uploads
     volumes:
