@@ -1,4 +1,5 @@
 export class UploadDto {
+  readonly upload_id: string;
   readonly video_id: string;
   readonly expires?: Date;
   readonly file_name?: string;
@@ -7,4 +8,5 @@ export class UploadDto {
   readonly cid?: string;
   readonly type: 'video' | 'thumbnail' | 'other';
   readonly created_by: string;
+  readonly immediatePublish: boolean;
 }

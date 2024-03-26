@@ -1,11 +1,11 @@
 import FormData from 'form-data'
 import 'dotenv/config'
 import { Injectable } from '@nestjs/common'
-import { Axios } from 'axios'
+import Axios from 'axios'
 
 @Injectable()
 export class IpfsService {
-  readonly #axios = new Axios();
+  // readonly #axios = new Axios();
 
   /**
    * @param {API.PinOptions} options
@@ -71,12 +71,13 @@ export class IpfsService {
     const params = this.encodeAddParams(options)
 
     try {
-      const { data: result } = await this.#axios.post(`${cluster}/add`, body, {
-        params,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      const reqConfig = {
+          params: params,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+      };
+      const { data: result } = await Axios.post(`${cluster}/add`, body, reqConfig);
       const data = params['stream-channels'] ? result : result[0]
       return { ...data, cid: data.cid }
     } catch (err) {

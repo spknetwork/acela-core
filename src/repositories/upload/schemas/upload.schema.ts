@@ -7,6 +7,9 @@ export type UploadDocument = HydratedDocument<Upload>;
 @Schema()
 export class Upload {
   @Prop({ type: String, required: true, default: () => ulid() })
+  upload_id: string;
+
+  @Prop({ type: String, required: true, default: () => ulid() })
   video_id: string;
 
   @Prop({ type: Date, default: Date.now })
@@ -29,6 +32,9 @@ export class Upload {
 
   @Prop({ type: String, required: true })
   created_by: string;
+
+  @Prop({ type: Boolean, required: true, default: false })
+  immediatePublish: boolean;
 
   // Add additional properties as needed
 }

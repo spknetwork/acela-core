@@ -14,11 +14,11 @@ import { MockHiveRepository } from './hive.repository.mock';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const env = configService.get<string>('ENVIRONMENT');
-        if (env !== 'prod') {
-          return new MockHiveRepository;
-        } else {
+        // if (env !== 'prod') {
+        //   return new MockHiveRepository;
+        // } else {
           return new HiveRepository;
-        }
+        // }
       },
     },
   ],

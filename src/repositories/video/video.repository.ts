@@ -40,6 +40,14 @@ export class VideoRepository {
     }, dbVideoToPublishProjection).sort('-created');
   }
 
+  async getVideoToPublish(owner: string, permlink: string): Promise<DbVideoToPublishDto> {
+    const results = await this.videoModel.find({
+      owner: owner,
+      permlink: permlink,
+    }, dbVideoToPublishProjection).sort('-created').limit(1);
+    return results[0]
+  }
+
   async updateVideoFailureStatus(owner: Video['owner'], failureStatuses: { lowRc: Video['lowRc']; publishFailed: Video['publishFailed']; }): Promise<UpdateResult> {
     return await this.videoModel.updateOne({ owner }, { $set: failureStatuses }).exec()
   }
@@ -66,12 +74,15 @@ export class VideoRepository {
     tags,
     community,
     language,
-    videoUploadLink
+    videoUploadLink,
+    beneficiaries,
+    permlink,
   }: {
     video_id: string;
     user: { 
       sub: string; 
       username: string;
+      id?: string;
     };
     title: string;
     description: string;
@@ -79,13 +90,19 @@ export class VideoRepository {
     community: string;
     language: string;
     videoUploadLink: string;
+    beneficiaries: string;
+    permlink: string;
   }): Promise<Video> {
     return await this.videoModel.create({
       video_id,
       owner: user.username,
       title: title,
       description,
-      beneficiaries: [],
+      beneficiaries: beneficiaries,
+      permlink: permlink,
+      originalFilename: '',
+      filename: '',
+      size: 0,
       tags: tags || [],
       community,
       language: language || 'en',
@@ -96,7 +113,7 @@ export class VideoRepository {
         publish_type: "immediate",
         publish_date: null
       },
-      created_by: user.sub,
+      created_by: user.id || user.sub,
       expires: moment().add('1', 'day').toDate(),
       upload_links: {
         video: videoUploadLink
