@@ -93,6 +93,7 @@ export class UploadingService {
       }
       await this.uploadRepository.setIpfsStatusToReady(video_id)
     }
+    // return something that - yes video moved to 'ready'
   }
 
   async getVideoTitleLength(permlink: string, owner: string): Promise<number> {

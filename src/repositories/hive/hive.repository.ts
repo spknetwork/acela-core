@@ -46,26 +46,6 @@ export class HiveRepository {
       })
   }
 
-  async tryPublish(permlink: string, community: string, owner: string, title: string, tags: string[], thumbnail: string) {
-    if (tags.length === 0) {
-      tags = ['threespeak', 'video'];
-    }
-    // process.env.IPFS_CLUSTER_URL
-    // const operations = []
-    // operations.push([
-    //   'comment',
-    //   {
-    //     parent_author: '',
-    //     parent_permlink: community,
-    //     author: owner,
-    //     permlink: permlink,
-    //     title: title.substr(0, 254),
-    //     body: renderTemplate(video),
-    //     json_metadata: JSON.stringify(buildJSONMetadata(video)),
-    //   },
-    // ])
-  }
-
   async hivePostExists({ author, permlink }: { author: string; permlink: string }): Promise<Boolean> {
     try {
       const content = await this.#hiveJs.api.getContent(author, permlink)
@@ -80,9 +60,9 @@ export class HiveRepository {
   async hasEnoughRC({author}: {author: string;}): Promise<Boolean> {
     try {
       const rc = await this.#hive.rc.findRCAccounts([author]) as any[];
-      const rcInBillion = rc[0].rc_manabar.current_mana / 1000000;
+      const rcInBillion = rc[0].rc_manabar.current_mana / 1_000_000_000;
       console.log(`Resource Credits for ${author}:`, rcInBillion);
-      return rcInBillion < 50;
+      return rcInBillion > 6;
     } catch (e) {
       this.#logger.error('Error checking Hive post existence:', e)
       return false

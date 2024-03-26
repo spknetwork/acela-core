@@ -111,7 +111,7 @@ export class UploadingController {
     // TO-DO: Check 4: Does user have enough RC?
     const hasEnoughRC = await this.hiveRepository.hasEnoughRC({author: username});
     if (!hasEnoughRC) {
-      throw new HttpException({ reason: 'User has RC below 50b', errorType: 'LOW_RC'}, HttpStatus.BAD_REQUEST);
+      throw new HttpException({ reason: 'User has RC below 6b', errorType: 'LOW_RC'}, HttpStatus.BAD_REQUEST);
     }
     // All check went well? let's encode & publish
     return await this.uploadingService.startEncode(body.upload_id, body.video_id, body.permlink, username);

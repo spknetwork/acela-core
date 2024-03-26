@@ -24,9 +24,9 @@ export class UploadRepository {
     return this.uploadModel.find().exec();
   }
 
-  async upsertThumbnailUpload(thumbnail_id: string, cid: string, video_id: string): Promise<UploadDocument> {
+  async upsertThumbnailUpload(id: string, cid: string, video_id: string): Promise<UploadDocument> {
     return await this.uploadModel.findOneAndUpdate({
-      _id: thumbnail_id.replaceAll("-", ""),
+      _id: id
     }, {
       $set: {
         video_id,
