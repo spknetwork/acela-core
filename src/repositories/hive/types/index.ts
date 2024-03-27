@@ -32,6 +32,11 @@ export interface HiveAccountMetadata {
   beneficiaries?: AccountBeneficiary[];
 }
 
+export interface AuthorPerm {
+  author: string;
+  permlink: string;
+}
+
 export type PostOperation = (string | {
   parent_author: string;
   parent_permlink: string;

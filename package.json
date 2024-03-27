@@ -93,7 +93,7 @@
   "scripts": {
     "ts-node": "node --experimental-specifier-resolution=node --loader ts-node/esm",
     "tsc:v": "tsc -v",
-    "tsc": "tsc --noEmit",
+    "tsc:noemit": "tsc --noEmit",
     "build": "tsc -p tsconfig.json",
     "dev": "nodemon -L src/index.ts",
     "start": "node --experimental-specifier-resolution=node  dist/index.js",

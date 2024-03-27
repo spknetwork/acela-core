@@ -29,8 +29,10 @@ export class LockService {
     async nextNodeSelection(start_id: string) {
         const nodes = await this.lockNodeRepository.distinct('node_id')
         const nodesClosest = nodes.map(e => {
-            let distance = 0
-            let i = 0
+            let distance = 0;
+            let i = 0;
+            // Ensure both e and start_id are valid, else return a tuple with a high distance value to sort later
+            if (!e || !start_id) return [Number.MAX_SAFE_INTEGER, start_id];
             const min = Math.min(start_id.length, e.length)
             const max = Math.max(start_id.length, e.length)
             for (; i < min; ++i) {
@@ -38,14 +40,12 @@ export class LockService {
             }
             for (; i < max; ++i) distance = distance * 256 + 255
             return [distance, e]
-        }).sort((a, b) => {
-            return a[0] - b[0]
-        })
-        /*.filter((e) => {
-            return e[1] !== start_id
-        })*/
+        }).sort((a, b) => a[0] - b[0])
         const date = new Date();
-        return nodesClosest[date.getMinutes() % nodesClosest.length][1]
+        if (!nodesClosest.length) return start_id
+        // Safely access the selected node, ensuring we don't accidentally access undefined
+        const selectedNode = nodesClosest[date.getMinutes() % nodesClosest.length];
+        return selectedNode ? selectedNode[1] : start_id;
     }
 
     /**
@@ -54,7 +54,7 @@ export class LockService {
      * @param {Function} task - A callback function representing the task to be executed.
      */
     async executeWithLock(taskId: string, task: () => Promise<void>): Promise<void> {
-        const lockId = `${taskId}Lock`; // Construct a unique lock ID based on the task ID
+        const lockId = `${taskId}`;
         try {
             let canExecute
             try {
@@ -74,7 +74,7 @@ export class LockService {
             // or if it should be held until the next execution cycle.
             // await this.unregisterLock(lockId);
         } catch (error) {
-            this.#logger.error(`Failed to execute task ${taskId}.`, error);
+            this.#logger.error(`Failed to execute task ${taskId}.`, error.stack);
             await this.unregisterLock(lockId); // Ensure the lock is released even if an error occurs
         }
     }
@@ -90,7 +90,7 @@ export class LockService {
 
         // If there's an existing lock not owned by this identity...
         if (savedLock && savedLock.registered_id !== this.identity.id) {
-            const isLockStale = moment(savedLock.registered_ping).add(10, 'minutes').isBefore(moment());
+            const isLockStale = moment(savedLock.registered_ping).add(1, 'minutes').isBefore(moment());
 
             // If the lock is not stale, it's an immediate error condition.
             const selected_id = await this.nextNodeSelection(savedLock.registered_id);
@@ -223,7 +223,7 @@ export class LockService {
         // console.log(JSON.stringify(jwe, null, 2))
 
         await this.lockNodeRepository.findOneAndRenewOrCreate(this.identity.id)
-        this.registerSelf()
+        await this.registerSelf()
     }
 
     async onApplicationShutdown(signal?: string): Promise<void> {

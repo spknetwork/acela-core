@@ -58,6 +58,16 @@ export class VideoRepository {
     })
   }
 
+  async getUpvoteEligibleVideosInTimePeriod(bannedCreatorsList: string[], startPeriod: Date, endPeriod: Date) {
+    return await this.videoModel.find({
+      status: 'published',
+      steemPosted: true,
+      owner: { $nin: bannedCreatorsList },
+      created: { $gte: startPeriod.toISOString(), $lte: endPeriod.toISOString() },
+      upvoteEligible: { $ne: false }
+    });
+  }
+
   async createNewHiveVideoPost({
     video_id,
     user,

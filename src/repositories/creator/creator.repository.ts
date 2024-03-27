@@ -14,4 +14,9 @@ export class CreatorRepository {
   async setUserToVisible(username: ContentCreator['username']) {
     return this.creatorModel.updateOne({ username, hidden: true }, { $set: { hidden: false } }).exec()
   }
+
+  async getBannedList(): Promise<string[]> {
+    const bannedCreators = await this.creatorModel.find({ upvoteEligible: false }).select('username').lean();
+    return bannedCreators.map(creator => creator.username);
+  }
 }
