@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ModifyResult } from 'mongoose';
+import { Model, ModifyResult, Types } from 'mongoose';
 import { Upload, UploadDocument } from './schemas/upload.schema';
 import { UploadDto } from './dto/upload.dto';
 
@@ -61,5 +61,64 @@ export class UploadRepository {
         file_name: filename
       }
     })
+  }
+
+  async findActiveEncodes() {
+    return (await this.uploadModel.find({
+      encode_status: 'running',
+      cid: {
+        $exists: true
+      },
+    }))
+  }
+
+  async findReadyUploads() {
+    return await this.uploadModel.find({
+      encode_status: 'ready',
+      cid: {
+        $exists: true
+      },
+    })
+  }
+
+  async setJobToDone(id: Types.ObjectId, cid: string) {
+    return await this.findOneAndUpdate({
+      _id: id
+  }, {
+      $set: {
+        encode_status: 'done',
+        encode_cid: cid
+      }
+    })
+  }
+
+  async setJobToRunning(upload_id, encode_id) {
+    return await this.findOneAndUpdate({
+      _id: upload_id
+  }, {
+    $set: {
+        encode_id,
+        encode_status: 'running'
+      }
+    })
+  }
+
+  async setIpfsDoneAndReadyForEncode(upload_id: Types.ObjectId, cid: string) {
+    return await this.findOneAndUpdate({
+      _id: upload_id,
+    }, {
+      $set: {
+        cid,
+        ipfs_status: "done",
+        encode_status: "ready"
+      }
+    })
+  }
+
+  async findIpfsReadyUploads() {
+    return await this.uploadModel.find({
+      ipfs_status: "ready",
+      file_path: {$exists: true}
+    });
   }
 }

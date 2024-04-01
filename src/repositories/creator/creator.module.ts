@@ -10,7 +10,7 @@ import { MockFactory } from '../../factories/mock.factory';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: ContentCreator.name, schema: ContentCreatorSchema }], 'threespeak'),
-    ConfigModule, // Needed if you're using ConfigService
+    ConfigModule,
   ],
   controllers: [],
   providers: [
