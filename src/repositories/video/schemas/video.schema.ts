@@ -8,13 +8,13 @@ export class Video {
   @Prop({ required: true })
   video_id: string;
 
-  @Prop({ required: true })
+  @Prop()
   filename: string;
 
   @Prop()
   skynet?: string;
 
-  @Prop({ required: true })
+  @Prop()
   originalFilename: string;
 
   @Prop()
