@@ -21,6 +21,9 @@ export class Upload {
   @Prop({ type: String, required: false })
   file_path: string;
 
+  @Prop({ type: Boolean, required: false, default: false })
+  immediatePublish: boolean;
+
   @Prop({ type: String, required: true, enum: ['pending', 'done', 'error'] })
   ipfs_status: 'pending' | 'done' | 'error';
 

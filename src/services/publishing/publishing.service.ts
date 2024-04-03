@@ -43,11 +43,11 @@ export class PublishingService {
   async normalVideoPublish() {
     const videosToPublish = await this.#videoRepository.getVideosToPublish();
     for (const video of videosToPublish) {
-      await this.#publish(video)      
+      await this.publish(video)      
     }
   }
 
-  async #publish(video: DbVideoToPublishDto): Promise<void> {
+  async publish(video: DbVideoToPublishDto): Promise<void> {
     try {
       if (await this.#hiveRepository.hivePostExists({ author: video.owner, permlink: video.permlink })) {
         await this.#videoRepository.setPostedToChain(video.owner, video.ipfs);

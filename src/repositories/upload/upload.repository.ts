@@ -9,7 +9,7 @@ export class UploadRepository {
   constructor(@InjectModel('uploads', 'acela-core') private uploadModel: Model<Upload>) {}
 
   async insertOne(data: UploadDto): Promise<UploadDto> {
-    return await this.uploadModel.create(data);
+    return await this.uploadModel.create<UploadDto>(data);
   }
   
   async findOneAndUpdate(filter: any, update: any, options?: any): Promise<ModifyResult<UploadDto>> {
