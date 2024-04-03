@@ -20,6 +20,7 @@ import { EmailModule } from './services/email/email.module';
 import { UploadingModule } from './services/uploader/uploading.module';
 import { IpfsModule } from './services/ipfs/ipfs.module';
 import { LockModule } from './services/lock/lock.module';
+import { VotingModule } from './services/voting/voting.module';
 
 const mongoUrl = process.env.CORE_MONGODB_URL;
 
@@ -51,6 +52,7 @@ const mongoUrl = process.env.CORE_MONGODB_URL;
       dbName: 'acela-core',
     }),
     ScheduleModule.forRoot(),
+    LockModule,
     VideoModule,
     CreatorModule,
     UserModule,
@@ -68,7 +70,7 @@ const mongoUrl = process.env.CORE_MONGODB_URL;
     EmailModule,
     UserAccountModule,
     ApiModule,
-    LockModule
+    VotingModule
   ],
   controllers: [],
   providers: [],

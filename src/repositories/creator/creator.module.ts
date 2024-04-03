@@ -5,25 +5,20 @@ import { ContentCreator, ContentCreatorSchema } from './schemas/creator.schema';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MockCreatorService } from './creator.repository.mock';
 import { Model } from 'mongoose';
+import { MockFactory } from '../../factories/mock.factory';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: ContentCreator.name, schema: ContentCreatorSchema }], 'threespeak'),
-    ConfigModule, // Needed if you're using ConfigService
+    ConfigModule,
   ],
   controllers: [],
   providers: [
     {
       provide: CreatorRepository,
       inject: [ConfigService, getModelToken(ContentCreator.name, 'threespeak')],
-      useFactory: (configService: ConfigService, creatorModel: Model<ContentCreator>) => {
-        const env = configService.get<string>('ENVIRONMENT');
-        if (env !== 'prod') {
-          return new MockCreatorService(creatorModel);
-        } else {
-          return new CreatorRepository(creatorModel);
-        }
-      },
+      useFactory: (configService: ConfigService, creatorModel: Model<ContentCreator>) => 
+        MockFactory<CreatorRepository, Model<ContentCreator>>(CreatorRepository, MockCreatorService, configService, creatorModel),
     },
   ],
   exports: [CreatorRepository]

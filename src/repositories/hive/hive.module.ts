@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { HiveRepository as HiveRepository } from './hive.repository';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MockHiveRepository } from './hive.repository.mock';
+import { MockFactory } from '../../factories/mock.factory';
 
 @Module({
   imports: [
@@ -12,14 +13,7 @@ import { MockHiveRepository } from './hive.repository.mock';
     {
       provide: HiveRepository,
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const env = configService.get<string>('ENVIRONMENT');
-        // if (env !== 'prod') {
-        //   return new MockHiveRepository;
-        // } else {
-          return new HiveRepository;
-        // }
-      },
+      useFactory: (configService: ConfigService) => MockFactory<HiveRepository, undefined>(HiveRepository, MockHiveRepository, configService),
     },
   ],
   exports: [HiveRepository]

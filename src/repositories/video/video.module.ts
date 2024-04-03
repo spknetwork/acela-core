@@ -5,6 +5,7 @@ import { Video, VideoDocument, VideoSchema } from './schemas/video.schema';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MockVideoRepository } from './video.repository.mock';
 import { Model } from 'mongoose';
+import { MockFactory } from '../../factories/mock.factory';
 
 @Module({
   imports: [
@@ -16,14 +17,8 @@ import { Model } from 'mongoose';
     {
       provide: VideoRepository,
       inject: [ConfigService, getModelToken(Video.name, 'threespeak')],
-      useFactory: (configService: ConfigService, videoModel: Model<VideoDocument>) => {
-        const env = configService.get<string>('ENVIRONMENT');
-        if (env !== 'prod') {
-          return new MockVideoRepository(videoModel);
-        } else {
-          return new VideoRepository(videoModel);
-        }
-      },
+      useFactory: (configService: ConfigService, videoModel: Model<VideoDocument>) => 
+        MockFactory<VideoRepository, Model<VideoDocument>>(VideoRepository, MockVideoRepository, configService, videoModel),
     },
   ],
   exports: [VideoRepository]

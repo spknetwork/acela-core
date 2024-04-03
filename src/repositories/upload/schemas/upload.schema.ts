@@ -33,10 +33,11 @@ export class Upload {
   @Prop({ type: String, required: true })
   created_by: string;
 
-  @Prop({ type: Boolean, required: true, default: false })
-  immediatePublish: boolean;
+  @Prop({ type: String })
+  encode_status: 'running' | 'ready' | 'done';
 
-  // Add additional properties as needed
+  @Prop({ type: String })
+  encode_id: string;
 }
 
 export const UploadSchema = SchemaFactory.createForClass(Upload);
