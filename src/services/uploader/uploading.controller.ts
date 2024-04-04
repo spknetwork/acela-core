@@ -23,6 +23,7 @@ import { CreateUploadDto } from './dto/create-upload.dto'
 import { StartEncodeDto } from './dto/start-encode.dto'
 import { UploadingService } from './uploading.service'
 import { HiveRepository } from '../../repositories/hive/hive.repository'
+import { UpdateUploadDto } from './dto/update-upload.dto'
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -75,11 +76,9 @@ export class UploadingController {
   @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @UseInterceptors(UserDetailsInterceptor)
   @Post('create_upload')
-  async createUpload(@Request() req, @Body() reqBody: CreateUploadDto) {
-    const body = reqBody
+  async createUpload(@Request() req) {
     const user = req.user
-
-    return await this.uploadingService.createUpload(user, body);
+    return await this.uploadingService.createUpload(user);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -120,7 +119,9 @@ export class UploadingController {
 
   @ApiOperation({ summary: 'Updates the metadata of a pending upload [Work in progress]' })
   @Post('update_post')
-  async postUpdate(@Body() body, @Req() req) {
+  async postUpdate(@Request() req, @Body() reqBody: UpdateUploadDto) {
+    const body = reqBody
+    const user = req.user
     // console.log(req)
     try {
       await this.uploadingService.postUpdate(body.id)
