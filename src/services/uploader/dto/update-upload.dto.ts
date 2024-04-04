@@ -57,7 +57,7 @@ export class UpdateUploadDto {
 
   @ApiProperty({
     description: 'file name which TUSd provided',
-    default: 'ABCDEFGHIJKLMNOPQRST',
+    default: 'e1e7903087f9c39ac1645d69f5bb96cd',
   })
   filename: string
 

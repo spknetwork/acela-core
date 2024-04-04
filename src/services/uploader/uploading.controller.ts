@@ -1,5 +1,6 @@
 import {
   UseGuards,
+  Get,
   Controller,
   FileTypeValidator,
   MaxFileSizeValidator,
@@ -19,11 +20,10 @@ import { AuthGuard } from '@nestjs/passport'
 import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils'
 import { ApiConsumes, ApiOperation, ApiProperty } from '@nestjs/swagger'
 import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto'
-import { CreateUploadDto } from './dto/create-upload.dto'
+import { UpdateUploadDto } from './dto/update-upload.dto'
 import { StartEncodeDto } from './dto/start-encode.dto'
 import { UploadingService } from './uploading.service'
 import { HiveRepository } from '../../repositories/hive/hive.repository'
-import { UpdateUploadDto } from './dto/update-upload.dto'
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -75,7 +75,7 @@ export class UploadingController {
   @ApiOperation({ summary: 'Creates post metadata container' })
   @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @UseInterceptors(UserDetailsInterceptor)
-  @Post('create_upload')
+  @Get('create_upload')
   async createUpload(@Request() req) {
     const user = req.user
     return await this.uploadingService.createUpload(user);
@@ -117,14 +117,12 @@ export class UploadingController {
   }
 
 
-  @ApiOperation({ summary: 'Updates the metadata of a pending upload [Work in progress]' })
+  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @Post('update_post')
-  async postUpdate(@Request() req, @Body() reqBody: UpdateUploadDto) {
-    const body = reqBody
-    const user = req.user
-    // console.log(req)
+  async postUpdate(@Body() reqBody: UpdateUploadDto) {
     try {
-      await this.uploadingService.postUpdate(body.id)
+      await this.uploadingService.postUpdate(reqBody)
     } catch (error) {
       if (error.message === 'UnauthorizedAccessError') {
         throw new HttpException({ reason: "You do not have access to edit the requested post"}, HttpStatus.BAD_REQUEST);
