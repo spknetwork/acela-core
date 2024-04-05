@@ -9,7 +9,7 @@ export class DbVideoToPublishDto {
   readonly upload_type?: string;
   readonly thumbnail?: string;
   readonly video_v2?: string;
-  readonly tags?: string;
+  readonly tags?: string[];
   readonly duration?: number;
   readonly size: number;
   readonly filename: string;

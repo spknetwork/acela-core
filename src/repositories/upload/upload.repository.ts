@@ -9,7 +9,7 @@ export class UploadRepository {
   constructor(@InjectModel('uploads', 'acela-core') private uploadModel: Model<Upload>) {}
 
   async insertOne(data: UploadDto): Promise<UploadDto> {
-    return await this.uploadModel.create(data);
+    return await this.uploadModel.create<UploadDto>(data);
   }
   
   async findOneAndUpdate(filter: any, update: any, options?: any): Promise<ModifyResult<UploadDto>> {
@@ -34,7 +34,7 @@ export class UploadRepository {
         file_name: null,
         file_path: null,
         ipfs_status: 'done',
-        cid,
+        cid: cid,
         type: 'thumbnail'
       }
     }, {
@@ -42,9 +42,31 @@ export class UploadRepository {
     });
   }
 
-  async setIpfsStatusToReady(uploadJobId) {
+  async createThumbnailUpload(
+    id: string, 
+    cid: string, 
+    video_id: string, 
+    user: { 
+      sub: string; 
+      username: string;
+      id?: string;
+    }): Promise<UploadDocument> {
+    return await this.uploadModel.create({
+        id,
+        video_id,
+        expires: null,
+        file_name: null,
+        file_path: null,
+        ipfs_status: 'done',
+        cid: cid,
+        type: 'thumbnail',
+        created_by: user.id || user.sub,
+      });
+    }
+
+  async setIpfsStatusToReady(video_id: string) {
     return await this.uploadModel.findOneAndUpdate({
-      _id: uploadJobId
+      video_id: video_id,
     }, {
       $set: {
         ipfs_status: "ready"
@@ -52,13 +74,16 @@ export class UploadRepository {
     })
   }
 
-  async setStorageDetails(upload_id: string, path: string, filename: string) {
-    this.uploadModel.findOneAndUpdate({
-      id: upload_id
+  async setStorageDetails(upload_id: string, video_id: string, path: string, filename: string, immediatePublish: boolean) {
+    await this.uploadModel.findOneAndUpdate({
+      upload_id: upload_id,
+      video_id: video_id,
+      type: 'video'
     }, {
       $set: {
         file_path: path,
-        file_name: filename
+        file_name: filename,
+        immediatePublish: immediatePublish,
       }
     })
   }

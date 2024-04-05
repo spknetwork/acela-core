@@ -6,12 +6,15 @@ export type VideoDocument = HydratedDocument<Video>;
 @Schema()
 export class Video {
   @Prop({ required: true })
+  video_id: string;
+
+  @Prop()
   filename: string;
 
   @Prop()
   skynet?: string;
 
-  @Prop({ required: true })
+  @Prop()
   originalFilename: string;
 
   @Prop()
@@ -24,7 +27,7 @@ export class Video {
   title: string;
 
   @Prop()
-  tags?: string;
+  tags?: string[];
 
   @Prop()
   description: string;

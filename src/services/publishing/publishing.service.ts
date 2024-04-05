@@ -7,6 +7,7 @@ import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
 import { DbVideoToPublishDto } from '../../repositories/video/dto/videos-to-publish.dto';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
+import 'dotenv/config'
 
 const videoPostTemplate = `<center>
 
@@ -42,11 +43,11 @@ export class PublishingService {
   async normalVideoPublish() {
     const videosToPublish = await this.#videoRepository.getVideosToPublish();
     for (const video of videosToPublish) {
-      await this.#publish(video)      
+      await this.publish(video)      
     }
   }
 
-  async #publish(video: DbVideoToPublishDto): Promise<void> {
+  async publish(video: DbVideoToPublishDto): Promise<void> {
     try {
       if (await this.#hiveRepository.hivePostExists({ author: video.owner, permlink: video.permlink })) {
         await this.#videoRepository.setPostedToChain(video.owner, video.ipfs);
@@ -309,7 +310,7 @@ export class PublishingService {
 
   #buildPublishCustomJson(detail: VideoToPublishDto): CustomJsonOperation {
     return ['custom_json', {
-      required_posting_auths: ['threespeak', detail.author],
+      required_posting_auths: [process.env.VOTER_ACCOUNT, detail.author],
       required_auths: [],
       id: '3speak-publish',
       json: JSON.stringify({
