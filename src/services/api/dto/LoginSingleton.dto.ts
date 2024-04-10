@@ -7,7 +7,7 @@ export class LoginSingletonDto {
     description: 'Username of the account',
     default: "test-account",
   })
-  username: string;
+  username?: string;
 
   @IsNotEmpty()
   @ApiProperty({
@@ -18,7 +18,7 @@ export class LoginSingletonDto {
 
   @IsNotEmpty()
   @ApiProperty({})
-  authority_type: string;
+  authority_type?: string;
 
   proof_payload: string;
   proof: string;

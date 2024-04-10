@@ -23,7 +23,7 @@ export class StorageClusterService {
         await this.start()
     }
 
-    async addToCluster(cid: string | CID, metadata?: PinMetadata) {
+    async addToCluster(cid: string | CID, metadata: PinMetadata) {
         await this.peer.addToCluster(cid, metadata)
     }
 

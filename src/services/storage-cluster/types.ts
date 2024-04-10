@@ -104,8 +104,8 @@ export class StorageCluster {
 export interface PinAllocate {
     id: string
     allocated_at: number
-    pinned_at?: number
-    reported_size?: number
+    pinned_at?: number | undefined
+    reported_size?: number | undefined
 }
 
 export interface Pin {
@@ -121,7 +121,7 @@ export interface Pin {
     }
     allocations: Array<PinAllocate>
     allocationCount: number
-    median_size?: number
+    median_size: number
     size?: number
 }
 

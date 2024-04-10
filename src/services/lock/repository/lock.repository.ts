@@ -41,6 +41,10 @@ export class LockRepository {
     return await this.#findOneByIdAndUpdateRegisteredId({ id, registered_id, registered_ping }, true);
   }
 
+  async findOneByIdAndMakeInactive({ id }: { id: string }) {
+    return await this.#findOneByIdAndUpdateRegisteredId({ id, registered_id: null, registered_ping: null }, true);
+  }
+
   async createOrThrowIfExistingLock(data: { id: string; registered_id: string; }) {
     const existingDocument = await this.findOneById(data.id);
     if (existingDocument) {

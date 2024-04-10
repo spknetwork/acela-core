@@ -8,6 +8,7 @@ import { UpdateUploadDto } from './dto/update-upload.dto'
 import { IpfsService } from '../ipfs/ipfs.service'
 import ffmpeg from 'fluent-ffmpeg'
 import crypto from 'crypto'
+
 @Injectable()
 export class UploadingService {
   constructor(
@@ -123,8 +124,8 @@ export class UploadingService {
       if (uploadMetaData.Size >= 5000000000) {
         throw new Error('File too big to be uploaded')
       }
-      const info = await new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(uploadMetaData.Storage.Path, (err: any, data: any) => {
+      const info: ffmpeg.FfprobeData = await new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(uploadMetaData.Storage.Path, (err: any, data: ffmpeg.FfprobeData) => {
           if (err) {
             reject(err)
           }
@@ -134,10 +135,10 @@ export class UploadingService {
       const videoStreamInfo = info['streams'][0]
       const formatInfo = info['format']
       let immediatePublish = false
-      if (videoStreamInfo['codec_name'].toLowerCase() == 'h264') {
+      if (videoStreamInfo['codec_name'] && videoStreamInfo['codec_name'].toLowerCase() == 'h264') {
         immediatePublish = true
       }
-      if (formatInfo['format_long_name'].toLowerCase().includes('mov')) {
+      if (formatInfo['format_long_name'] && formatInfo['format_long_name'].toLowerCase().includes('mov')) {
         immediatePublish = true
       }
       await this.uploadRepository.setStorageDetails(

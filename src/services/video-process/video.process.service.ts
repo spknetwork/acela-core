@@ -110,14 +110,18 @@ export class VideoProcessService {
     }
     
     async onModuleInit() {
-        let key = new Ed25519Provider(Buffer.from(this.#configService.get<string>('ENCODER_SECRET'), 'base64'))
-        const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
-        await did.authenticate()
-        this.#encoderKey = did
-        try {
-          await this.initS3()
-        } catch(ex) {
-          console.log(ex)
-        }
+      const encoderSecret = this.#configService.get<string>('ENCODER_SECRET');
+      if (!encoderSecret) {
+        throw new Error('ENCODER_SECRET not set')
+      }
+      let key = new Ed25519Provider(Buffer.from(encoderSecret, 'base64'))
+      const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
+      await did.authenticate()
+      this.#encoderKey = did
+      try {
+        await this.initS3()
+      } catch(ex) {
+        console.log(ex)
+      }
     }
 }

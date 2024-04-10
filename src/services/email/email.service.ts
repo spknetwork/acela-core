@@ -15,7 +15,7 @@ export class EmailService {
   }
 
   async send(email: string, subject: string, html: string) { 
-    await this.#mailGun.messages.create(this.configService.get('MAIL_GUN_DOMAIN'), {
+    await this.#mailGun.messages.create(this.configService.get('MAIL_GUN_DOMAIN') ?? '', {
       from: `Threespeak <noreply@${this.configService.get('MAIL_GUN_DOMAIN')}>`,
       to: [email],
       subject,

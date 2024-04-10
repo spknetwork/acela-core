@@ -278,10 +278,9 @@ export class PublishingService {
 
   #renderTemplate(detail: VideoToPublishDto) {
     const [fullVideo] = this.#getbaseThumbnail([detail]);
-    console.log(fullVideo)
   
     return videoPostTemplate
-      .replace(/@@@thumbnail@@@/g, fullVideo.baseThumbUrl)
+      .replace(/@@@thumbnail@@@/g, fullVideo ? fullVideo.baseThumbUrl: '')
       .replace(/@@@author@@@/g, detail.author)
       .replace(/@@@permlink@@@/g, detail.permlink)
       .replace(/@@@description@@@/g, detail.description);
@@ -291,7 +290,7 @@ export class PublishingService {
     return url.replace('ipfs://', `${APP_BUNNY_IPFS_CDN}/ipfs/`);
   }
 
-  #getbaseThumbnail(videoFeed: VideoToPublishDto[]) {
+  #getbaseThumbnail(videoFeed: VideoToPublishDto[]): { baseThumbUrl: string }[] {
     return videoFeed.map(video => {
       const isIpfsUpload = video.upload_type === 'ipfs';
       const videoHasIpfsThumbnail = video?.thumbnail?.includes('ipfs://');

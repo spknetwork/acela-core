@@ -15,9 +15,6 @@ import { UserRepository } from "../../repositories/user/user.repository";
 import { HiveRepository } from "../../repositories/hive/hive.repository";
 import { EmailService } from "../email/email.service";
 import bcrypt from 'bcryptjs';
-import { DID } from 'dids'
-import KeyResolver from 'key-did-resolver'
-import { Ed25519Provider } from "key-did-provider-ed25519";
 import * as crypto from 'crypto';
 
 @Controller('/api/v1/auth')
@@ -63,6 +60,16 @@ export class AuthController {
     if (body.network === 'hive') {
       const accountDetails = await this.hiveRepository.getAccount(proof_payload.account)
 
+      if (!accountDetails) {
+        throw new HttpException(
+          {
+            reason: `Hive Account @${proof_payload.account} does not exist`,
+            errorType: "ACCOUNT_NOT_FOUND"
+          },
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+
       if (
         this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(JSON.stringify(proof_payload)), body.proof, accountDetails) &&
         new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
@@ -101,6 +108,10 @@ export class AuthController {
 
         const uint8Array = crypto.randomBytes(32);
 
+        const { DID } = await import('dids');
+        const KeyResolver = await import('key-did-resolver');
+        const { Ed25519Provider } = await import('key-did-provider-ed25519');
+
         const did = new DID({
           provider: new Ed25519Provider(uint8Array),
           resolver: KeyResolver.getResolver()
@@ -109,10 +120,20 @@ export class AuthController {
         const verifyJWSResult = await did.verifyJWS(didToken);
         const didVal = verifyJWSResult.kid.split('#')[0];
 
+        if (!didVal) {
+          throw new HttpException(
+            {
+              reason: 'Invalid DID',
+              errorType: "INVALID_DID"
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
         await did.resolve(didVal);
         await did.authenticate();
 
-        const didIsInDate = new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate()
+        const didIsInDate = new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate();
 
         if (didIsInDate) {
           this.authService.getOrCreateUserByDid(didVal);

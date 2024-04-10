@@ -42,7 +42,7 @@ export class StorageClusterPeer extends StorageCluster {
      * CID must not already exist in the cluster prior to calling this function.
      * @param cid CID to be added to the cluster
      */
-    async addToCluster(cid: string | CID, metadata?: PinMetadata) {
+    async addToCluster(cid: string | CID, metadata: PinMetadata) {
         if (typeof cid === 'string')
             cid = CID.parse(cid)
         let isPinned = false
@@ -66,23 +66,25 @@ export class StorageClusterPeer extends StorageCluster {
         }
         let created_at = new Date().getTime()
         let info = await this.ipfs.files.stat('/ipfs/'+cid.toString())
-        await this.pins.updateOne({
+        this.pins.updateOne({
             _id: cid.toString()
-        }, { $set: {
-            status: 'pinned',
-            created_at,
-            last_updated: created_at,
-            allocations: [{
-                id: this.getPeerId(),
-                allocated_at: created_at,
-                pinned_at: created_at,
-                reported_size: info.cumulativeSize
-            }],
-            allocationCount: 1,
-            size: info.cumulativeSize,
-            median_size: info.cumulativeSize,
-            metadata
-        }}, {
+        }, {
+            $set: {
+                status: 'pinned',
+                created_at,
+                last_updated: created_at,
+                allocations: [{
+                    id: this.getPeerId(),
+                    allocated_at: created_at,
+                    pinned_at: created_at,
+                    reported_size: info.cumulativeSize
+                }],
+                allocationCount: 1,
+                size: info.cumulativeSize,
+                median_size: info.cumulativeSize,
+                metadata
+            }
+        }, {
             upsert: true
         })
         this.allocator.broadcast({
@@ -114,7 +116,8 @@ export class StorageClusterPeer extends StorageCluster {
         this.allocator.broadcast({
             type: SocketMsgTypes.PIN_REMOVE_PEER,
             data: {
-                cid: cid.toString()
+                cid: cid.toString(),
+                size: 0
             },
             ts: unpinnedTs
         })
@@ -155,15 +158,15 @@ export class StorageClusterPeer extends StorageCluster {
             return
         }
         Logger.log('Received '+allocs.allocations.length+' pin allocations', 'storage-peer')
-        for (let a in allocs.allocations) {
-            let exists = await this.pins.findOne({_id: allocs.allocations[a]._id, 'allocations.id': this.getPeerId()})
+        for (let a of allocs.allocations) {
+            let exists = await this.pins.findOne({_id: a._id, 'allocations.id': this.getPeerId()})
             if (!exists)
                 await this.pins.updateOne({
-                    _id: allocs.allocations[a]._id
+                    _id: a._id
                 }, {
                     $setOnInsert: {
-                        created_at: allocs.allocations[a].created_at,
-                        metadata: allocs.allocations[a].metadata
+                        created_at: a.created_at,
+                        metadata: a.metadata
                     },
                     $set: {
                         status: 'queued',
@@ -192,27 +195,32 @@ export class StorageClusterPeer extends StorageCluster {
                 } catch {}
         }, 15000)
 
-        for (let cid in cids) {
+        for (const cid of cids) {
             let diskInfo = await this.getDiskInfo()
             if ((100*diskInfo.free/diskInfo.total) <= ALLOCATION_DISK_THRESHOLD) {
-                await this.pinFailed(cids[cid])
+                await this.pinFailed(cid)
                 continue
             }
             try {
-                let pinned = await this.ipfs.pin.add(cids[cid])
-                let size: number
+                let pinned = await this.ipfs.pin.add(cid)
+                let size: number = 0;
                 if (pinned.code === 0x70) {
-                    size = (await this.ipfs.files.stat('/ipfs/'+cids[cid])).cumulativeSize
+                    size = (await this.ipfs.files.stat('/ipfs/'+cid)).cumulativeSize
                 } else if (pinned.code === 0x71) {
-                    // why does ipfs.dag.stat() not exist
-                    let apiRes = (await (await fetch(this.getIpfsApiUrl()+'/dag/stat?arg='+cids[cid], {
+                    let apiRes = (await (await fetch(this.getIpfsApiUrl()+'/dag/stat?arg='+cid, {
                         method: 'POST'
                     })).text()).trim().split('\n')
-                    size = JSON.parse(apiRes[apiRes.length-1]).TotalSize as number
+                    const lastApiResponse = apiRes[apiRes.length-1]
+                    if (lastApiResponse !== undefined) {
+                        size = JSON.parse(lastApiResponse).TotalSize as number
+                    } else {
+                        // Handle the case when the response is undefined
+                        throw new Error('API response is undefined')
+                    }
                 }
                 let pinnedTs = new Date().getTime()
-                await this.pins.updateOne({
-                    _id: cids[cid],
+                this.pins.updateOne({
+                    _id: cid,
                     'allocations.id': this.getPeerId()
                 }, {
                     $set: {
@@ -231,15 +239,15 @@ export class StorageClusterPeer extends StorageCluster {
                 this.allocator.broadcast({
                     type: SocketMsgTypes.PIN_COMPLETED,
                     data: {
-                        cid: cids[cid],
+                        cid: cid,
                         size: size
                     },
                     ts: pinnedTs
                 })
-                Logger.log('Pinned '+cids[cid]+', size: '+size, 'storage-peer')
+                Logger.log('Pinned '+cid+', size: '+size, 'storage-peer')
             } catch (e) {
                 Logger.verbose(e)
-                await this.pinFailed(cids[cid])
+                await this.pinFailed(cid)
             }
         }
 
@@ -290,33 +298,39 @@ export class StorageClusterPeer extends StorageCluster {
             return
         }
 
-        for (let p in message.pins)
-            await this.pins.updateOne({
-                _id: message.pins[p]._id,
-            }, { $set: {
-                status: 'pinned',
-                created_at: message.pins[p].created_at,
-                last_updated: message.pins[p].last_updated,
-                allocations: message.pins[p].allocations,
-                allocationCount: message.pins[p].allocationCount,
-                median_size: message.pins[p].median_size,
-                metadata: message.pins[p].metadata
-            }}, {
+        for (let p of message.pins)
+            this.pins.updateOne({
+                _id: p._id,
+            }, {
+                $set: {
+                    status: 'pinned',
+                    created_at: p.created_at,
+                    last_updated: p.last_updated,
+                    allocations: p.allocations,
+                    allocationCount: p.allocationCount,
+                    median_size: p.median_size,
+                    metadata: p.metadata
+                }
+            }, {
                 upsert: true
             })
         
-        for (let u in message.unpins) {
+        for (let u of message.unpins) {
             try {
-                await this.ipfs.pin.rm(CID.parse(message.unpins[u]._id))
-                this.allocator.removePin(message.unpins[u]._id, message.unpins[u].last_updated, true)
+                await this.ipfs.pin.rm(CID.parse(u._id))
+                this.allocator.removePin(u._id, u.last_updated, true)
             } catch {}
         }
 
         Logger.log('Synced '+message.pins.length+' pins and '+message.unpins.length+' unpins', 'storage-cluster')
 
+        if (!message || !message.pins?.length) {
+            return
+        }
+
         this.requestSync(
-            message.pins.length > 0 ? message.pins[message.pins.length-1].created_at : new Date().getTime()+100000,
-            message.unpins.length > 0 ? message.unpins[message.unpins.length-1].last_updated : new Date().getTime()+100000
+            message.pins?.length > 0 ? message.pins[message.pins.length - 1]?.created_at ?? new Date().getTime()+100000 : new Date().getTime()+100000,
+            message.unpins?.length > 0 ? message.unpins[message.unpins.length - 1]?.last_updated ?? new Date().getTime()+100000: new Date().getTime()+100000
         )
     }
 
@@ -383,9 +397,9 @@ export class StorageClusterPeer extends StorageCluster {
                 })
                 if (!isDiscovery) {
                     Logger.log('Authentication success', 'storage-peer')
-                    for (let p in allocPeerInfo.discoveryPeers)
-                        if (allocPeerInfo.discoveryPeers[p] !== this.wsDiscovery)
-                            this.initWs(true, allocPeerInfo.discoveryPeers[p])
+                    for (const p of allocPeerInfo.discoveryPeers)
+                        if (p !== this.wsDiscovery)
+                            this.initWs(true, p)
                     setTimeout(async () => this.requestSync(
                         await this.allocator.getLatestPin(),
                         await this.allocator.getLatestUnpin()

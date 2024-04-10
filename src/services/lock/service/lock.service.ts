@@ -169,6 +169,8 @@ export class LockService {
         const runningServices = await this.lockRepository.fetchServicesLastPingedBefore10Minutes()
         // console.log(runningServices)
         for (let srv of runningServices) {
+
+            if (!srv.registered_id) continue
             // console.log(srv)
             const destined_id = await this.nextNodeSelection(srv.registered_id)
             // console.log(destined_id, this.identity.id)
