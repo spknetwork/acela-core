@@ -3,12 +3,13 @@ import { VideoRepository } from "./video.repository";
 import { Video } from "./schemas/video.schema";
 import { Model } from "mongoose";
 import { ObjectId } from "mongodb";
+import { InjectModel } from "@nestjs/mongoose";
 
 @Injectable()
 export class MockVideoRepository extends VideoRepository {
   readonly #logger: Logger;
 
-  constructor(videoModel: Model<Video>) {
+  constructor(@InjectModel(Video.name, 'threespeak') videoModel: Model<Video>) {
     super(videoModel);
 
     this.#logger = new Logger(MockVideoRepository.name)
@@ -25,7 +26,7 @@ export class MockVideoRepository extends VideoRepository {
     });
   }
 
-  async setPostedToChain(owner: string, ipfs?: string) {
+  async setPostedToChain(owner: string, ipfs?: string | undefined) {
     this.#logger.log(owner, 'set posted to chain mock');
     return Promise.resolve({
       acknowledged: true,

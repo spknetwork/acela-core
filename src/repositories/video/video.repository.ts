@@ -183,7 +183,7 @@ export class VideoRepository {
     filename: string
     size: number
     duration: number
-  }): Promise<Video> {
+  }): Promise<Video | null> {
     return await this.videoModel.findOneAndUpdate(
       {
         video_id: video_id,

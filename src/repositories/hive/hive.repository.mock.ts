@@ -41,7 +41,7 @@ export class MockHiveRepository extends HiveRepository {
   async vote(options: { author: string, permlink: string, voter: string, weight: number }): Promise<TransactionConfirmation> {
     if (options.weight < 0 || options.weight > 10_000) {
       this.#logger.error(`Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`)
-      return;
+      throw new Error('Vote attempted with an invalid weight');
     }
     this.#logger.log('Voting:', options)
 

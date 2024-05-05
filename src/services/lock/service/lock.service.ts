@@ -89,7 +89,7 @@ export class LockService {
         const savedLock = await this.lockRepository.findOneById(id);
 
         // If there's an existing lock not owned by this identity...
-        if (savedLock && savedLock.registered_id !== this.identity.id) {
+        if (savedLock && savedLock.registered_id && savedLock.registered_id !== this.identity.id) {
             const isLockStale = moment(savedLock.registered_ping).add(1, 'minutes').isBefore(moment());
 
             // If the lock is not stale, it's an immediate error condition.
@@ -122,7 +122,7 @@ export class LockService {
         // Check if the lock exists and is registered to the current instance
         if (lock && lock.registered_id === this.identity.id) {
             // Option 1: Set the registered_id to null, indicating the lock is free
-            await this.lockRepository.findOneByIdAndUpdateRegisteredIdOrIgnore({ id, registered_id: null, registered_ping: null });
+            await this.lockRepository.findOneByIdAndMakeInactiveIfExists({ id });
 
             // Option 2: Delete the lock from the repository if locks are treated as ephemeral
             // await this.lockRepository.deleteLock(id);
