@@ -140,7 +140,7 @@ export class HiveRepository {
 
     return await this.#hive.broadcast.sendOperations(
       operations,
-      PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE), // check this
+      PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE || ''), // check this
     )
   }
 
@@ -164,7 +164,7 @@ export class HiveRepository {
     }
     return this.#hive.broadcast.vote(
       options,
-      PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
+      PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
     )
   }
 
@@ -200,7 +200,7 @@ export class HiveRepository {
           app: 'threespeak.beta/0.1',
         }),
       },
-      PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
+      PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
     )
   }
 

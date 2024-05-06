@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.local # specify the local Dockerfile
-    command: npm run test:e2e
     container_name: acela-core
     restart: always
     env_file:

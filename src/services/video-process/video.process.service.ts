@@ -9,6 +9,7 @@ import * as Minio from 'minio'
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import 'dotenv/config';
 
 @Injectable()
 export class VideoProcessService {
@@ -21,7 +22,7 @@ export class VideoProcessService {
     constructor(uploadRepository: UploadRepository, configService: ConfigService) {
       this.#uploadRepository = uploadRepository;
       this.#configService = configService;
-      this.#cluster = new Cluster(this.#configService.get('IPFS_CLUSTER_URL'), {
+      this.#cluster = new Cluster(process.env.IPFS_CLUSTER_URL || 'http://65.21.201.94:9094', {
         headers: {}
       });
       this.#logger = new Logger(VideoProcessService.name);

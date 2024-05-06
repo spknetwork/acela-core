@@ -22,7 +22,7 @@ import { IpfsModule } from './services/ipfs/ipfs.module';
 import { LockModule } from './services/lock/lock.module';
 import { VotingModule } from './services/voting/voting.module';
 
-const mongoUrl = process.env.CORE_MONGODB_URL;
+const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
 
 @Module({
   imports: [

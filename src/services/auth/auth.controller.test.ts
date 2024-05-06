@@ -11,43 +11,52 @@ import { EmailModule } from '../email/email.module';
 import { AuthModule } from './auth.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
 import { UserModule } from '../../repositories/user/user.module';
-const jwt = require('jsonwebtoken');
-// const { generateKeyPair } = require('crypto');
-
-// const generateKeyPair = () = generateKeyPair('ec', {
-//   namedCurve: 'prime256v1', // Use the same curve name as OpenSSL
-//   publicKeyEncoding: {
-//     type: 'spki',
-//     format: 'pem'
-//   },
-//   privateKeyEncoding: {
-//     type: 'pkcs8',
-//     format: 'pem'
-//   }
-// }, (err: any, publicKey: string, privateKey: string) => {
-//   if (!err) {
-//     return { publicKey, privateKey }
-//   } else {
-//     console.log('Error:', err);
-//   }
-// });
+import request from 'supertest';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { DID } from 'dids';
+import { Ed25519Provider } from 'key-did-provider-ed25519';
+import { INestApplication } from '@nestjs/common';
+import { AuthMiddleware } from './auth.middleware';
+import * as KeyResolver from 'key-did-resolver'
 
 describe('AuthController', () => {
-  let authService: AuthService;
   let authController: AuthController;
+  let app: INestApplication;
+  let authMiddleware: AuthMiddleware
+  const seedBuf = new Uint8Array(32);
+  seedBuf.fill(27);
+  const key = new Ed25519Provider(seedBuf)
+  const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
+  let mongod;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
+    mongod = await MongoMemoryServer.create();
+    const uri = mongod.getUri();
+
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule,
-        MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/3speakAuth${process.env.CORE_MONGODB_PARAMS}`, {
-          connectionName: '3speakAuth'
+        MongooseModule.forRoot(uri, {
+          ssl: false,
+          authSource: 'threespeak',
+          readPreference: 'primary',
+          connectionName: 'threespeak',
+          dbName: 'threespeak',
+          autoIndex: true
         }),
-        MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/acela-core${process.env.CORE_MONGODB_PARAMS}`, {
-          connectionName: 'acela-core'
+        MongooseModule.forRoot(uri, {
+          ssl: false,
+          authSource: 'threespeak',
+          readPreference: 'primary',
+          connectionName: '3speakAuth',
+          dbName: '3speakAuth',
         }),
-        MongooseModule.forRoot(`${(process.env.CORE_MONGODB_URL || 'mongodb://localhost:27017')}/threespeak${process.env.CORE_MONGODB_PARAMS}`, {
-          connectionName: 'threespeak'
+        MongooseModule.forRoot(uri, {
+          ssl: false,
+          authSource: 'threespeak',
+          readPreference: 'primary',
+          connectionName: 'acela-core',
+          dbName: 'acela-core',
         }),
         UserAccountModule, 
         SessionModule,
@@ -62,30 +71,30 @@ describe('AuthController', () => {
       providers: [AuthService]
     }).compile()
 
-    authController = moduleRef.get<AuthController>(AuthController);
-    authService = moduleRef.get<AuthService>(AuthService);
+    app = moduleRef.createNestApplication()
+    await app.init()
   });
 
   describe('Login using did', () => {
-    it('Should fully execute a login', async () => {
 
-      // Your payload data
+    it(`/POST login singleton`, async () => {
+      await did.authenticate()
+
+      // Correctly prepare the payload and sign the JWT
       const payload = {
         sub: "1234567890",
         name: "John Doe",
-        iat: 1516239022
+        iat: 1516239022,
+        did: did.id
       };
 
-      // Private key for RS256 or secret for HS256
-      const privateKey = 'your-256-bit-secret';
+      const jws = await did.createJWS(payload);
 
-      // Sign the JWT
-      const token = jwt.sign(payload, privateKey, { algorithm: 'HS256'});
-
-      console.log(token);
-      
-
-      expect(await authController.loginSingletonReturn({ network: 'did', proof_payload: 'thing', proof: 'string' }, token)).toBe({});
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/login_singleton/did')
+        .send(jws)
+        .expect(200)
+        .expect({});
     });
   });
 });

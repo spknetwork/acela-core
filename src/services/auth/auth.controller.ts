@@ -1,5 +1,5 @@
 import { cryptoUtils } from "@hiveio/dhive";
-import { BadRequestException, Body, Controller, Get, Headers, HttpException, HttpStatus, Logger, Post, Request, Response, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpException, HttpStatus, Logger, Post, Request, Response, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { ApiOkResponse, ApiBadRequestResponse, ApiInternalServerErrorResponse, ApiHeader, ApiUnauthorizedResponse, ApiOperation, ApiBody, ApiParam, ApiMovedPermanentlyResponse } from "@nestjs/swagger";
 import moment from "moment";
@@ -8,14 +8,14 @@ import { HiveClient } from "../../utils/hiveClient";
 import { LoginDto } from "../api/dto/Login.dto";
 import { LoginErrorResponseDto } from "../api/dto/LoginErrorResponse.dto";
 import { LoginResponseDto } from "../api/dto/LoginResponse.dto";
-import { LoginSingletonDto } from "../api/dto/LoginSingleton.dto";
+import { LoginSingletonHiveDto } from "../api/dto/LoginSingleton.dto";
 import { AuthService } from "./auth.service";
 import { HiveAccountRepository } from "../../repositories/hive-account/hive-account.repository";
 import { UserRepository } from "../../repositories/user/user.repository";
 import { HiveRepository } from "../../repositories/hive/hive.repository";
 import { EmailService } from "../email/email.service";
 import bcrypt from 'bcryptjs';
-import * as crypto from 'crypto';
+import { WithAuthData } from "./auth.interface";
 
 @Controller('/api/v1/auth')
 export class AuthController {
@@ -40,6 +40,60 @@ export class AuthController {
   async login(@Request() req, @Body() body: LoginDto) {
     return this.authService.login(req.user)
   }
+  
+  //@UseGuards(AuthGuard('local'))
+  @ApiOkResponse({
+    description: "Successfully logged in",
+    type: LoginResponseDto
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid options",
+    type: LoginErrorResponseDto
+  })
+  @ApiInternalServerErrorResponse({
+    description: "Internal Server Error - unrelated to request body"
+  })
+  @Post(['/login/singleton', '/login/singleton/hive'])
+  async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
+    const proof_payload = JSON.parse(body.proof_payload)
+
+    const accountDetails = await this.hiveRepository.getAccount(proof_payload.account)
+
+    if (!accountDetails) {
+      throw new HttpException(
+        {
+          reason: `Hive Account @${proof_payload.account} does not exist`,
+          errorType: "ACCOUNT_NOT_FOUND"
+        },
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    if (
+      this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(JSON.stringify(proof_payload)), body.proof, accountDetails) &&
+      new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
+    ) {
+      if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
+        return await this.authService.authenticateUser(proof_payload.account, 'hive')
+      } else {
+        throw new HttpException(
+          {
+            reason: `Hive Account @${proof_payload.account} has not granted posting authority to @threespeak`,
+            errorType: "MISSING_POSTING_AUTHORITY"
+          },
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+    } else {
+      throw new HttpException(
+        {
+          reason: 'Invalid Signature',
+          errorType: "INVALID_SIGNATURE"
+        },
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+  }
 
   //@UseGuards(AuthGuard('local'))
   @ApiOkResponse({
@@ -53,121 +107,23 @@ export class AuthController {
   @ApiInternalServerErrorResponse({
     description: "Internal Server Error - unrelated to request body"
   })
-  @Post('/login_singleton')
-  async loginSingletonReturn(@Body() body: LoginSingletonDto, @Headers('authorization') didToken?: string) {
-    const proof_payload = JSON.parse(body.proof_payload)
-
-    if (body.network === 'hive') {
-      const accountDetails = await this.hiveRepository.getAccount(proof_payload.account)
-
-      if (!accountDetails) {
-        throw new HttpException(
-          {
-            reason: `Hive Account @${proof_payload.account} does not exist`,
-            errorType: "ACCOUNT_NOT_FOUND"
-          },
-          HttpStatus.BAD_REQUEST,
-        )
-      }
-
-      if (
-        this.hiveRepository.verifyHiveMessage(cryptoUtils.sha256(JSON.stringify(proof_payload)), body.proof, accountDetails) &&
-        new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
-      ) {
-        if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
-          return await this.authService.authenticateUser(proof_payload.account, 'hive')
-        } else {
-          throw new HttpException(
-            {
-              reason: `Hive Account @${proof_payload.account} has not granted posting authority to @threespeak`,
-              errorType: "MISSING_POSTING_AUTHORITY"
-            },
-            HttpStatus.BAD_REQUEST,
-          )
-        }
-      } else {
-        throw new HttpException(
-          {
-            reason: 'Invalid Signature',
-            errorType: "INVALID_SIGNATURE"
-          },
-          HttpStatus.BAD_REQUEST,
-        )
-      }
-    } else if (body.network === 'did') {
-      try {
-        if (!didToken) {
-          throw new HttpException(
-            {
-              reason: 'DID Token Missing',
-              errorType: "MISSING_DID_TOKEN"
-            },
-            HttpStatus.BAD_REQUEST,
-          );
-        };
-
-        const uint8Array = crypto.randomBytes(32);
-
-        const { DID } = await import('dids');
-        const KeyResolver = await import('key-did-resolver');
-        const { Ed25519Provider } = await import('key-did-provider-ed25519');
-
-        const did = new DID({
-          provider: new Ed25519Provider(uint8Array),
-          resolver: KeyResolver.getResolver()
-        })
-
-        const verifyJWSResult = await did.verifyJWS(didToken);
-        const didVal = verifyJWSResult.kid.split('#')[0];
-
-        if (!didVal) {
-          throw new HttpException(
-            {
-              reason: 'Invalid DID',
-              errorType: "INVALID_DID"
-            },
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-
-        await did.resolve(didVal);
-        await did.authenticate();
-
-        const didIsInDate = new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate();
-
-        if (didIsInDate) {
-          this.authService.getOrCreateUserByDid(didVal);
-          return await this.authService.authenticateUser(didVal, 'did');
-        }
-
-        throw new HttpException(
-          {
-            reason: 'Invalid Signature',
-            errorType: "INVALID_SIGNATURE"
-          },
-          HttpStatus.BAD_REQUEST,
-        )
-
-      } catch (e) {
-        this.#logger.error(e)
-        throw new HttpException(
-          {
-            reason: e,
-            errorType: "UNKNOWN_SERVER_ERROR"
-          },
-          HttpStatus.SERVICE_UNAVAILABLE,
-        )
-      }
-    } else {
+  @HttpCode(200)
+  @Post('/login_singleton/did')
+  async loginSingletonReturn(@Body() body: WithAuthData) {
+    try {
+      this.authService.getOrCreateUserByDid(body.did);
+      //return await this.authService.authenticateUser(body.did, 'did');
+    } catch (e) {
+      console.log(e)
+      this.#logger.error(e)
       throw new HttpException(
         {
-          reason: 'Unsupported network type',
-          errorType: "UNSUPPORTED_NETWORK"
+          reason: e,
+          errorType: "UNKNOWN_SERVER_ERROR"
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.SERVICE_UNAVAILABLE,
       )
     }
-
     // return this.authService.login(req.user)
   }
 
