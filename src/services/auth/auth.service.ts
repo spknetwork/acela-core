@@ -1,4 +1,5 @@
 
+import 'dotenv/config'
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs'
@@ -6,17 +7,15 @@ import { UserAccountRepository } from '../../repositories/userAccount/user-accou
 import { v4 as uuid } from 'uuid'
 import { SessionRepository } from '../../repositories/session/session.repository';
 import { Network } from './types';
+import { JwtStrategy } from './auth.strategy';
 
 @Injectable()
 export class AuthService {
-  jwtService: JwtService;
   constructor(
     private readonly userAccountRepository: UserAccountRepository,
     private readonly sessionRepository: SessionRepository,
-    jwtService: JwtService
-  ) {
-    this.jwtService = jwtService;
-  }
+    readonly jwtService: JwtService
+  ) { }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userAccountRepository.findOneByEmail(email);

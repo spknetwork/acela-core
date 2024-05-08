@@ -16,13 +16,10 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { DID } from 'dids';
 import { Ed25519Provider } from 'key-did-provider-ed25519';
 import { INestApplication } from '@nestjs/common';
-import { AuthMiddleware } from './auth.middleware';
 import * as KeyResolver from 'key-did-resolver'
 
 describe('AuthController', () => {
-  let authController: AuthController;
   let app: INestApplication;
-  let authMiddleware: AuthMiddleware
   const seedBuf = new Uint8Array(32);
   seedBuf.fill(27);
   const key = new Ed25519Provider(seedBuf)
@@ -62,7 +59,10 @@ describe('AuthController', () => {
         SessionModule,
         HiveAccountModule,
         UserModule,
-        JwtModule,
+        JwtModule.register({
+          secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
+          signOptions: { expiresIn: '30d' },
+        }),
         HiveModule,
         EmailModule,
         AuthModule
@@ -94,7 +94,10 @@ describe('AuthController', () => {
         .post('/api/v1/auth/login_singleton/did')
         .send(jws)
         .expect(200)
-        .expect({});
+        .then(response => {
+          expect(response.body).toHaveProperty('access_token');
+          expect(typeof response.body.access_token).toBe('string');
+        });
     });
   });
 });

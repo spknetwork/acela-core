@@ -112,7 +112,7 @@ export class AuthController {
   async loginSingletonReturn(@Body() body: WithAuthData) {
     try {
       this.authService.getOrCreateUserByDid(body.did);
-      //return await this.authService.authenticateUser(body.did, 'did');
+      return await this.authService.authenticateUser(body.did, 'did');
     } catch (e) {
       console.log(e)
       this.#logger.error(e)

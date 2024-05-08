@@ -30,7 +30,7 @@ export class UserAccount {
   @Prop({ type: Boolean, default: false })
   keysSent: boolean;
   
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: false })
   password: string;
 
   @Prop({ type: String, default: 'FFFFFFFFFFFF' })

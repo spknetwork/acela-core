@@ -25,10 +25,6 @@ export class AuthMiddleware implements NestMiddleware {
             return;
         }
 
-        console.log(verificationResult)
-
-        console.log(req.body)
-
         const authData = authSchema.parse(verificationResult.payload);
         const { did, iat } = authData;
 

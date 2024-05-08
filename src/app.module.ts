@@ -21,6 +21,7 @@ import { UploadingModule } from './services/uploader/uploading.module';
 import { IpfsModule } from './services/ipfs/ipfs.module';
 import { LockModule } from './services/lock/lock.module';
 import { VotingModule } from './services/voting/voting.module';
+import { JwtModule } from '@nestjs/jwt';
 
 const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
 
@@ -70,7 +71,11 @@ const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
     EmailModule,
     UserAccountModule,
     ApiModule,
-    VotingModule
+    VotingModule,
+    JwtModule.register({
+      secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
+      signOptions: { expiresIn: '30d' },
+    }),
   ],
   controllers: [],
   providers: [],

@@ -129,7 +129,7 @@
     "lint:fix": "eslint --fix \"src/**/*.{ts,tsx}\"",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test:report": "sensible-browser ./coverage/lcov-report/index.html",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules DOTENV_CONFIG_PATH=./.env.local npx jest"
   },
   "jest": {
     "moduleFileExtensions": [
