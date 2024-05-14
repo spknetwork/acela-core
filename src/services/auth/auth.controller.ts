@@ -9,6 +9,7 @@ import {
   HttpStatus,
   Logger,
   Post,
+  Query,
   Request,
   Response,
   UseGuards,
@@ -77,7 +78,7 @@ export class AuthController {
   })
   @Post(['/login/singleton', '/login/singleton/hive'])
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    const proof_payload = JSON.parse(body.proof_payload);
+    const proof_payload: { account: string; ts: number } = JSON.parse(body.proof_payload);
 
     const accountDetails = await this.hiveRepository.getAccount(proof_payload.account);
 
@@ -229,7 +230,7 @@ export class AuthController {
     description: 'Internal Server Error - unrelated to request body',
   })
   @Post('/lite/register-initial')
-  async registerLite(@Body() body) {
+  async registerLite(@Body() body: { username: string; otp_code: string; secret: string }) {
     const { username, otp_code } = body;
     const output = await HiveClient.database.getAccounts([username]);
 
@@ -248,7 +249,7 @@ export class AuthController {
         // )
         await this.hiveAccountRepository.createLite(username, body.secret);
 
-        const jwt = await this.authService.jwtService.signAsync({
+        const jwt = await this.authService.jwtSign({
           username,
         });
 
@@ -312,9 +313,8 @@ export class AuthController {
   })
   // @UseGuards(AuthGuard('local'))
   @Post('/register')
-  async register(@Request() req, @Body() body) {
-    const password = req.body.password;
-    const { email } = req.body;
+  async register(@Request() req, @Body() body: { password: string; email: string }) {
+    const { email, password } = body;
     const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
 
     const existingRecord = await this.userRepository.findOneByEmail(email);
@@ -346,8 +346,8 @@ export class AuthController {
     description: 'Redirect user to 3Speak.tv',
   })
   @Get('/verifyemail')
-  async verifyEmail(@Request() req, @Response() res) {
-    const verifyCode = req.query.code;
+  async verifyEmail(@Request() req, @Query() query: { code: string }, @Response() res) {
+    const verifyCode = query.code;
 
     if (!verifyCode) {
       throw new BadRequestException('Verification code is required');
@@ -389,7 +389,10 @@ export class AuthController {
   })
   @UseGuards(AuthGuard('jwt'))
   @Post('/request_hive_account')
-  async requestHiveAccount(@Request() req) {
+  async requestHiveAccount(
+    @Body() body: { username: string },
+    @Request() req: { user: { user_id: string } },
+  ) {
     const existingAcocunt = await this.hiveAccountRepository.findOneByOwner(req.user.user_id);
     if (existingAcocunt) {
       throw new HttpException(
@@ -398,17 +401,17 @@ export class AuthController {
       );
     }
     // console.log(existingAcocunt)
-    const output = await HiveClient.database.getAccounts([req.body.username]);
+    const output = await HiveClient.database.getAccounts([body.username]);
     // console.log(output)
     if (output.length === 0) {
       try {
         const accountCreation = await this.hiveRepository.createAccountWithAuthority(
-          req.body.username,
+          body.username,
           process.env.ACCOUNT_CREATOR,
         );
         //Here will be thrown if failed at this point
 
-        await this.hiveAccountRepository.insertCreated(req.body.username, req.user.user_id);
+        await this.hiveAccountRepository.insertCreated(body.username, req.user.user_id);
 
         return accountCreation;
       } catch (ex) {

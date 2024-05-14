@@ -2,7 +2,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { authSchema } from './auth.interface';
 import * as KeyDidResolver from 'key-did-resolver';
-import { DID, VerifyJWSResult } from 'dids';
+import { DID, DagJWS, VerifyJWSResult } from 'dids';
 
 const VALID_TIMESTAMP_DIFF_MS = 1000 * 60 * 5;
 
@@ -14,7 +14,7 @@ export function isValidTimestamp(timestamp: number): boolean {
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  async use(req: Request, res: Response, next: NextFunction) {
+  async use(req: Request<any, any, string | DagJWS>, res: Response, next: NextFunction) {
     let verificationResult: VerifyJWSResult;
     const verifier = new DID({ resolver: KeyDidResolver.getResolver() });
     try {
@@ -43,7 +43,7 @@ export class AuthMiddleware implements NestMiddleware {
       return;
     }
 
-    req.body = verificationResult.payload;
+    req.body = verificationResult.payload as DagJWS;
 
     next();
   }

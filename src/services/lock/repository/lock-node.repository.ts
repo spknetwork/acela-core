@@ -10,7 +10,7 @@ export class LockNodeRepository {
   ) {}
 
   async distinct(field: keyof LockNode) {
-    return await this.lockNodeModel.distinct(field);
+    return await this.lockNodeModel.distinct<LockNode>(field);
   }
 
   async findOneAndRenewOrCreate(node_id: string) {

@@ -64,7 +64,9 @@ export class HealthCheckCore {
       try {
         const pinned = await this.ipfs.pin.rm(pin.cid);
         // console.log(pinned)
-      } catch {}
+      } catch {
+        // TODO: Handle error
+      }
 
       await this.pins.findOneAndUpdate(
         {
@@ -96,7 +98,7 @@ export class HealthCheckCore {
     for (const pin of ipfsPins) {
       // console.log(pin)
       try {
-        for await (const pinResult of await this.ipfs.pin.ls({
+        for await (const pinResult of this.ipfs.pin.ls({
           paths: [pin.cid],
           type: 'recursive',
         })) {

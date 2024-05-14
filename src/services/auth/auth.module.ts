@@ -27,7 +27,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     SessionModule,
     PassportModule,
     JwtModule.register({
-      secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
+      privateKey: process.env.JWT_PRIVATE_KEY,
       signOptions: { expiresIn: '30d' },
     }),
   ],

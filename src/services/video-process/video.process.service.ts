@@ -31,7 +31,7 @@ export class VideoProcessService {
   async checkEncoding() {
     const readyUploads = await this.#uploadRepository.findActiveEncodes();
     for (const upload of readyUploads) {
-      const { data } = await Axios.get(
+      const { data } = await Axios.get<{ job: { status: string; result: { cid: string } } }>(
         `${this.#configService.get('ENCODER_API')}/api/v0/gateway/jobstatus/${upload.encode_id}`,
       );
 
@@ -81,10 +81,13 @@ export class VideoProcessService {
     // console.log(readyUploads)
 
     for (const upload of readyUploads) {
-      const { cid } = await this.#cluster.addData(fs.createReadStream(upload.file_path), {
-        replicationFactorMin: 1,
-        replicationFactorMax: 2,
-      });
+      const { cid }: { cid: string } = await this.#cluster.addData(
+        fs.createReadStream(upload.file_path),
+        {
+          replicationFactorMin: 1,
+          replicationFactorMax: 2,
+        },
+      );
 
       await this.#uploadRepository.setIpfsDoneAndReadyForEncode(upload._id, cid);
       await fsPromises.rm(upload.file_path);

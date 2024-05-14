@@ -53,8 +53,7 @@ class ChildConfig {
 }
 export class Config {
   config: any;
-  datastore: any;
-  modules: {};
+  datastore: FsDatastore;
   obj_set: (obj: any, props: any, value: any) => boolean;
   path: string;
   constructor(datastore) {
@@ -66,7 +65,6 @@ export class Config {
       this.datastore = datastore;
     }
 
-    this.modules = {};
     this.obj_set = obj_set;
     this.get = this.get.bind(this);
     this.set = this.set.bind(this);
@@ -79,18 +77,18 @@ export class Config {
   }
   save() {
     const buf = Buffer.from(JSON.stringify(this.config, null, 2));
-    this.datastore.put(new Key('config'), buf);
+    void this.datastore.put(new Key('config'), buf);
   }
   /**
    *
    * @param {String} key
    */
-  get(key) {
+  get(key): string {
     if (typeof key === 'undefined') {
       return this.config;
     }
     if (typeof key !== 'string') {
-      return new Error('Key ' + key + ' must be a string.');
+      throw new Error('Key ' + key + ' must be a string.');
     }
     return _get(this.config, key);
   }
@@ -105,7 +103,7 @@ export class Config {
   }
   async open() {
     if (!(await this.datastore.has(new Key('config')))) {
-      this.init();
+      void this.init();
       return;
     }
     const buf = await this.datastore.get(new Key('config'));

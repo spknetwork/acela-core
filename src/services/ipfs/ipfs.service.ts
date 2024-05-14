@@ -3,6 +3,57 @@ import 'dotenv/config';
 import { Injectable } from '@nestjs/common';
 import Axios from 'axios';
 
+type BaseOptions = {
+  name?: string;
+  mode?: string;
+  local?: boolean;
+  recursive?: boolean;
+  hidden?: boolean;
+  wrap?: boolean;
+  shard?: boolean;
+  format?: string;
+  layout?: string;
+  chunker?: string;
+  progress?: number;
+};
+
+type DataOptions = BaseOptions & {
+  metadata: {
+    key: string;
+    app: string;
+    message: string;
+  };
+  replicationFactorMin?: number;
+  replicationFactorMax?: number;
+  origins?: string[];
+  name?: string;
+  mode?: string;
+  shardSize?: string;
+  userAllocations?: string[];
+  expireAt?: Date;
+  pinUpdate?: boolean;
+  streamChannels?: boolean;
+  rawLeaves?: boolean;
+  cidVersion?: number;
+  hashFun?: string;
+  noCopy?: boolean;
+};
+
+type EncodeOptions = BaseOptions & {
+  'stream-channels'?: boolean;
+  'raw-leaves'?: boolean;
+  'cid-version'?: number;
+  origins?: string;
+  'replication-min'?: number;
+  'replication-max'?: number;
+  'shard-size'?: string;
+  'user-allocations'?: string;
+  'expire-at'?: string;
+  'pin-update'?: boolean;
+  hash?: string;
+  'no-copy'?: boolean;
+};
+
 @Injectable()
 export class IpfsService {
   // readonly #axios = new Axios();
@@ -10,7 +61,7 @@ export class IpfsService {
   /**
    * @param {API.PinOptions} options
    */
-  encodePinOptions = (options: any) =>
+  encodePinOptions = (options: DataOptions) =>
     this.encodeParams({
       name: options.name,
       mode: options.mode,
@@ -20,7 +71,7 @@ export class IpfsService {
       'user-allocations': options.userAllocations?.join(','),
       'expire-at': options.expireAt?.toISOString(),
       'pin-update': options.pinUpdate,
-      origins: options.origins?.join(','),
+      origins: options.origins?.join(',') || '',
       ...this.encodeMetadata(options.metadata || {}),
     });
 
@@ -36,11 +87,11 @@ export class IpfsService {
    * @param {T} options
    * @returns {{[K in keyof T]: Exclude<T[K], undefined>}}
    */
-  encodeParams = (options) =>
+  encodeParams = (options: EncodeOptions) =>
     // @ts-ignore - it can't infer this
     Object.fromEntries(Object.entries(options).filter(([, v]) => v != null));
 
-  encodeAddParams = (options: any) =>
+  encodeAddParams = (options: DataOptions) =>
     this.encodeParams({
       ...this.encodePinOptions(options),
       local: options.local,
@@ -64,7 +115,7 @@ export class IpfsService {
       'no-copy': options.noCopy,
     });
 
-  addData = async (cluster, file, options: any) => {
+  addData = async (cluster, file, options: DataOptions): Promise<{ cid: string }> => {
     const body = new FormData();
     body.append('file', file);
 
@@ -79,7 +130,8 @@ export class IpfsService {
       };
       const { data: result } = await Axios.post(`${cluster}/add`, body, reqConfig);
       const data = params['stream-channels'] ? result : result[0];
-      return { ...data, cid: data.cid };
+      const cid: string = data.cid;
+      return { ...data, cid };
     } catch (err) {
       const error = /** @type {Error & {response?:Response}}  */ err;
       if (error.response?.ok) {

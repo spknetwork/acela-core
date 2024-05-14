@@ -19,18 +19,20 @@ export enum SocketMsgTypes {
   SYNC_RESP,
 }
 
-export type SocketMsg = {
-  type: SocketMsgTypes;
-  data:
-    | SocketMsgAuth
-    | SocketMsgAuthSuccess
-    | SocketMsgPeerInfo
-    | SocketMsgPinAlloc
-    | SocketMsgPin
-    | SocketMsgGossip
-    | SocketMsgSyncResp;
-  ts: number;
-};
+export type SocketMsg = (
+  | { type: SocketMsgTypes.MSG_GOSSIP_ALLOC; data: SocketMsgGossip }
+  | { type: SocketMsgTypes.PEER_INFO; data: SocketMsgPeerInfo }
+  | { type: SocketMsgTypes.PIN_COMPLETED; data: SocketMsgPin }
+  | { type: SocketMsgTypes.PIN_FAILED; data: SocketMsgPin }
+  | { type: SocketMsgTypes.PIN_NEW; data: SocketMsgPin }
+  | { type: SocketMsgTypes.PIN_REMOVE_PEER; data: SocketMsgPin }
+  | { type: SocketMsgTypes.PIN_REMOVE; data: SocketMsgPin }
+  | { type: SocketMsgTypes.SYNC_REQ; data: SocketMsgSyncReq }
+  | { type: SocketMsgTypes.AUTH_SUCCESS; data: SocketMsgAuthSuccess }
+  | { type: SocketMsgTypes.PIN_ALLOCATION; data: SocketMsgPinAlloc }
+  | { type: SocketMsgTypes.SYNC_RESP; data: SocketMsgSyncResp }
+  | { type: SocketMsgTypes.AUTH; data: SocketMsgAuth }
+) & { ts: number };
 
 export type SocketMsgTyped<T> = {
   type: SocketMsgTypes;

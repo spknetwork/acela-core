@@ -92,7 +92,7 @@ export class LockRepository {
   }
 
   async fetchServicesLastPingedBefore10Minutes() {
-    return await this.lockModel.find({
+    return await this.lockModel.find<Lock>({
       registered_ping: {
         $lt: moment().subtract('10', 'minute').toDate(),
       },

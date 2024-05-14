@@ -19,7 +19,7 @@ export class HiveAccountRepository {
   }
 
   async createLite(username: string, secret: string) {
-    this.hiveAccountModel.create({
+    return await this.hiveAccountModel.create({
       status: 'requested',
       username,
       keys_requested: false,
@@ -32,7 +32,7 @@ export class HiveAccountRepository {
   }
 
   async insertCreated(username: string, created_by) {
-    this.hiveAccountModel.create({
+    return await this.hiveAccountModel.create({
       status: 'created',
       username,
       keys_requested: false,

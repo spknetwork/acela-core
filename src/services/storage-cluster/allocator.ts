@@ -4,7 +4,6 @@ import { Logger } from '@nestjs/common';
 import {
   ALLOCATION_DISK_THRESHOLD,
   SocketMsg,
-  SocketMsgGossip,
   SocketMsgAuth,
   SocketMsgPeerInfo,
   SocketMsgPin,
@@ -436,7 +435,7 @@ export class StorageClusterAllocator extends StorageCluster {
         },
       );
     } else {
-      this.pins.updateOne(
+      await this.pins.updateOne(
         { _id: completedPin.cid, 'allocations.id': peerId },
         {
           $set: {
@@ -514,7 +513,7 @@ export class StorageClusterAllocator extends StorageCluster {
       reported_size: newPin.size,
     };
     if (!alreadyExists || alreadyExists.status === 'deleted')
-      this.pins.updateOne(
+      await this.pins.updateOne(
         {
           _id: newPin.cid,
         },
@@ -702,42 +701,43 @@ export class StorageClusterAllocator extends StorageCluster {
   async handleSocketMsg(message: SocketMsg, peerId: string, currentTs: number) {
     switch (message.type) {
       case SocketMsgTypes.MSG_GOSSIP_ALLOC:
-        const gossipInfo = message.data as SocketMsgGossip;
-        if (gossipInfo.peerId === this.getPeerId()) return;
-        await this.pushAllocations(gossipInfo.peerId, gossipInfo.allocations, gossipInfo.ts, false);
+        if (message.data.peerId === this.getPeerId()) return;
+        await this.pushAllocations(
+          message.data.peerId,
+          message.data.allocations,
+          message.data.ts,
+          false,
+        );
         break;
       case SocketMsgTypes.PEER_INFO:
-        const peerInfo = message.data as SocketMsgPeerInfo;
-        if (typeof peerInfo.freeSpaceMB !== 'number' || typeof peerInfo.totalSpaceMB !== 'number')
+        if (
+          typeof message.data.freeSpaceMB !== 'number' ||
+          typeof message.data.totalSpaceMB !== 'number'
+        )
           return;
-        await this.handlePeerInfoAndAllocate(peerInfo, peerId, message.ts, currentTs);
+        await this.handlePeerInfoAndAllocate(message.data, peerId, message.ts, currentTs);
         break;
       case SocketMsgTypes.PIN_COMPLETED:
         // peer completed pin successfully
-        await this.handlePinComplete(message.data as SocketMsgPin, peerId, message.ts, currentTs);
+        await this.handlePinComplete(message.data, peerId, message.ts, currentTs);
         break;
       case SocketMsgTypes.PIN_FAILED:
         // cluster peer rejects allocation for any reason (i.e. errored pin or low disk space)
-        await this.handlePinFailed(message.data as SocketMsgPin, peerId, message.ts, currentTs);
+        await this.handlePinFailed(message.data, peerId, message.ts, currentTs);
         break;
       case SocketMsgTypes.PIN_NEW:
         // new pin from a peer
-        await this.handleNewPinFromPeer(
-          message.data as SocketMsgPin,
-          peerId,
-          message.ts,
-          currentTs,
-        );
+        await this.handleNewPinFromPeer(message.data, peerId, message.ts, currentTs);
         break;
       case SocketMsgTypes.PIN_REMOVE_PEER:
         // unpinned from a peer (not to be confused as removed from entire cluster)
-        await this.handlePinRmFromPeer(message.data as SocketMsgPin, peerId, message.ts, currentTs);
+        await this.handlePinRmFromPeer(message.data, peerId, message.ts, currentTs);
         break;
       case SocketMsgTypes.PIN_REMOVE:
-        await this.handleUnpinRequest((message.data as SocketMsgPin).cid, message.ts);
+        await this.handleUnpinRequest(message.data.cid, message.ts);
         break;
       case SocketMsgTypes.SYNC_REQ:
-        await this.syncResponse(peerId, message.data as SocketMsgSyncReq);
+        await this.syncResponse(peerId, message.data);
         break;
       default:
         break;
@@ -797,13 +797,7 @@ export class StorageClusterAllocator extends StorageCluster {
     this.wss.on('connection', (ws) => {
       let authenticated = false;
       let peerId: string;
-      ws.on('message', async (data) => {
-        let message: SocketMsg;
-        try {
-          message = JSON.parse(data.toString());
-        } catch {
-          return;
-        }
+      ws.on('message', async (message: SocketMsg) => {
         if (
           !message ||
           typeof message.type === 'undefined' ||

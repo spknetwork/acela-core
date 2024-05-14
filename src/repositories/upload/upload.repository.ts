@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ModifyResult, Types } from 'mongoose';
+import { FilterQuery, Model, QueryOptions, Types, UpdateQuery } from 'mongoose';
 import { Upload, UploadDocument } from './schemas/upload.schema';
 import { UploadDto } from './dto/upload.dto';
 
@@ -13,17 +13,14 @@ export class UploadRepository {
   }
 
   async findOneAndUpdate(
-    filter: any,
-    update: any,
-    options?: any,
-  ): Promise<ModifyResult<UploadDto>> {
-    return await this.uploadModel
-      .findOneAndUpdate<UploadDto>(filter, update, options)
-      .lean()
-      .exec();
+    filter: FilterQuery<Upload>,
+    update: UpdateQuery<Upload>,
+    options?: QueryOptions<Upload>,
+  ): Promise<Upload | null> {
+    return await this.uploadModel.findOneAndUpdate<Upload>(filter, update, options).lean().exec();
   }
 
-  async findOne(filter: any): Promise<UploadDto | null> {
+  async findOne(filter: FilterQuery<Upload>): Promise<UploadDto | null> {
     return this.uploadModel.findOne(filter).exec();
   }
 

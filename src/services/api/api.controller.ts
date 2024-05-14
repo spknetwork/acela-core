@@ -10,7 +10,6 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { HiveClient } from '../../utils/hiveClient';
 import { AuthService } from '../auth/auth.service';
 import { v4 as uuid } from 'uuid';
 import { RequireHiveVerify } from './utils';
@@ -84,7 +83,15 @@ export class ApiController {
   })
   @UseGuards(AuthGuard('jwt'))
   @Post('/hive/post_comment')
-  async postHiveComment(@Body() reqBody) {
+  async postHiveComment(
+    @Body()
+    reqBody: {
+      author: string;
+      body: string;
+      parent_author: string;
+      parent_permlink: string;
+    },
+  ) {
     const { body, parent_author, parent_permlink, author } = reqBody;
     // console.log(body)
 
@@ -141,7 +148,10 @@ export class ApiController {
   })
   @UseGuards(AuthGuard('jwt'))
   @Post(`/hive/linkaccount`)
-  async linkAccount(@Body() data: LinkAccountPostDto, @Request() req: any) {
+  async linkAccount(
+    @Body() data: LinkAccountPostDto,
+    @Request() req: { user: { user_id: string } },
+  ) {
     const { user_id } = req.user; // TODO: security
     const linkedAccount = await this.linkedAccountsRepository.findOneByUserIdAndAccountName({
       user_id: user_id,
@@ -194,44 +204,46 @@ export class ApiController {
   })
   @UseGuards(AuthGuard('jwt'))
   @Post(`/hive/verify_linked_account`)
-  async verifyLinkedAccount(@Body() data: any, @Request() req: any) {
+  async verifyLinkedAccount(@Body() data: { memo: string }, @Request() req: any) {
     const { memo } = data;
     console.log(memo);
 
+    // TODO: this function does not get the message, it gets the public keys
     const message = await this.hiveRepository.getPublicKeys(memo);
-    const pubKeys = await this.hiveRepository.getPublicKeys(memo);
+    throw new Error('Not implemented');
+    // const pubKeys = await this.hiveRepository.getPublicKeys(memo);
 
-    const [account] = await HiveClient.database.getAccounts([message.account]);
+    // const [account] = await HiveClient.database.getAccounts([message.account]);
 
-    if (!account) {
-      throw new HttpException({ reason: 'Account not found' }, HttpStatus.BAD_REQUEST);
-    }
-    console.log(account[message.authority], pubKeys);
+    // if (!account) {
+    //   throw new HttpException({ reason: 'Account not found' }, HttpStatus.BAD_REQUEST);
+    // }
+    // console.log(account[message.authority], pubKeys);
 
-    // Check if the signature is not valid
-    const signatureValid = account[message.authority].key_auths.some(
-      (key_auth) => key_auth[0] === pubKeys[0],
-    );
-    if (!signatureValid) {
-      throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST);
-    }
+    // // Check if the signature is not valid
+    // const signatureValid = account[message.authority].key_auths.some(
+    //   (key_auth) => key_auth[0] === pubKeys[0],
+    // );
+    // if (!signatureValid) {
+    //   throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST);
+    // }
 
-    const identityChallenge = await this.linkedAccountsRepository.findOneByChallenge({
-      challenge: message.message,
-    });
+    // const identityChallenge = await this.linkedAccountsRepository.findOneByChallenge({
+    //   challenge: message.message,
+    // });
 
-    if (!identityChallenge) {
-      throw new HttpException({ reason: 'Challenge not found' }, HttpStatus.BAD_REQUEST);
-    }
+    // if (!identityChallenge) {
+    //   throw new HttpException({ reason: 'Challenge not found' }, HttpStatus.BAD_REQUEST);
+    // }
 
-    console.log(signatureValid, account, message.message, identityChallenge);
+    // console.log(signatureValid, account, message.message, identityChallenge);
 
-    if (identityChallenge.account !== account.name) {
-      throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST);
-    }
+    // if (identityChallenge.account !== account.name) {
+    //   throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST);
+    // }
 
-    await this.linkedAccountsRepository.verify(identityChallenge._id);
-    return { ok: true };
+    // await this.linkedAccountsRepository.verify(identityChallenge._id);
+    // return { ok: true };
   }
 
   @ApiOperation({

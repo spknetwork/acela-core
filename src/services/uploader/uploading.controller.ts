@@ -24,6 +24,7 @@ import { UpdateUploadDto } from './dto/update-upload.dto';
 import { StartEncodeDto } from './dto/start-encode.dto';
 import { UploadingService } from './uploading.service';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { Upload } from './types';
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -43,7 +44,7 @@ export class UploadingController {
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
   async uploadThumbnail(
-    @Req() req,
+    @Req() req: { user: { sub: string; username: string } },
     @Body() Body: UploadThumbnailUploadDto,
     @UploadedFile(
       new ParseFilePipe({
@@ -55,15 +56,13 @@ export class UploadingController {
     )
     file: any,
   ) {
-    const { body, user } = req;
-
     // console.log(body)
 
     /**
      * TODO: do a bit more verification of user authority
      */
 
-    const cid = await this.uploadingService.uploadThumbnail(file, body.video_id, user);
+    const cid = await this.uploadingService.uploadThumbnail(file, Body.video_id, req.user);
 
     return {
       status: 'ok',
@@ -76,7 +75,16 @@ export class UploadingController {
   @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @UseInterceptors(UserDetailsInterceptor)
   @Get('create_upload')
-  async createUpload(@Request() req) {
+  async createUpload(
+    @Request()
+    req: {
+      user: {
+        sub: string;
+        username: string;
+        id?: string | undefined;
+      };
+    },
+  ) {
     const user = req.user;
     return await this.uploadingService.createUpload(user);
   }
@@ -86,7 +94,7 @@ export class UploadingController {
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const user = req.user;
-    const username = user.username;
+    const username: string = user.username;
     const accountDetails = await this.hiveRepository.getAccount(username);
     // Check 1: Do we have posting authority?
     if (this.hiveRepository.verifyPostingAuth(accountDetails) === false) {
@@ -158,7 +166,7 @@ export class UploadingController {
 
   @Post('tus-callback')
   @ApiOperation({ summary: 'TUSd uploader callback. Internal use only' })
-  async tusdCallback(@Body() body, @Headers() headers) {
+  async tusdCallback(@Body() body: { Upload: Upload }, @Headers() headers) {
     try {
       if (headers['hook-name'] === 'post-finish') {
         await this.uploadingService.handleTusdCallback(body.Upload);

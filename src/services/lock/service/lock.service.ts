@@ -7,6 +7,7 @@ import moment from 'moment';
 import { Injectable, Logger } from '@nestjs/common';
 import { LockRepository } from '../repository/lock.repository';
 import { LockNodeRepository } from '../repository/lock-node.repository';
+import { LockNode } from '../schemas/lock-node.schema';
 
 interface ServiceLockDb {
   id: string;
@@ -35,18 +36,18 @@ export class LockService {
   async nextNodeSelection(start_id: string) {
     const nodes = await this.lockNodeRepository.distinct('node_id');
     const nodesClosest = nodes
-      .map((e) => {
-        let distance = 0;
+      .map<[number, string]>((e: LockNode): [number, string] => {
+        let distance: number = 0;
         let i = 0;
         // Ensure both e and start_id are valid, else return a tuple with a high distance value to sort later
         if (!e || !start_id) return [Number.MAX_SAFE_INTEGER, start_id];
-        const min = Math.min(start_id.length, e.length);
-        const max = Math.max(start_id.length, e.length);
+        const min = Math.min(start_id.length, e.node_id.length);
+        const max = Math.max(start_id.length, e.node_id.length);
         for (; i < min; ++i) {
           distance = distance * 256 + ((start_id as any)[i] ^ e[i]);
         }
         for (; i < max; ++i) distance = distance * 256 + 255;
-        return [distance, e];
+        return [distance, e.node_id];
       })
       .sort((a, b) => a[0] - b[0]);
     const date = new Date();
@@ -150,16 +151,16 @@ export class LockService {
     const dist1 = distance(Buffer.from('foo'), Buffer.from('bar'));
     const nodes = await this.lockNodeRepository.distinct('node_id');
     const nodesClosest = nodes
-      .map((e) => {
+      .map<[number, string]>((e) => {
         let distance = 0;
         let i = 0;
-        const min = Math.min(this.identity.id.length, e.length);
-        const max = Math.max(this.identity.id.length, e.length);
+        const min = Math.min(this.identity.id.length, e.node_id.length);
+        const max = Math.max(this.identity.id.length, e.node_id.length);
         for (; i < min; ++i) {
           distance = distance * 256 + ((this.identity.id as any)[i] ^ e[i]);
         }
         for (; i < max; ++i) distance = distance * 256 + 255;
-        return [distance, e];
+        return [distance, e.node_id];
       })
       .sort((a, b) => {
         return a[0] - b[0];

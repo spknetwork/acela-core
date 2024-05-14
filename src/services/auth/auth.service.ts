@@ -12,8 +12,12 @@ export class AuthService {
   constructor(
     private readonly userAccountRepository: UserAccountRepository,
     private readonly sessionRepository: SessionRepository,
-    readonly jwtService: JwtService,
+    private readonly jwtService: JwtService,
   ) {}
+
+  async jwtSign(payload: Object) {
+    return this.jwtService.sign(payload);
+  }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userAccountRepository.findOneByEmail(email);

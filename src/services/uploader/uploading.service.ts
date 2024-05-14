@@ -8,6 +8,7 @@ import { UpdateUploadDto } from './dto/update-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg';
 import crypto from 'crypto';
+import { Upload } from './types';
 
 @Injectable()
 export class UploadingService {
@@ -25,15 +26,19 @@ export class UploadingService {
   ) {
     const id = ulid();
 
-    const { cid } = await this.ipfsService.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
-      metadata: {
-        key: `${video_id}/thumbnail`,
-        app: '3speak-beta',
-        message: 'acela beta please ignore',
+    const { cid }: { cid: string } = await this.ipfsService.addData(
+      process.env.IPFS_CLUSTER_URL,
+      file.buffer,
+      {
+        metadata: {
+          key: `${video_id}/thumbnail`,
+          app: '3speak-beta',
+          message: 'acela beta please ignore',
+        },
+        // replicationFactorMin: 1,
+        // replicationFactorMax: 2,
       },
-      // replicationFactorMin: 1,
-      // replicationFactorMax: 2,
-    });
+    );
 
     await this.uploadRepository.createThumbnailUpload(id, cid, video_id, user);
 
@@ -116,41 +121,42 @@ export class UploadingService {
     });
   }
 
-  async handleTusdCallback(uploadMetaData: any) {
+  async handleTusdCallback(uploadMetaData: Upload) {
     if (uploadMetaData.authorization === 'TESTING') {
       throw new Error('TestAuthorizationError');
     }
-    if (uploadMetaData.Storage) {
-      if (uploadMetaData.Size >= 5000000000) {
-        throw new Error('File too big to be uploaded');
-      }
-      const info: ffmpeg.FfprobeData = await new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(uploadMetaData.Storage.Path, (err: any, data: ffmpeg.FfprobeData) => {
-          if (err) {
-            reject(err);
-          }
-          resolve(data);
-        });
-      });
-      const videoStreamInfo = info['streams'][0];
-      const formatInfo = info['format'];
-      let immediatePublish = false;
-      if (videoStreamInfo['codec_name'] && videoStreamInfo['codec_name'].toLowerCase() == 'h264') {
-        immediatePublish = true;
-      }
-      if (
-        formatInfo['format_long_name'] &&
-        formatInfo['format_long_name'].toLowerCase().includes('mov')
-      ) {
-        immediatePublish = true;
-      }
-      await this.uploadRepository.setStorageDetails(
-        uploadMetaData.MetaData.upload_id,
-        uploadMetaData.MetaData.video_id,
-        uploadMetaData.Storage.Path,
-        uploadMetaData.ID,
-        immediatePublish,
-      );
+    if (uploadMetaData.Size >= 5000000000) {
+      throw new Error('File too big to be uploaded');
     }
+    if (!uploadMetaData.Storage) {
+      throw new Error('Storage is undefined');
+    }
+    const info: ffmpeg.FfprobeData = await new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(uploadMetaData.Storage!.Path, (err: any, data: ffmpeg.FfprobeData) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(data);
+      });
+    });
+    const videoStreamInfo = info['streams'][0];
+    const formatInfo = info['format'];
+    let immediatePublish = false;
+    if (videoStreamInfo['codec_name'] && videoStreamInfo['codec_name'].toLowerCase() == 'h264') {
+      immediatePublish = true;
+    }
+    if (
+      formatInfo['format_long_name'] &&
+      formatInfo['format_long_name'].toLowerCase().includes('mov')
+    ) {
+      immediatePublish = true;
+    }
+    await this.uploadRepository.setStorageDetails(
+      uploadMetaData.MetaData.upload_id,
+      uploadMetaData.MetaData.video_id,
+      uploadMetaData.Storage.Path,
+      uploadMetaData.ID,
+      immediatePublish,
+    );
   }
 }

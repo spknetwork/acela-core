@@ -2,7 +2,7 @@ export interface UserAccountLink {
   status: 'unverified' | 'verified';
   user_id: string;
   account: string;
-  network: 'HIVE' | string;
+  network: 'HIVE';
   type: 'native' | 'hive_keychain' | 'hive_auth';
   challenge?: string;
   linked_at: Date | null;

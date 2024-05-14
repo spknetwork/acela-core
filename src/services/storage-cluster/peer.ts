@@ -5,7 +5,6 @@ import {
   ALLOCATION_DISK_THRESHOLD,
   PinMetadata,
   SocketMsg,
-  SocketMsgAuthSuccess,
   SocketMsgPinAlloc,
   SocketMsgSyncResp,
   SocketMsgTypes,
@@ -252,9 +251,9 @@ export class StorageClusterPeer extends StorageCluster {
 
   private async executeIPFSPin(cids: string[], peerIds: string[], allocatedTs: number) {
     const swarmConnect = setInterval(async () => {
-      for (const p in peerIds)
+      for (const p of peerIds)
         try {
-          await this.ipfs.swarm.connect(multiaddr(peerIds[p]));
+          await this.ipfs.swarm.connect(multiaddr(p));
         } catch {}
     }, 15000);
 
@@ -428,10 +427,10 @@ export class StorageClusterPeer extends StorageCluster {
   private async handleSocketMsg(message: SocketMsg) {
     switch (message.type) {
       case SocketMsgTypes.PIN_ALLOCATION:
-        await this.handlePinAlloc(message.data as SocketMsgPinAlloc, message.ts);
+        await this.handlePinAlloc(message.data, message.ts);
         break;
       case SocketMsgTypes.SYNC_RESP:
-        await this.responseSync(message.data as SocketMsgSyncResp);
+        await this.responseSync(message.data);
         break;
       default:
         break;
@@ -465,17 +464,11 @@ export class StorageClusterPeer extends StorageCluster {
         }),
       );
     });
-    ws.on('message', async (data) => {
-      let message: SocketMsg;
-      try {
-        message = JSON.parse(data.toString());
-      } catch {
-        return;
-      }
-      if (!message || typeof message.type === 'undefined' || !message.data) return;
+    ws.on('message', async (data: SocketMsg) => {
+      if (!data || typeof data.type === 'undefined' || !data.data) return;
 
-      if (message.type === SocketMsgTypes.AUTH_SUCCESS) {
-        const allocPeerInfo = message.data as SocketMsgAuthSuccess;
+      if (data.type === SocketMsgTypes.AUTH_SUCCESS) {
+        const allocPeerInfo = data.data;
         this.allocator.addPeer(allocPeerInfo.peerId, ws, wsUrl);
         this.allocator.setPeerSynced(allocPeerInfo.peerId);
         peerId = allocPeerInfo.peerId;
@@ -499,10 +492,10 @@ export class StorageClusterPeer extends StorageCluster {
 
       if (peerId) {
         // handle this peer's messages from allocators connected outbound
-        await this.handleSocketMsg(message);
+        await this.handleSocketMsg(data);
 
         // handle allocator messages (including gossips) from peers connected outbound
-        await this.allocator.handleSocketMsg(message, peerId, new Date().getTime());
+        await this.allocator.handleSocketMsg(data, peerId, new Date().getTime());
       }
     });
   }

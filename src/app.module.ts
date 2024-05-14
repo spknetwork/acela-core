@@ -72,10 +72,7 @@ const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
     UserAccountModule,
     ApiModule,
     VotingModule,
-    JwtModule.register({
-      secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
-      signOptions: { expiresIn: '30d' },
-    }),
+    JwtModule,
   ],
   controllers: [],
   providers: [],

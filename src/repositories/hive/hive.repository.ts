@@ -77,7 +77,10 @@ export class HiveRepository {
   }
 
   async getCommentCount({ author, permlink }: AuthorPerm): Promise<number | undefined> {
-    const res = await this.#hive.database.call('get_content', [author, permlink]);
+    const res: { children: number } = await this.#hive.database.call('get_content', [
+      author,
+      permlink,
+    ]);
     if (!res || isNaN(res.children)) {
       return undefined;
     }
@@ -182,13 +185,13 @@ export class HiveRepository {
   }
 
   async decodeMessageAndGetPublicKeys(memo: string) {
-    const decoded = this.#hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
-    const message = JSON.parse(decoded.substr(1));
+    const decoded: string = this.#hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
+    const message: string = JSON.parse(decoded.substr(1));
 
     return message;
   }
 
-  async getPublicKeys(memo: string) {
+  async getPublicKeys(memo: string): Promise<string[]> {
     return this.#hiveJs.memo.getPubKeys(memo);
   }
 
