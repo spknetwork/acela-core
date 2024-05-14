@@ -18,7 +18,7 @@ export class UserRepository {
   //   return acelaUser;
   // }
 
-  async findOneByEmail(email: string): Promise<User | undefined> {
+  async findOneByEmail(email: string): Promise<User | null> {
     const query = { email };
     const acelaUser = await this.userModel.findOne(query);
     this.#logger.log(acelaUser)

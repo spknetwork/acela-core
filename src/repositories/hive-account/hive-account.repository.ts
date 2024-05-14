@@ -9,7 +9,7 @@ export class HiveAccountRepository {
 
   constructor(@InjectModel(HiveAccount.name, 'threespeak') private hiveAccountModel: Model<HiveAccount>) {}
     
-  async findOneByOwner(created_by: string): Promise<HiveAccount | undefined> {
+  async findOneByOwner(created_by: string): Promise<HiveAccount | null> {
     const acelaUser = await this.hiveAccountModel.findOne({ created_by });
     this.#logger.log(acelaUser)
 

@@ -169,14 +169,16 @@ export class VotingService {
 
   async #vote(op: VoteOperation[1]): Promise<void> {
 
-    if (!op) return;
-
     const votes = await this.#hiveRepository.getActiveVotes({
       author: op.author,
       permlink: op.permlink
     })
 
     const voter = this.#configService.get<string>('VOTER_ACCOUNT');
+
+    if (!voter) {
+      throw new Error('Voter account not set');
+    }
 
     // check if @threespeak has already voted
     const voted = votes.some(vote => vote.voter === voter);

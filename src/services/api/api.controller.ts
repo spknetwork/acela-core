@@ -193,6 +193,10 @@ export class ApiController {
     const pubKeys = await this.hiveRepository.getPublicKeys(memo);
   
     const [account] = await HiveClient.database.getAccounts([message.account]);
+
+    if (!account) {
+      throw new HttpException({ reason: 'Account not found' }, HttpStatus.BAD_REQUEST);
+    }
     console.log(account[message.authority], pubKeys);
   
     // Check if the signature is not valid
@@ -204,6 +208,11 @@ export class ApiController {
     const identityChallenge = await this.linkedAccountsRepository.findOneByChallenge({
       challenge: message.message,
     });
+
+    if (!identityChallenge) {
+      throw new HttpException({ reason: 'Challenge not found' }, HttpStatus.BAD_REQUEST);
+    }
+    
     console.log(signatureValid, account, message.message, identityChallenge);
     
     if (identityChallenge.account !== account.name) {

@@ -15,10 +15,10 @@ import { MockFactory } from '../../factories/mock.factory';
   controllers: [],
   providers: [
     {
-      provide: VideoRepository,
+      provide: VideoRepository, 
       inject: [ConfigService, getModelToken(Video.name, 'threespeak')],
-      useFactory: (configService: ConfigService, videoModel: Model<VideoDocument>) => 
-        MockFactory<VideoRepository, Model<VideoDocument>>(VideoRepository, MockVideoRepository, configService, videoModel),
+      useFactory: (configService: ConfigService, videoModel: Model<Video>) => 
+        MockFactory<VideoRepository, Model<Video>>(VideoRepository, MockVideoRepository, configService, videoModel),
     },
   ],
   exports: [VideoRepository]

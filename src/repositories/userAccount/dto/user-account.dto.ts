@@ -8,6 +8,6 @@ export class CreateUserAccountDto {
   readonly created_at?: Date = new Date();
   readonly updated_at?: Date = new Date();
   readonly last_login_at?: Date = new Date();
-  readonly password_reset_at?: Date = null;
+  readonly password_reset_at?: Date = undefined;
   readonly did?: string;
 }

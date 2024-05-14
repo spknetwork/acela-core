@@ -9,6 +9,7 @@ import * as Minio from 'minio'
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import 'dotenv/config';
 
 @Injectable()
 export class VideoProcessService {
@@ -21,7 +22,7 @@ export class VideoProcessService {
     constructor(uploadRepository: UploadRepository, configService: ConfigService) {
       this.#uploadRepository = uploadRepository;
       this.#configService = configService;
-      this.#cluster = new Cluster(this.#configService.get('IPFS_CLUSTER_URL'), {
+      this.#cluster = new Cluster(process.env.IPFS_CLUSTER_URL || 'http://65.21.201.94:9094', {
         headers: {}
       });
       this.#logger = new Logger(VideoProcessService.name);
@@ -110,14 +111,18 @@ export class VideoProcessService {
     }
     
     async onModuleInit() {
-        let key = new Ed25519Provider(Buffer.from(this.#configService.get<string>('ENCODER_SECRET'), 'base64'))
-        const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
-        await did.authenticate()
-        this.#encoderKey = did
-        try {
-          await this.initS3()
-        } catch(ex) {
-          console.log(ex)
-        }
+      const encoderSecret = this.#configService.get<string>('ENCODER_SECRET');
+      if (!encoderSecret) {
+        throw new Error('ENCODER_SECRET not set')
+      }
+      let key = new Ed25519Provider(Buffer.from(encoderSecret, 'base64'))
+      const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
+      await did.authenticate()
+      this.#encoderKey = did
+      try {
+        await this.initS3()
+      } catch(ex) {
+        console.log(ex)
+      }
     }
 }

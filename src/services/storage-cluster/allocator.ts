@@ -78,15 +78,15 @@ export class StorageClusterAllocator extends StorageCluster {
      * @param values Array of numbers to calculate the median value of.
      * @returns 
      */
-    calculateMedian(values: number[]) {
+    calculateMedian(values: number[]): number {
         if (values.length === 0)
-            return null
+            return 0
     
         values.sort((a, b) => a - b)
     
-        const half = Math.floor(values.length / 2)
+        const half = values[Math.floor(values.length / 2)]
     
-        return values[half]
+        return half
     }
 
     async getLatestPin(): Promise<number> {
@@ -96,7 +96,7 @@ export class StorageClusterAllocator extends StorageCluster {
             created_at: -1
         }).limit(1).toArray()
 
-        if (result.length > 0)
+        if (result[0])
             return result[0].created_at
         else
             return -1
@@ -108,7 +108,7 @@ export class StorageClusterAllocator extends StorageCluster {
         }).sort({
             last_updated: -1
         }).limit(1).toArray()
-        if (result.length > 0)
+        if (result[0])
             return result[0].last_updated
         else
             return -1
@@ -135,7 +135,7 @@ export class StorageClusterAllocator extends StorageCluster {
             last_updated: 1
         }).limit(50).toArray()
 
-        this.peers[peerId].ws.send(JSON.stringify({
+        this.peers[peerId]?.ws?.send(JSON.stringify({
             type: SocketMsgTypes.SYNC_RESP,
             data: {
                 pins, unpins
@@ -189,8 +189,8 @@ export class StorageClusterAllocator extends StorageCluster {
             }
         })
         if (!received)
-            for (let p in this.peers)
-                this.peers[p].ws.send(JSON.stringify({
+            for (let p of Object.values(this.peers))
+                p.ws.send(JSON.stringify({
                     type: SocketMsgTypes.PIN_REMOVE,
                     data: { cid },
                     ts
@@ -234,13 +234,19 @@ export class StorageClusterAllocator extends StorageCluster {
         if (100*peerInfo.freeSpaceMB/peerInfo.totalSpaceMB > ALLOCATION_DISK_THRESHOLD) {
             // allocate new pins if above free space threshold
             let toAllocate = await this.getNewAllocations(peerId, peerInfo)
-            for (let a in toAllocate) {
-                delete toAllocate[a].allocations
-                delete toAllocate[a].allocationCount
-                delete toAllocate[a].status
+            for (let a of toAllocate) {
+                if (a.hasOwnProperty('allocationCount')) {
+                    delete (a as { allocationCount?: any }).allocationCount;
+                }
+                if (a.hasOwnProperty('status')) {
+                    delete (a as { status?: any }).status;
+                }
+                if (a.hasOwnProperty('allocations')) {
+                    delete (a as { allocations?: any }).allocations;
+                }
             }
-            let peerIds = []
-            for (let p in this.peers)
+            let peerIds: string[] = [];
+            for (let p of Object.keys(this.peers))
                 if (p !== peerId)
                     peerIds.push(p)
             if (Array.isArray(toAllocate) && toAllocate.length > 0) {
@@ -251,17 +257,18 @@ export class StorageClusterAllocator extends StorageCluster {
                     allocations: toAllocate
                 }
                 for (let p in this.peers) {
-                    if (p !== this.getPeerId() && p !== peerId)
-                        this.peers[p].ws.send(JSON.stringify({
+                    if (p !== this.getPeerId() && p !== peerId && this.peers[p]?.ws) {
+                        this.peers[p]?.ws.send(JSON.stringify({
                             type: SocketMsgTypes.MSG_GOSSIP_ALLOC,
                             data: {
                                 peerId, allocations: toAllocate, ts: currentTs
                             },
                             ts: currentTs
                         }))
+                    }
                 }
-                if (peerId !== this.getPeerId() && this.peers[peerId]) {
-                    this.peers[peerId].ws.send(JSON.stringify({
+                if (peerId !== this.getPeerId() && this.peers[peerId]?.ws) {
+                    this.peers[peerId]?.ws.send(JSON.stringify({
                         type: SocketMsgTypes.PIN_ALLOCATION,
                         data: alloc,
                         ts: currentTs
@@ -286,18 +293,18 @@ export class StorageClusterAllocator extends StorageCluster {
             Logger.verbose('Cannot process PIN_COMPLETED for pin that does not exist in cluster', 'storage-cluster')
             return
         }
-        for (let a in pinned.allocations)
-            if (pinned.allocations[a].id === peerId) {
-                preAllocated = parseInt(a)
-                if (typeof pinned.allocations[a].pinned_at !== 'undefined' && typeof pinned.allocations[a].reported_size !== 'undefined') {
-                    Logger.verbose('Ignoring PIN_COMPLETED for '+completedPin.cid+' from '+peerId+' as it was already processed', 'storage-cluster')
-                    return
+        for (let a of pinned.allocations)
+            if (a.id === peerId) {
+                preAllocated = parseInt(a.id);
+                if (typeof a.pinned_at !== 'undefined' && typeof a.reported_size !== 'undefined') {
+                    Logger.verbose('Ignoring PIN_COMPLETED for '+completedPin.cid+' from '+peerId+' as it was already processed', 'storage-cluster');
+                    return;
                 }
-                break
+                break;
             }
         const reported_sizes = pinned.allocations
             .map(a => a.reported_size)
-            .filter(size => size !== null && typeof size !== 'undefined')
+            .filter(size => size !== null && typeof size !== 'undefined');
         reported_sizes.push(completedPin.size)
         if (preAllocated === -1) {
             await this.pins.updateOne({_id: completedPin.cid}, {
@@ -306,7 +313,7 @@ export class StorageClusterAllocator extends StorageCluster {
                         id: peerId,
                         allocated_at: msgTs,
                         pinned_at: msgTs,
-                        reported_size: completedPin.size
+                        reported_size: completedPin.size || 0
                     }
                 },
                 $inc: {
@@ -314,21 +321,21 @@ export class StorageClusterAllocator extends StorageCluster {
                 },
                 $set: {
                     last_updated: msgTs,
-                    median_size: this.calculateMedian(reported_sizes)
+                    median_size: this.calculateMedian(reported_sizes.filter((size): size is number => typeof size === 'number'))
                 }
             })
         } else {
-            await this.pins.updateOne({_id: completedPin.cid, 'allocations.id': peerId}, {
+            this.pins.updateOne({ _id: completedPin.cid, 'allocations.id': peerId }, {
                 $set: {
                     status: 'pinned',
                     last_updated: msgTs,
                     'allocations.$': {
                         id: peerId,
-                        allocated_at: pinned.allocations[preAllocated].allocated_at,
+                        allocated_at: pinned.allocations[preAllocated]?.allocated_at || Date.now(),
                         pinned_at: msgTs,
-                        reported_size: completedPin.size
+                        reported_size: completedPin.size || 0
                     },
-                    median_size: this.calculateMedian(reported_sizes)
+                    median_size: this.calculateMedian(reported_sizes.filter((size): size is number => typeof size === 'number'))
                 }
             })
         }
@@ -336,14 +343,17 @@ export class StorageClusterAllocator extends StorageCluster {
 
     private async handlePinFailed(failedPin: SocketMsgPin, peerId: string, msgTs: number, currentTs: number) {
         let affected = await this.pins.findOne({_id: failedPin.cid})
-        for (let a in affected.allocations)
-            if (affected.allocations[a].id === peerId) {
-                if (typeof affected.allocations[a].pinned_at !== 'undefined') {
-                    Logger.verbose('Ignoring PIN_FAILED from peer '+peerId+' for '+failedPin.cid+' as it is already pinned successfully according to db', 'storage-cluster')
-                    return
+        if (affected) {
+            for (let a of affected.allocations) {
+                if (a.id === peerId) {
+                    if (typeof a.pinned_at !== 'undefined') {
+                        Logger.verbose('Ignoring PIN_FAILED from peer '+peerId+' for '+failedPin.cid+' as it is already pinned successfully according to db', 'storage-cluster')
+                        return
+                    }
+                    break
                 }
-                break
             }
+        }
         await this.pins.updateOne({_id: failedPin.cid}, {
             $set: {
                 last_updated: msgTs
@@ -368,23 +378,25 @@ export class StorageClusterAllocator extends StorageCluster {
             reported_size: newPin.size
         }
         if (!alreadyExists || alreadyExists.status === 'deleted')
-            await this.pins.updateOne({
+            this.pins.updateOne({
                 _id: newPin.cid,
-            }, { $set: {
-                status: 'pinned',
-                created_at: msgTs,
-                last_updated: msgTs,
-                allocations: [newAlloc],
-                allocationCount: 1,
-                median_size: newPin.size,
-                metadata: newPin.metadata
-            }}, {
+            }, {
+                $set: {
+                    status: 'pinned',
+                    created_at: msgTs,
+                    last_updated: msgTs,
+                    allocations: [newAlloc],
+                    allocationCount: 1,
+                    median_size: newPin.size || 0, // Ensure median_size is of type number
+                    metadata: newPin.metadata || {}
+                }
+            }, {
                 upsert: true
             })
         else {
             let isAllocated = false
-            for (let a in alreadyExists.allocations)
-                if (alreadyExists.allocations[a].id === peerId) {
+            for (let a of alreadyExists.allocations)
+                if (a.id === peerId) {
                     isAllocated = true
                     break
                 }
@@ -393,6 +405,7 @@ export class StorageClusterAllocator extends StorageCluster {
                     .map(a => a.reported_size)
                     .filter(size => size !== null && typeof size !== 'undefined')
                 reported_sizes.push(newAlloc.reported_size)
+                const filtered_sizes = reported_sizes.filter((size): size is number => typeof size === 'number');
                 await this.pins.updateOne({_id: newPin.cid}, {
                     $push: {
                         allocations: newAlloc
@@ -402,7 +415,7 @@ export class StorageClusterAllocator extends StorageCluster {
                     },
                     $set: {
                         last_updated: msgTs,
-                        median_size: this.calculateMedian(reported_sizes)
+                        median_size: this.calculateMedian(filtered_sizes)
                     }
                 })
             } else
@@ -417,8 +430,8 @@ export class StorageClusterAllocator extends StorageCluster {
             return
         }
         let wasPinned = false
-        for (let a in removedCid.allocations)
-            if (removedCid.allocations[a].id === peerId)
+        for (let a of removedCid.allocations)
+            if (a.id === peerId)
                 wasPinned = true
         if (wasPinned) {
             if (removedCid.allocations.length === 1)
@@ -459,13 +472,13 @@ export class StorageClusterAllocator extends StorageCluster {
      * May not be ideal when not all peers are connected among each other for various reasons (i.e. just joined, or broken peer discovery on one peer)
      * @returns The current peer ID of the allocator within the current slot
      */
-    private getCurrentAllocator(excludeThis = false) {
+    private getCurrentAllocator(excludeThis = false): string {
         let currentMinute = new Date().getMinutes()
         let peers = Object.keys(this.peers)
         if (!excludeThis)
             peers.push(this.getPeerId())
         let sortedPeers = peers.sort()
-        return sortedPeers[currentMinute%sortedPeers.length]
+        return sortedPeers[currentMinute % sortedPeers.length] as string;
     }
 
     /**
@@ -478,11 +491,14 @@ export class StorageClusterAllocator extends StorageCluster {
         let currentAllocator = this.getCurrentAllocator()
         if (currentAllocator !== this.getPeerId()) {
             Logger.debug('Request allocs from '+currentAllocator, 'storage-cluster')
-            this.peers[currentAllocator].ws.send(JSON.stringify({
-                type: SocketMsgTypes.PEER_INFO,
-                data: peerInfo,
-                ts: currentTs
-            }))
+            const allocator = this.peers[currentAllocator];
+            if (allocator && allocator.ws) {
+                allocator.ws.send(JSON.stringify({
+                    type: SocketMsgTypes.PEER_INFO,
+                    data: peerInfo,
+                    ts: currentTs
+                }))
+            }
             return null
         } else {
             Logger.debug('Allocating pins for ourselves', 'storage-cluster')
@@ -496,13 +512,15 @@ export class StorageClusterAllocator extends StorageCluster {
      */
     broadcast(message: SocketMsgTyped<SocketMsgPin>) {
         message.data.peerId = this.getPeerId()
-        for (let p in this.peers)
-            if (p !== this.getPeerId() && this.peers[p].synced)
-                this.peers[p].ws.send(JSON.stringify(message))
+        for (let p in this.peers) {
+            if (p !== this.getPeerId() && this.peers[p]?.synced) {
+                this.peers[p]?.ws?.send(JSON.stringify(message))
+            }
+        }
     }
 
     sendSyncReq(msg: SocketMsgTyped<SocketMsgSyncReq>) {
-        this.peers[this.getCurrentAllocator(true)].ws.send(JSON.stringify(msg))
+        this.peers[this.getCurrentAllocator(true)]?.ws?.send(JSON.stringify(msg))
     }
 
     /**
@@ -568,8 +586,9 @@ export class StorageClusterAllocator extends StorageCluster {
     }
 
     setPeerSynced(peerId: string) {
-        if (this.hasPeerById(peerId))
-            this.peers[peerId].synced = true
+        if (this.hasPeerById(peerId)) {
+            this.peers[peerId]!.synced = true;
+        }
     }
 
     /**
@@ -578,7 +597,7 @@ export class StorageClusterAllocator extends StorageCluster {
      * @returns boolean
      */
     hasPeerById(peerId: string): boolean {
-        return !!this.peers[peerId]
+        return !!this.peers[peerId];
     }
 
     /**
@@ -587,10 +606,10 @@ export class StorageClusterAllocator extends StorageCluster {
      * @returns Array of strings
      */
     private getDiscoveryPeers(peerId: string): string[] {
-        let result = []
+        let result: string[] = []
         for (let i in this.peers)
-            if (i !== peerId && this.peers[i].discovery && i !== this.getPeerId())
-                result.push(this.peers[i].discovery)
+            if (i !== peerId && this.peers[i]?.discovery && i !== this.getPeerId())
+                result.push(this.peers[i]?.discovery ?? '')
         return result
     }
 

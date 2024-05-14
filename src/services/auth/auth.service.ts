@@ -1,4 +1,5 @@
 
+import 'dotenv/config'
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs'
@@ -6,21 +7,19 @@ import { UserAccountRepository } from '../../repositories/userAccount/user-accou
 import { v4 as uuid } from 'uuid'
 import { SessionRepository } from '../../repositories/session/session.repository';
 import { Network } from './types';
+import { JwtStrategy } from './auth.strategy';
 
 @Injectable()
 export class AuthService {
-  jwtService: JwtService;
   constructor(
     private readonly userAccountRepository: UserAccountRepository,
     private readonly sessionRepository: SessionRepository,
-    jwtService: JwtService
-  ) {
-    this.jwtService = jwtService;
-  }
+    readonly jwtService: JwtService
+  ) { }
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userAccountRepository.findOneByEmail(email);
-    if (user && bcrypt.compare(user.password, pass)) {
+    if (user && await bcrypt.compare(user.password, pass)) {
       const { password, ...result } = user;
       return result;
     }
@@ -32,6 +31,10 @@ export class AuthService {
     if (!user) {
       return await this.createDidUser(did)
     }
+  }
+
+  async didUserExists(did: string): Promise<boolean> {
+    return Boolean(await this.userAccountRepository.findOneByDid(did))
   }
 
   async login(user: any) {
@@ -68,6 +71,10 @@ export class AuthService {
       type: 'singleton',
       sub: this.generateSub(account, network)
     });
+  }
+
+  async getSessionByDid(id: string) {
+    return await this.sessionRepository.findOneBySub(`singleton/did/${id}`)
   }
 
   async createEmailAndPasswordUser(email: string, hashedPassword: string) {

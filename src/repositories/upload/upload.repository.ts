@@ -24,7 +24,7 @@ export class UploadRepository {
     return this.uploadModel.find().exec();
   }
 
-  async upsertThumbnailUpload(id: string, cid: string, video_id: string): Promise<UploadDocument> {
+  async upsertThumbnailUpload(id: string, cid: string, video_id: string): Promise<UploadDocument | null> {
     return await this.uploadModel.findOneAndUpdate({
       id: id
     }, {

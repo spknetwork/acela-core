@@ -27,13 +27,15 @@ export class DiscordBot {
       ],
       partials: [Partials.Channel],
     })
-    if(process.env.DISCORD_TOKEN) {
-        await this.client.login(process.env.DISCORD_TOKEN)
-        await this.client.user.setPresence({
+    if (process.env.DISCORD_TOKEN) {
+      await this.client.login(process.env.DISCORD_TOKEN);
+      if (this.client.user) {
+        this.client.user.setPresence({
           activities: [{ name: 'Encoding Videos!' }],
           status: 'online',
-        })
-        this.client.on('messageCreate', this.handleMessage)
+        });
+      }
+      this.client.on('messageCreate', this.handleMessage);
     }
   }
 }

@@ -5,21 +5,21 @@ import { HiveClient } from '../utils/hiveClient'
 
 void (async () => {
             
-                const txData = await HiveClient.database.getTransaction('643587baa0621619976bb3ee6df144098bf52641')
-                const buf = cryptoUtils.transactionDigest({
-                  expiration: txData.expiration,
-                  extensions: txData.extensions,
-                  operations: txData.operations,
-                  ref_block_num: txData.ref_block_num,
-                  ref_block_prefix: txData.ref_block_prefix,
-                }, HiveClient.chainId)
-                
-                const sig = Signature.fromBuffer(Buffer.from(txData.signatures[0], 'hex'))
-                const publicKey = sig.recover(buf)
-                console.log(publicKey.toString())
-                if(publicKey.toString() === "STM6GKqLaqQubHReZHpx6PSYsMSGaGwU7azdsA4y8x8qvb3uNV9Ty") {
-                    console.log('Transaction from key', JSON.stringify(txData, null, 2))
-                }
+  const txData = await HiveClient.database.getTransaction('643587baa0621619976bb3ee6df144098bf52641')
+  const buf = cryptoUtils.transactionDigest({
+    expiration: txData.expiration,
+    extensions: txData.extensions,
+    operations: txData.operations,
+    ref_block_num: txData.ref_block_num,
+    ref_block_prefix: txData.ref_block_prefix,
+  }, HiveClient.chainId)
+  
+  const sig = Signature.fromBuffer(Buffer.from(txData.signatures[0] ?? '', 'hex'))
+  const publicKey = sig.recover(buf)
+  console.log(publicKey.toString())
+  if(publicKey.toString() === "STM6GKqLaqQubHReZHpx6PSYsMSGaGwU7azdsA4y8x8qvb3uNV9Ty") {
+    console.log('Transaction from key', JSON.stringify(txData, null, 2))
+  }
                 // console.log(publicKey)
     // let offset = 1;
     // for( ; ; ) {

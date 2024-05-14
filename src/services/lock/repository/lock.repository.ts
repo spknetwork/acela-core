@@ -20,7 +20,7 @@ export class LockRepository {
     registered_ping?: Date | null;
   },
     shouldCreate: boolean
-  ) {
+  ): Promise<Lock | null> {
     return await this.lockModel.findOneAndUpdate({
       id
     }, {
@@ -33,12 +33,18 @@ export class LockRepository {
     })
   }
 
-  async findOneByIdAndUpdateRegisteredIdOrIgnore({ id, registered_id, registered_ping }: { id: string, registered_id: string, registered_ping?: null }) {
+  async findOneByIdAndUpdateRegisteredIdOrIgnore({ id, registered_id, registered_ping }: { id: string, registered_id: string, registered_ping?: Date }) {
     return await this.#findOneByIdAndUpdateRegisteredId({ id, registered_id, registered_ping }, false);
   }
 
-  async findOneByIdAndUpdateRegisteredIdOrCreate({ id, registered_id, registered_ping }: { id: string, registered_id: string, registered_ping?: null }) {
-    return await this.#findOneByIdAndUpdateRegisteredId({ id, registered_id, registered_ping }, true);
+  async findOneByIdAndUpdateRegisteredIdOrCreate({ id, registered_id, registered_ping }: { id: string, registered_id: string, registered_ping?: Date }) {
+    const lock = await this.#findOneByIdAndUpdateRegisteredId({ id, registered_id, registered_ping }, true);
+    if (!lock) throw new Error('Lock not created!')
+    return lock
+  }
+
+  async findOneByIdAndMakeInactiveIfExists({ id }: { id: string }) {
+    return await this.#findOneByIdAndUpdateRegisteredId({ id, registered_id: null, registered_ping: null }, false);
   }
 
   async createOrThrowIfExistingLock(data: { id: string; registered_id: string; }) {

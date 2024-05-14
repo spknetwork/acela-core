@@ -3,6 +3,7 @@ import Mailgun from 'mailgun.js'
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IMailgunClient } from 'mailgun.js/Interfaces';
+import 'dotenv/config';
 
 @Injectable()
 export class EmailService {
@@ -11,11 +12,11 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     const mailGun = new Mailgun(FormData);
-    this.#mailGun = mailGun.client({username: 'api', key: this.configService.get('MAIL_GUN_KEY', 'key-yourkeyhere')});
+    this.#mailGun = mailGun.client({username: 'api', key: process.env.MAIL_GUN_KEY || 'key-yourkeyhere'});
   }
 
   async send(email: string, subject: string, html: string) { 
-    await this.#mailGun.messages.create(this.configService.get('MAIL_GUN_DOMAIN'), {
+    await this.#mailGun.messages.create(this.configService.get('MAIL_GUN_DOMAIN') ?? '', {
       from: `Threespeak <noreply@${this.configService.get('MAIL_GUN_DOMAIN')}>`,
       to: [email],
       subject,

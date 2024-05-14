@@ -11,7 +11,7 @@ export class UserAccountRepository {
 
   constructor(@InjectModel(UserAccount.name, '3speakAuth') private userAccountModel: Model<UserAccount>) {}
     
-  async findOneByEmail(email: string): Promise<UserAccount | undefined> {
+  async findOneByEmail(email: string): Promise<UserAccount | null> {
     const query = { email };
     const authUser = await this.userAccountModel.findOne(query);
     this.#logger.log(authUser) // TODO: delete - not suitable for prod
