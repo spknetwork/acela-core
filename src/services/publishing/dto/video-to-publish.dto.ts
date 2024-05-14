@@ -1,4 +1,4 @@
-import { createProjectionFromDto } from "../../../utils/createProjectionFromDto";
+import { createProjectionFromDto } from '../../../utils/createProjectionFromDto';
 
 export class VideoToPublishDto {
   readonly author: string;
@@ -24,4 +24,4 @@ export class VideoToPublishDto {
   readonly postToHiveBlog?: boolean;
 }
 
-export const videosToPublishProjection = createProjectionFromDto(VideoToPublishDto)
+export const videosToPublishProjection = createProjectionFromDto(VideoToPublishDto);

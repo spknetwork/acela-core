@@ -2,14 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schemas/user.schema';
-import { ulid } from 'ulid';
 
 @Injectable()
 export class UserRepository {
   readonly #logger = new Logger(UserRepository.name);
 
   constructor(@InjectModel(User.name, 'threespeak') private userModel: Model<User>) {}
-    
+
   // async findOneByUsername(username: string): Promise<User | undefined> {
   //   const query = { username };
   //   const acelaUser = await this.userModel.findOne(query);
@@ -21,7 +20,7 @@ export class UserRepository {
   async findOneByEmail(email: string): Promise<User | null> {
     const query = { email };
     const acelaUser = await this.userModel.findOne(query);
-    this.#logger.log(acelaUser)
+    this.#logger.log(acelaUser);
 
     return acelaUser;
   }
@@ -40,6 +39,6 @@ export class UserRepository {
           email_status: 'verified',
         },
       },
-    )
+    );
   }
 }

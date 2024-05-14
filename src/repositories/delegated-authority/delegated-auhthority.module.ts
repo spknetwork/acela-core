@@ -5,10 +5,13 @@ import { DelegatedAuthority, DelegatedAuthoritySchema } from './schemas/delegate
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: DelegatedAuthority.name, schema: DelegatedAuthoritySchema }], 'acela-core'),
+    MongooseModule.forFeature(
+      [{ name: DelegatedAuthority.name, schema: DelegatedAuthoritySchema }],
+      'acela-core',
+    ),
   ],
   controllers: [],
   providers: [DelegatedAuthorityRepository],
-  exports: [DelegatedAuthorityRepository]
+  exports: [DelegatedAuthorityRepository],
 })
 export class DelegatedAuthorityModule {}

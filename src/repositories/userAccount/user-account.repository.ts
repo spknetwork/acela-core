@@ -9,12 +9,14 @@ import { CreateUserAccountDto } from './dto/user-account.dto';
 export class UserAccountRepository {
   readonly #logger = new Logger(UserAccountRepository.name);
 
-  constructor(@InjectModel(UserAccount.name, '3speakAuth') private userAccountModel: Model<UserAccount>) {}
-    
+  constructor(
+    @InjectModel(UserAccount.name, '3speakAuth') private userAccountModel: Model<UserAccount>,
+  ) {}
+
   async findOneByEmail(email: string): Promise<UserAccount | null> {
     const query = { email };
     const authUser = await this.userAccountModel.findOne(query);
-    this.#logger.log(authUser) // TODO: delete - not suitable for prod
+    this.#logger.log(authUser); // TODO: delete - not suitable for prod
 
     return authUser;
   }
@@ -22,26 +24,29 @@ export class UserAccountRepository {
   async findOneByDid(did: string) {
     const query = { did };
     const authUser = await this.userAccountModel.findOne(query);
-    this.#logger.log(authUser) // TODO: delete - not suitable for prod
+    this.#logger.log(authUser); // TODO: delete - not suitable for prod
 
     return authUser;
   }
 
-  async createNewEmailAndPasswordUser(email: string, hashedPassword: string): Promise<CreateUserAccountDto> {
+  async createNewEmailAndPasswordUser(
+    email: string,
+    hashedPassword: string,
+  ): Promise<CreateUserAccountDto> {
     return this.userAccountModel.create({
       email,
       email_code: ulid(),
       auth_methods: {
         password: {
-          value: hashedPassword
-        }
-      }
+          value: hashedPassword,
+        },
+      },
     });
   }
 
   async createNewDidUser(did: string): Promise<CreateUserAccountDto> {
     return this.userAccountModel.create({
-      did
+      did,
     });
   }
 }

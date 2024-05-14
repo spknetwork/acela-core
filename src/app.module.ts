@@ -36,7 +36,7 @@ const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
       readPreference: 'primary',
       connectionName: 'threespeak',
       dbName: 'threespeak',
-      autoIndex: true
+      autoIndex: true,
     }),
     MongooseModule.forRoot(mongoUrl, {
       ssl: false,

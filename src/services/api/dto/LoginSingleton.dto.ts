@@ -5,14 +5,14 @@ export class LoginSingletonHiveDto {
   @IsNotEmpty()
   @ApiProperty({
     description: 'Username of the account',
-    default: "test-account",
+    default: 'test-account',
   })
   username?: string;
 
   @IsNotEmpty()
   @ApiProperty({
     description: 'Network of the identity; Can be HIVE or CERAMIC',
-    default: "HIVE",
+    default: 'HIVE',
   })
   network: string;
 
@@ -27,14 +27,14 @@ export class LoginSingletonDidDto {
   @IsNotEmpty()
   @ApiProperty({
     description: 'Username of the account',
-    default: "test-account",
+    default: 'test-account',
   })
   username?: string;
 
   @IsNotEmpty()
   @ApiProperty({
     description: 'Network of the identity; Can be HIVE or CERAMIC',
-    default: "HIVE",
+    default: 'HIVE',
   })
   network: string;
 

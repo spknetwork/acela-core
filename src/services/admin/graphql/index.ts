@@ -3,10 +3,8 @@ export const Schema = `
 
         accountLinks: String
     }
-`
+`;
 
 export const Resolvers = {
-    accountLinks: async (_, args) => {
-        
-    }
-}
+  accountLinks: async (_, args) => {},
+};

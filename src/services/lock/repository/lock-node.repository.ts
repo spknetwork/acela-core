@@ -6,20 +6,24 @@ import { LockNode } from '../schemas/lock-node.schema';
 @Injectable()
 export class LockNodeRepository {
   constructor(
-    @InjectModel(LockNode.name, 'acela-core') private readonly lockNodeModel: Model<LockNode>
-  ) { }
+    @InjectModel(LockNode.name, 'acela-core') private readonly lockNodeModel: Model<LockNode>,
+  ) {}
 
   async distinct(field: keyof LockNode) {
-    return await this.lockNodeModel.distinct(field)
+    return await this.lockNodeModel.distinct(field);
   }
 
   async findOneAndRenewOrCreate(node_id: string) {
-    return await this.lockNodeModel.findOneAndUpdate({ node_id }, {
-      $set: {
-        registered_at: new Date()
-      }
-    }, {
-      upsert: true
-    })
+    return await this.lockNodeModel.findOneAndUpdate(
+      { node_id },
+      {
+        $set: {
+          registered_at: new Date(),
+        },
+      },
+      {
+        upsert: true,
+      },
+    );
   }
 }

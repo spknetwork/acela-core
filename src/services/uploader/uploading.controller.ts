@@ -14,16 +14,16 @@ import {
   HttpStatus,
   Req,
   Headers,
-} from '@nestjs/common'
-import { FileInterceptor, MulterModule } from '@nestjs/platform-express'
-import { AuthGuard } from '@nestjs/passport'
-import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils'
-import { ApiConsumes, ApiOperation, ApiProperty } from '@nestjs/swagger'
-import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto'
-import { UpdateUploadDto } from './dto/update-upload.dto'
-import { StartEncodeDto } from './dto/start-encode.dto'
-import { UploadingService } from './uploading.service'
-import { HiveRepository } from '../../repositories/hive/hive.repository'
+} from '@nestjs/common';
+import { FileInterceptor, MulterModule } from '@nestjs/platform-express';
+import { AuthGuard } from '@nestjs/passport';
+import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils';
+import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto';
+import { UpdateUploadDto } from './dto/update-upload.dto';
+import { StartEncodeDto } from './dto/start-encode.dto';
+import { UploadingService } from './uploading.service';
+import { HiveRepository } from '../../repositories/hive/hive.repository';
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -43,7 +43,7 @@ export class UploadingController {
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
   async uploadThumbnail(
-    @Req() req, 
+    @Req() req,
     @Body() Body: UploadThumbnailUploadDto,
     @UploadedFile(
       new ParseFilePipe({
@@ -55,20 +55,20 @@ export class UploadingController {
     )
     file: any,
   ) {
-    const {body, user} = req;
-    
+    const { body, user } = req;
+
     // console.log(body)
 
     /**
      * TODO: do a bit more verification of user authority
      */
 
-    const cid = await this.uploadingService.uploadThumbnail(file, body.video_id, user)
+    const cid = await this.uploadingService.uploadThumbnail(file, body.video_id, user);
 
     return {
       status: 'ok',
-      thumbnail_cid: cid
-    }
+      thumbnail_cid: cid,
+    };
   }
 
   //Sequence matters
@@ -77,7 +77,7 @@ export class UploadingController {
   @UseInterceptors(UserDetailsInterceptor)
   @Get('create_upload')
   async createUpload(@Request() req) {
-    const user = req.user
+    const user = req.user;
     return await this.uploadingService.createUpload(user);
   }
 
@@ -85,47 +85,72 @@ export class UploadingController {
   @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
-    const user = req.user
-    const username = user.username
+    const user = req.user;
+    const username = user.username;
     const accountDetails = await this.hiveRepository.getAccount(username);
     // Check 1: Do we have posting authority?
     if (this.hiveRepository.verifyPostingAuth(accountDetails) === false) {
       const reason = `Hive Account @${username} has not granted posting authority to @threespeak`;
-      const errorType = "MISSING_POSTING_AUTHORITY";
+      const errorType = 'MISSING_POSTING_AUTHORITY';
       throw new HttpException({ reason: reason, errorType: errorType }, HttpStatus.BAD_REQUEST);
     }
     // Check 2: Is post title too big or too small?
-    const videoTitleLength = await this.uploadingService.getVideoTitleLength(body.permlink, username);
+    const videoTitleLength = await this.uploadingService.getVideoTitleLength(
+      body.permlink,
+      username,
+    );
     if (videoTitleLength === 0) {
-      throw new HttpException({ reason: 'Video title is not set', errorType: 'NO_VIDEO_TITLE'}, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        { reason: 'Video title is not set', errorType: 'NO_VIDEO_TITLE' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
     if (videoTitleLength >= 255) {
-      throw new HttpException({ reason: 'Video title is too big. Please update it.', errorType: 'BIG_VIDEO_TITLE'}, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        { reason: 'Video title is too big. Please update it.', errorType: 'BIG_VIDEO_TITLE' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
     // Check 3: Is this post already published?
-    const postExists = await this.hiveRepository.hivePostExists({author: username, permlink: body.permlink});
+    const postExists = await this.hiveRepository.hivePostExists({
+      author: username,
+      permlink: body.permlink,
+    });
     if (postExists) {
-      throw new HttpException({ reason: 'Post already exists on Hive Blockchain', errorType: 'POST_EXISTS'}, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        { reason: 'Post already exists on Hive Blockchain', errorType: 'POST_EXISTS' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
     // TO-DO: Check 4: Does user have enough RC?
-    const hasEnoughRC = await this.hiveRepository.hasEnoughRC({author: username});
+    const hasEnoughRC = await this.hiveRepository.hasEnoughRC({ author: username });
     if (!hasEnoughRC) {
-      throw new HttpException({ reason: 'User has RC below 6b', errorType: 'LOW_RC'}, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        { reason: 'User has RC below 6b', errorType: 'LOW_RC' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
     // All check went well? let's encode & publish
-    return await this.uploadingService.startEncode(body.upload_id, body.video_id, body.permlink, username);
+    return await this.uploadingService.startEncode(
+      body.upload_id,
+      body.video_id,
+      body.permlink,
+      username,
+    );
   }
-
 
   @UseGuards(AuthGuard('jwt'))
   @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @Post('update_post')
   async postUpdate(@Body() reqBody: UpdateUploadDto) {
     try {
-      await this.uploadingService.postUpdate(reqBody)
+      await this.uploadingService.postUpdate(reqBody);
     } catch (error) {
       if (error.message === 'UnauthorizedAccessError') {
-        throw new HttpException({ reason: "You do not have access to edit the requested post"}, HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          { reason: 'You do not have access to edit the requested post' },
+          HttpStatus.BAD_REQUEST,
+        );
       }
       // handle other errors or rethrow
     }
