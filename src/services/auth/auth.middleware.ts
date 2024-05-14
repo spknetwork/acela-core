@@ -4,8 +4,6 @@ import { authSchema } from './auth.interface';
 import * as KeyDidResolver from 'key-did-resolver'
 import { DID, VerifyJWSResult } from 'dids'
 
-const verifier = new DID({ resolver: KeyDidResolver.getResolver() });
-
 const VALID_TIMESTAMP_DIFF_MS = 1000 * 60 * 5;
 
 export function isValidTimestamp(timestamp: number): boolean {
@@ -18,9 +16,11 @@ export function isValidTimestamp(timestamp: number): boolean {
 export class AuthMiddleware implements NestMiddleware {
     async use(req: Request, res: Response, next: NextFunction) {
         let verificationResult: VerifyJWSResult
+        const verifier = new DID({ resolver: KeyDidResolver.getResolver() });
         try {
             verificationResult = await verifier.verifyJWS(req.body);
         } catch {
+            console.error('Invalid signature')
             res.status(401).send('Invalid signature');
             return;
         }
@@ -38,6 +38,7 @@ export class AuthMiddleware implements NestMiddleware {
         }
 
         if (!isValidTimestamp(iat)) {
+            console.error('Invalid timestamp:', iat);
             res.status(401).send('Invalid timestamp');
             return;
         }

@@ -39,6 +39,6 @@ export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthMiddleware)
-      .forRoutes('/hub/register');
+      .forRoutes('/api/v1/auth/login_singleton/did');
   }
 }

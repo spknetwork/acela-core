@@ -33,6 +33,10 @@ export class AuthService {
     }
   }
 
+  async didUserExists(did: string): Promise<boolean> {
+    return Boolean(await this.userAccountRepository.findOneByDid(did))
+  }
+
   async login(user: any) {
     console.log(user)
     const payload = { username: user.email, sub: user._id };
@@ -67,6 +71,10 @@ export class AuthService {
       type: 'singleton',
       sub: this.generateSub(account, network)
     });
+  }
+
+  async getSessionByDid(id: string) {
+    return await this.sessionRepository.findOneBySub(`singleton/did/${id}`)
   }
 
   async createEmailAndPasswordUser(email: string, hashedPassword: string) {
