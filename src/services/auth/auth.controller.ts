@@ -40,6 +40,12 @@ import { HiveRepository } from '../../repositories/hive/hive.repository';
 import { EmailService } from '../email/email.service';
 import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';
+import { z } from 'zod';
+
+const ProofPayloadSchema = z.object({
+  account: z.string(),
+  ts: z.string(),
+});
 
 @Controller('/api/v1/auth')
 export class AuthController {
@@ -78,7 +84,19 @@ export class AuthController {
   })
   @Post(['/login/singleton', '/login/singleton/hive'])
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    const proof_payload: { account: string; ts: number } = JSON.parse(body.proof_payload);
+    let proof_payload: { account: string; ts: string };
+    try {
+      proof_payload = ProofPayloadSchema.parse(JSON.parse(body.proof_payload));
+    } catch (error) {
+      throw new HttpException(
+        {
+          reason: 'Validation failed',
+          errorType: 'INVALID_PROOF_PAYLOAD',
+          details: error.errors,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
     const accountDetails = await this.hiveRepository.getAccount(proof_payload.account);
 
