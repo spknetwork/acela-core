@@ -35,7 +35,23 @@ export class Video {
   @Prop({ default: false, required: true })
   lowRc: boolean;
 
-  @Prop({ required: true, enum: ['uploaded', 'encoding', 'saving', 'published', 'deleted', 'encoding_failed', 'encoding_queued', 'encoding_halted_time', 'encoding_queued_vod', 'scheduled', 'encoding_ipfs'], default: 'uploaded' })
+  @Prop({
+    required: true,
+    enum: [
+      'uploaded',
+      'encoding',
+      'saving',
+      'published',
+      'deleted',
+      'encoding_failed',
+      'encoding_queued',
+      'encoding_halted_time',
+      'encoding_queued_vod',
+      'scheduled',
+      'encoding_ipfs',
+    ],
+    default: 'uploaded',
+  })
   status: string;
 
   @Prop()

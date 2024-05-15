@@ -1,11 +1,10 @@
-import { ApiProperty } from "@nestjs/swagger"
+import { ApiProperty } from '@nestjs/swagger';
 
 export class UploadThumbnailUploadDto {
-
   @ApiProperty({
-    description: "ID of video"
+    description: 'ID of video',
   })
-  video_id: string
+  video_id: string;
   @ApiProperty({
     description: 'Attachments',
     type: 'array',
@@ -17,5 +16,5 @@ export class UploadThumbnailUploadDto {
       },
     },
   })
-  file: any
+  file: any;
 }

@@ -9,10 +9,10 @@ import { LockNode, LockNodeSchema } from './schemas/lock-node.schema';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Lock.name, schema: LockSchema }], 'acela-core'),
-    MongooseModule.forFeature([{ name: LockNode.name, schema: LockNodeSchema }], 'acela-core')
+    MongooseModule.forFeature([{ name: LockNode.name, schema: LockNodeSchema }], 'acela-core'),
   ],
   controllers: [],
   providers: [LockRepository, LockNodeRepository, LockService],
-  exports: [LockRepository, LockNodeRepository, LockService]
+  exports: [LockRepository, LockNodeRepository, LockService],
 })
 export class LockModule {}

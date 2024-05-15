@@ -1,18 +1,10 @@
-import {
-  ActivityType,
-  Client,
-  EmbedBuilder,
-  GatewayIntentBits,
-  Message,
-  Partials,
-  APIEmbedField,
-} from 'discord.js'
+import { Client, GatewayIntentBits, Message, Partials } from 'discord.js';
 
 export class DiscordBot {
-  client: Client<boolean>
+  client: Client<boolean>;
 
   async handleMessage(msg: Message<boolean>) {
-    console.log(msg)
+    console.log(msg);
   }
 
   async start() {
@@ -26,7 +18,7 @@ export class DiscordBot {
         GatewayIntentBits.DirectMessageTyping,
       ],
       partials: [Partials.Channel],
-    })
+    });
     if (process.env.DISCORD_TOKEN) {
       await this.client.login(process.env.DISCORD_TOKEN);
       if (this.client.user) {

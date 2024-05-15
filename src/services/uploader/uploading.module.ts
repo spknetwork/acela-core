@@ -8,9 +8,9 @@ import { PublishingModule } from '../publishing/publishing.module';
 import { HiveModule } from '../../repositories/hive/hive.module';
 
 @Module({
-  imports: [ UploadModule, VideoModule, IpfsModule, PublishingModule, HiveModule ],
-  controllers: [ UploadingController ],
-  providers: [ UploadingService ],
-  exports: [ UploadingService ]
+  imports: [UploadModule, VideoModule, IpfsModule, PublishingModule, HiveModule],
+  controllers: [UploadingController],
+  providers: [UploadingService],
+  exports: [UploadingService],
 })
 export class UploadingModule {}

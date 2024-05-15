@@ -15,6 +15,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended-requiring-type-checking',
   ],
   plugins: ['@typescript-eslint', 'prettier', 'unused-imports'],
+  ignorePatterns: ['**/*.test.ts', '**/*.spec.ts'],
   rules: {
     'prettier/prettier': 'warn',
     '@typescript-eslint/camelcase': 'off',

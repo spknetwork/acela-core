@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty } from '@nestjs/swagger';
 
 export class StartEncodeDto {
   @ApiProperty({
@@ -17,5 +17,5 @@ export class StartEncodeDto {
     description: 'permlink of the post',
     default: 'ec102517-7be9-4255-9d07-75a525a88565',
   })
-  permlink: string
+  permlink: string;
 }

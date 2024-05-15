@@ -1,9 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { VideoRepository } from "./video.repository";
-import { Video } from "./schemas/video.schema";
-import { Model } from "mongoose";
-import { ObjectId } from "mongodb";
-import { InjectModel } from "@nestjs/mongoose";
+import { Injectable, Logger } from '@nestjs/common';
+import { VideoRepository } from './video.repository';
+import { Video } from './schemas/video.schema';
+import { Model } from 'mongoose';
+import { ObjectId } from 'mongodb';
+import { InjectModel } from '@nestjs/mongoose';
 
 @Injectable()
 export class MockVideoRepository extends VideoRepository {
@@ -12,17 +12,20 @@ export class MockVideoRepository extends VideoRepository {
   constructor(@InjectModel(Video.name, 'threespeak') videoModel: Model<Video>) {
     super(videoModel);
 
-    this.#logger = new Logger(MockVideoRepository.name)
+    this.#logger = new Logger(MockVideoRepository.name);
   }
 
-  async updateVideoFailureStatus(owner: string, failureStatuses: { lowRc: boolean; publishFailed: boolean; }) {
-    this.#logger.log(owner, failureStatuses,'update failure status mock');
+  async updateVideoFailureStatus(
+    owner: string,
+    failureStatuses: { lowRc: boolean; publishFailed: boolean },
+  ) {
+    this.#logger.log(owner, failureStatuses, 'update failure status mock');
     return Promise.resolve({
       acknowledged: true,
       matchedCount: 1,
       modifiedCount: 1,
       upsertedCount: 0,
-      upsertedId: new ObjectId(1)
+      upsertedId: new ObjectId(1),
     });
   }
 
@@ -33,7 +36,7 @@ export class MockVideoRepository extends VideoRepository {
       matchedCount: 1,
       modifiedCount: 1,
       upsertedCount: 0,
-      upsertedId: new ObjectId(1)
+      upsertedId: new ObjectId(1),
     });
   }
 }

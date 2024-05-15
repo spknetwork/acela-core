@@ -1,9 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { CreatorRepository } from "./creator.repository";
-import { ContentCreator } from "./schemas/creator.schema";
-import { Model } from "mongoose";
-import { ObjectId } from "mongodb";
-import { UpdateResult } from "../types";
+import { Injectable, Logger } from '@nestjs/common';
+import { CreatorRepository } from './creator.repository';
+import { ContentCreator } from './schemas/creator.schema';
+import { Model } from 'mongoose';
+import { ObjectId } from 'mongodb';
+import { UpdateResult } from '../types';
 
 @Injectable()
 export class MockCreatorService extends CreatorRepository {
@@ -12,7 +12,7 @@ export class MockCreatorService extends CreatorRepository {
   constructor(creatorModel: Model<ContentCreator>) {
     super(creatorModel);
 
-    this.#logger = new Logger(MockCreatorService.name)
+    this.#logger = new Logger(MockCreatorService.name);
   }
 
   async setUserToVisible(username: string): Promise<UpdateResult> {
@@ -22,7 +22,7 @@ export class MockCreatorService extends CreatorRepository {
       matchedCount: 1,
       modifiedCount: 1,
       upsertedCount: 0,
-      upsertedId: new ObjectId(1)
+      upsertedId: new ObjectId(1),
     });
   }
 }

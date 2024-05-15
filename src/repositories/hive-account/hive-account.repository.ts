@@ -7,36 +7,38 @@ import { HiveAccount } from './schemas/hive-account.schema';
 export class HiveAccountRepository {
   readonly #logger = new Logger(HiveAccountRepository.name);
 
-  constructor(@InjectModel(HiveAccount.name, 'threespeak') private hiveAccountModel: Model<HiveAccount>) {}
-    
+  constructor(
+    @InjectModel(HiveAccount.name, 'threespeak') private hiveAccountModel: Model<HiveAccount>,
+  ) {}
+
   async findOneByOwner(created_by: string): Promise<HiveAccount | null> {
     const acelaUser = await this.hiveAccountModel.findOne({ created_by });
-    this.#logger.log(acelaUser)
+    this.#logger.log(acelaUser);
 
     return acelaUser;
   }
 
   async createLite(username: string, secret: string) {
-    this.hiveAccountModel.create({
-      status: "requested",
+    return await this.hiveAccountModel.create({
+      status: 'requested',
       username,
       keys_requested: false,
       created_by: null,
       requested_at: new Date(),
       request_type: 'otp-login',
       created_at: new Date(),
-      secret
-    })
+      secret,
+    });
   }
 
   async insertCreated(username: string, created_by) {
-    this.hiveAccountModel.create({
+    return await this.hiveAccountModel.create({
       status: 'created',
       username,
       keys_requested: false,
       created_by,
       requested_at: new Date(),
       created_at: new Date(),
-    })
+    });
   }
 }

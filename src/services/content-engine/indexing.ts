@@ -1,7 +1,3 @@
-
-
 export class UnionBridge {
-    async start() {
-
-    }
+  async start() {}
 }

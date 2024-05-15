@@ -13,7 +13,7 @@ export function MockFactory<T, M>(
   realService: new (model?: M) => T,
   mockService: new (model?: M) => T,
   configService: ConfigService,
-  model?: M
+  model?: M,
 ): T {
   const env = configService.get<string>('ENVIRONMENT');
   const mongoUrl = configService.get<string>('CORE_MONGODB_URL');

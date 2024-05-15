@@ -9,6 +9,6 @@ import { ConfigModule } from '@nestjs/config';
   imports: [HiveModule, VideoModule, CreatorModule, ConfigModule],
   controllers: [],
   providers: [VotingService],
-  exports: [VotingService]
+  exports: [VotingService],
 })
 export class VotingModule {}

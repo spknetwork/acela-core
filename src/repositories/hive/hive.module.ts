@@ -5,17 +5,16 @@ import { MockHiveRepository } from './hive.repository.mock';
 import { MockFactory } from '../../factories/mock.factory';
 
 @Module({
-  imports: [
-    ConfigModule,
-  ],
+  imports: [ConfigModule],
   controllers: [],
   providers: [
     {
       provide: HiveRepository,
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => MockFactory<HiveRepository, undefined>(HiveRepository, MockHiveRepository, configService),
+      useFactory: (configService: ConfigService) =>
+        MockFactory<HiveRepository, undefined>(HiveRepository, MockHiveRepository, configService),
     },
   ],
-  exports: [HiveRepository]
+  exports: [HiveRepository],
 })
 export class HiveModule {}
