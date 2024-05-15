@@ -797,7 +797,13 @@ export class StorageClusterAllocator extends StorageCluster {
     this.wss.on('connection', (ws) => {
       let authenticated = false;
       let peerId: string;
-      ws.on('message', async (message: SocketMsg) => {
+      ws.on('message', async (data: Buffer | string) => {
+        let message: SocketMsg;
+        try {
+          message = JSON.parse(data.toString());
+        } catch {
+          return;
+        }
         if (
           !message ||
           typeof message.type === 'undefined' ||

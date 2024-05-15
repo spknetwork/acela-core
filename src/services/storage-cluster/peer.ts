@@ -464,11 +464,17 @@ export class StorageClusterPeer extends StorageCluster {
         }),
       );
     });
-    ws.on('message', async (data: SocketMsg) => {
-      if (!data || typeof data.type === 'undefined' || !data.data) return;
+    ws.on('message', async (data: Buffer | string) => {
+      let message: SocketMsg;
+      try {
+        message = JSON.parse(data.toString());
+      } catch {
+        return;
+      }
+      if (!message || typeof message.type === 'undefined' || !message.data) return;
 
-      if (data.type === SocketMsgTypes.AUTH_SUCCESS) {
-        const allocPeerInfo = data.data;
+      if (message.type === SocketMsgTypes.AUTH_SUCCESS) {
+        const allocPeerInfo = message.data;
         this.allocator.addPeer(allocPeerInfo.peerId, ws, wsUrl);
         this.allocator.setPeerSynced(allocPeerInfo.peerId);
         peerId = allocPeerInfo.peerId;
@@ -492,10 +498,10 @@ export class StorageClusterPeer extends StorageCluster {
 
       if (peerId) {
         // handle this peer's messages from allocators connected outbound
-        await this.handleSocketMsg(data);
+        await this.handleSocketMsg(message);
 
         // handle allocator messages (including gossips) from peers connected outbound
-        await this.allocator.handleSocketMsg(data, peerId, new Date().getTime());
+        await this.allocator.handleSocketMsg(message, peerId, new Date().getTime());
       }
     });
   }
