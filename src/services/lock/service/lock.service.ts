@@ -151,7 +151,7 @@ export class LockService {
     const dist1 = distance(Buffer.from('foo'), Buffer.from('bar'));
     const nodes = await this.lockNodeRepository.distinct('node_id');
     const nodesClosest = nodes
-      .map<[number, string]>((e) => {
+      .map((e): [number, string] => {
         let distance = 0;
         let i = 0;
         const min = Math.min(this.identity.id.length, e.node_id.length);

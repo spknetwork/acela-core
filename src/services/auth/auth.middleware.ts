@@ -43,7 +43,7 @@ export class AuthMiddleware implements NestMiddleware {
       return;
     }
 
-    req.body = verificationResult.payload as DagJWS;
+    req.body = verificationResult.payload as any;
 
     next();
   }

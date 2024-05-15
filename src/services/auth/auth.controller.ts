@@ -138,7 +138,7 @@ export class AuthController {
   @Post('/login_singleton/did')
   async loginSingletonReturn(@Body() body: WithAuthData) {
     try {
-      this.authService.getOrCreateUserByDid(body.did);
+      await this.authService.getOrCreateUserByDid(body.did);
       return await this.authService.authenticateUser(body.did, 'did');
     } catch (e) {
       console.log(e);

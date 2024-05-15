@@ -32,7 +32,7 @@ export type SocketMsg = (
   | { type: SocketMsgTypes.PIN_ALLOCATION; data: SocketMsgPinAlloc }
   | { type: SocketMsgTypes.SYNC_RESP; data: SocketMsgSyncResp }
   | { type: SocketMsgTypes.AUTH; data: SocketMsgAuth }
-) & { ts: number };
+) & { type: SocketMsgTypes; ts: number };
 
 export type SocketMsgTyped<T> = {
   type: SocketMsgTypes;
