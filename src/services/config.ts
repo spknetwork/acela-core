@@ -75,9 +75,9 @@ export class Config {
     //patch
     this.config = mergeOptions(this.config, obj);
   }
-  save() {
+  async save() {
     const buf = Buffer.from(JSON.stringify(this.config, null, 2));
-    void this.datastore.put(new Key('config'), buf);
+    await this.datastore.put(new Key('config'), buf);
   }
   /**
    *
@@ -97,9 +97,9 @@ export class Config {
    * @param {String} key
    * @param {*} value
    */
-  set(key, value) {
+  async set(key, value) {
     obj_set(this.config, key, value);
-    this.save();
+    await this.save();
   }
   async open() {
     if (!(await this.datastore.has(new Key('config')))) {
@@ -125,6 +125,6 @@ export class Config {
     };
 
     this.config = config || defaultConfig;
-    this.save();
+    await this.save();
   }
 }
