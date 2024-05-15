@@ -208,42 +208,44 @@ export class ApiController {
     const { memo } = data;
     console.log(memo);
 
-    // TODO: this function does not get the message, it gets the public keys
-    const message = await this.hiveRepository.getPublicKeys(memo);
-    throw new Error('Not implemented');
-    // const pubKeys = await this.hiveRepository.getPublicKeys(memo);
+    const message = this.hiveRepository.decodeMessage(memo) as {
+      account: string;
+      authority: string;
+      message: string;
+    };
+    const pubKeys = await this.hiveRepository.getPublicKeys(memo);
 
-    // const [account] = await HiveClient.database.getAccounts([message.account]);
+    const account = await this.hiveRepository.getAccount(message.account);
 
-    // if (!account) {
-    //   throw new HttpException({ reason: 'Account not found' }, HttpStatus.BAD_REQUEST);
-    // }
-    // console.log(account[message.authority], pubKeys);
+    if (!account) {
+      throw new HttpException({ reason: 'Account not found' }, HttpStatus.BAD_REQUEST);
+    }
+    console.log(account[message.authority], pubKeys);
 
-    // // Check if the signature is not valid
-    // const signatureValid = account[message.authority].key_auths.some(
-    //   (key_auth) => key_auth[0] === pubKeys[0],
-    // );
-    // if (!signatureValid) {
-    //   throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST);
-    // }
+    // Check if the signature is not valid
+    const signatureValid = account[message.authority].key_auths.some(
+      (key_auth) => key_auth[0] === pubKeys[0],
+    );
+    if (!signatureValid) {
+      throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST);
+    }
 
-    // const identityChallenge = await this.linkedAccountsRepository.findOneByChallenge({
-    //   challenge: message.message,
-    // });
+    const identityChallenge = await this.linkedAccountsRepository.findOneByChallenge({
+      challenge: message.message,
+    });
 
-    // if (!identityChallenge) {
-    //   throw new HttpException({ reason: 'Challenge not found' }, HttpStatus.BAD_REQUEST);
-    // }
+    if (!identityChallenge) {
+      throw new HttpException({ reason: 'Challenge not found' }, HttpStatus.BAD_REQUEST);
+    }
 
-    // console.log(signatureValid, account, message.message, identityChallenge);
+    console.log(signatureValid, account, message.message, identityChallenge);
 
-    // if (identityChallenge.account !== account.name) {
-    //   throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST);
-    // }
+    if (identityChallenge.account !== account.name) {
+      throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST);
+    }
 
-    // await this.linkedAccountsRepository.verify(identityChallenge._id);
-    // return { ok: true };
+    await this.linkedAccountsRepository.verify(identityChallenge._id);
+    return { ok: true };
   }
 
   @ApiOperation({

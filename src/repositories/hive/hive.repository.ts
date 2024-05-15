@@ -184,9 +184,9 @@ export class HiveRepository {
     return await this.#hive.database.call('get_active_votes', [author, permlink]);
   }
 
-  async decodeMessageAndGetPublicKeys(memo: string) {
+  decodeMessage(memo: string) {
     const decoded: string = this.#hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
-    const message: string = JSON.parse(decoded.substr(1));
+    const message: unknown = JSON.parse(decoded.substr(1));
 
     return message;
   }
