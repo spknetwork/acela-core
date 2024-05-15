@@ -44,7 +44,7 @@ import { z } from 'zod';
 
 const ProofPayloadSchema = z.object({
   account: z.string(),
-  ts: z.string(),
+  ts: z.number(),
 });
 
 @Controller('/api/v1/auth')
@@ -84,7 +84,7 @@ export class AuthController {
   })
   @Post(['/login/singleton', '/login/singleton/hive'])
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    let proof_payload: { account: string; ts: string };
+    let proof_payload: { account: string; ts: number };
     try {
       proof_payload = ProofPayloadSchema.parse(JSON.parse(body.proof_payload));
     } catch (error) {
