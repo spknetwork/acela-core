@@ -5,6 +5,5 @@ logs
 dist
 
 .env*
-.vscode
 data
 .DS_Store
