@@ -101,8 +101,6 @@ describe('AuthController', () => {
 
       const jws = await did.createJWS(payload);
 
-      console.log(jws)
-
       return request(app.getHttpServer())
         .post('/api/v1/auth/login_singleton/did')
         .send(jws)
