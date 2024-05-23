@@ -2,9 +2,10 @@ import FormData from 'form-data'
 import 'dotenv/config'
 import { Injectable } from '@nestjs/common'
 import Axios from 'axios'
+import { IIpfsService } from './ipfs.types'
 
 @Injectable()
-export class IpfsService {
+export class IpfsService implements IIpfsService {
   // readonly #axios = new Axios();
 
   /**
@@ -28,17 +29,17 @@ export class IpfsService {
    *
    * @param {Record<string, string>} metadata
    */
-  encodeMetadata = (metadata = {}) =>
+  encodeMetadata = (metadata: Record<string, string> = {}) =>
     Object.fromEntries(Object.entries(metadata).map(([k, v]) => [`meta-${k}`, v]))
 
   /**
    * @template {Object} T
    * @param {T} options
-   * @returns {{[K in keyof T]: Exclude<T[K], undefined>}}
+   * @returns {{[K: string]: T}}
    */
-  encodeParams = (options) =>
+  encodeParams = <T>(options: T) =>
     // @ts-ignore - it can't infer this
-    Object.fromEntries(Object.entries(options).filter(([, v]) => v != null))
+    Object.fromEntries<T>(Object.entries(options).filter(([, v]) => v != null))
 
   encodeAddParams = (options: any) =>
     this.encodeParams({
