@@ -13,28 +13,16 @@ export function MockFactory<T, M>(
   realService: new (model?: M) => T,
   mockService: new (model?: M) => T,
   configService: ConfigService,
+  mockTilStage: 'local' | 'staging',
   model?: M
 ): T {
   const env = configService.get<string>('ENVIRONMENT');
-  const mongoUrl = configService.get<string>('CORE_MONGODB_URL');
 
-  const isLocal = env === 'local';
-  const isStaging = env === 'staging';
-  const isProd = env === 'prod';
-
-  if (isLocal) {
-    return new mockService(model);
-  }
-
-  if (isStaging) {
+  if (env === 'prod') {
     return new realService(model);
   }
 
-  if (isProd && mongoUrl === 'mongodb://mongo:27017') {
-    throw new Error('Cannot use mock service in production with real database. Mongo url is set to default.')
-  }
-
-  if (isProd) {
+  if (mockTilStage === 'local' && env === 'staging') {
     return new realService(model);
   }
 
