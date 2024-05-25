@@ -43,7 +43,7 @@ export interface IpfsAddResult {
 export interface IIpfsService {
   encodePinOptions(options: IpfsPinOptions): Record<string, any>;
   encodeMetadata(metadata: Record<string, string>): Record<string, string>;
-  encodeParams<T>(options: T): {[K: string]: T};
+  encodeParams<T>(options: T): { [K: string]: T };
   encodeAddParams(options: IpfsAddOptions): Record<string, any>;
   addData(cluster: string, file: IpfsFile, options: IpfsAddOptions): Promise<IpfsAddResult>;
 }
