@@ -4,10 +4,11 @@ import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
 import { ulid } from 'ulid';
 import moment from 'moment';
-import { UpdateUploadDto } from './dto/update-upload.dto'
-import { IpfsService } from '../ipfs/ipfs.service'
-import ffmpeg from 'fluent-ffmpeg'
-import crypto from 'crypto'
+import { UpdateUploadDto } from './dto/update-upload.dto';
+import { IpfsService } from '../ipfs/ipfs.service';
+import ffmpeg from 'fluent-ffmpeg';
+import crypto from 'crypto';
+import { Upload } from './types';
 
 @Injectable()
 export class UploadingService {
@@ -23,29 +24,33 @@ export class UploadingService {
     video_id: string,
     user: { sub: string; username: string; id?: string },
   ) {
-    const id = ulid()
+    const id = ulid();
 
-    const { cid } = await this.ipfsService.addData(process.env.IPFS_CLUSTER_URL, file.buffer, {
-      metadata: {
-        key: `${video_id}/thumbnail`,
-        app: '3speak-beta',
-        message: 'acela beta please ignore',
+    const { cid }: { cid: string } = await this.ipfsService.addData(
+      process.env.IPFS_CLUSTER_URL,
+      file.buffer,
+      {
+        metadata: {
+          key: `${video_id}/thumbnail`,
+          app: '3speak-beta',
+          message: 'acela beta please ignore',
+        },
+        // replicationFactorMin: 1,
+        // replicationFactorMax: 2,
       },
-      // replicationFactorMin: 1,
-      // replicationFactorMax: 2,
-    })
+    );
 
-    await this.uploadRepository.createThumbnailUpload(id, cid, video_id, user)
+    await this.uploadRepository.createThumbnailUpload(id, cid, video_id, user);
 
-    await this.videoRepository.setThumbnail(video_id, id)
+    await this.videoRepository.setThumbnail(video_id, id);
 
-    return cid
+    return cid;
   }
 
   async createUpload(user: { sub: string; username: string; id?: string }) {
-    const video_id = ulid()
-    const upload_id = ulid()
-    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '')
+    const video_id = ulid();
+    const upload_id = ulid();
+    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '');
 
     await this.videoRepository.createNewHiveVideoPost({
       video_id,
@@ -58,7 +63,7 @@ export class UploadingService {
       videoUploadLink: video_id,
       beneficiaries: '[]',
       permlink: permlink,
-    })
+    });
 
     await this.uploadRepository.insertOne({
       upload_id,
@@ -68,34 +73,34 @@ export class UploadingService {
       ipfs_status: 'pending',
       type: 'video',
       immediatePublish: false,
-    })
+    });
 
     return {
       video_id,
       upload_id,
       permlink,
-    }
+    };
   }
 
   async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {
-    let uploadJob = await this.uploadRepository.findOne({
+    const uploadJob = await this.uploadRepository.findOne({
       upload_id: upload_id,
       video_id: video_id,
       type: 'video',
-    })
+    });
     if (uploadJob) {
       if (uploadJob.immediatePublish) {
-        const publishData = await this.videoRepository.getVideoToPublish(owner, permlink)
-        await this.publishingService.publish(publishData)
+        const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
+        await this.publishingService.publish(publishData);
       }
-      await this.uploadRepository.setIpfsStatusToReady(video_id)
+      await this.uploadRepository.setIpfsStatusToReady(video_id);
     }
     // return something that - yes video moved to 'ready'
   }
 
   async getVideoTitleLength(permlink: string, owner: string): Promise<number> {
-    const publishData = await this.videoRepository.getVideoToPublish(owner, permlink)
-    return publishData.title.length
+    const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
+    return publishData.title.length;
   }
 
   async postUpdate(details: UpdateUploadDto) {
@@ -113,41 +118,45 @@ export class UploadingService {
       tags: details.tags,
       title: details.title,
       videoUploadLink: details.video_id,
-    })
+    });
   }
 
-  async handleTusdCallback(uploadMetaData: any) {
+  async handleTusdCallback(uploadMetaData: Upload) {
     if (uploadMetaData.authorization === 'TESTING') {
-      throw new Error('TestAuthorizationError')
+      throw new Error('TestAuthorizationError');
     }
-    if (uploadMetaData.Storage) {
-      if (uploadMetaData.Size >= 5000000000) {
-        throw new Error('File too big to be uploaded')
-      }
-      const info: ffmpeg.FfprobeData = await new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(uploadMetaData.Storage.Path, (err: any, data: ffmpeg.FfprobeData) => {
-          if (err) {
-            reject(err)
-          }
-          resolve(data)
-        })
-      })
-      const videoStreamInfo = info['streams'][0]
-      const formatInfo = info['format']
-      let immediatePublish = false
-      if (videoStreamInfo['codec_name'] && videoStreamInfo['codec_name'].toLowerCase() == 'h264') {
-        immediatePublish = true
-      }
-      if (formatInfo['format_long_name'] && formatInfo['format_long_name'].toLowerCase().includes('mov')) {
-        immediatePublish = true
-      }
-      await this.uploadRepository.setStorageDetails(
-        uploadMetaData.MetaData.upload_id,
-        uploadMetaData.MetaData.video_id,
-        uploadMetaData.Storage.Path,
-        uploadMetaData.ID,
-        immediatePublish,
-      )
+    if (uploadMetaData.Size >= 5000000000) {
+      throw new Error('File too big to be uploaded');
     }
+    if (!uploadMetaData.Storage) {
+      throw new Error('Storage is undefined');
+    }
+    const info: ffmpeg.FfprobeData = await new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(uploadMetaData.Storage!.Path, (err: any, data: ffmpeg.FfprobeData) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(data);
+      });
+    });
+    const videoStreamInfo = info['streams'][0];
+    const formatInfo = info['format'];
+    let immediatePublish = false;
+    if (videoStreamInfo['codec_name'] && videoStreamInfo['codec_name'].toLowerCase() == 'h264') {
+      immediatePublish = true;
+    }
+    if (
+      formatInfo['format_long_name'] &&
+      formatInfo['format_long_name'].toLowerCase().includes('mov')
+    ) {
+      immediatePublish = true;
+    }
+    await this.uploadRepository.setStorageDetails(
+      uploadMetaData.MetaData.upload_id,
+      uploadMetaData.MetaData.video_id,
+      uploadMetaData.Storage.Path,
+      uploadMetaData.ID,
+      immediatePublish,
+    );
   }
 }

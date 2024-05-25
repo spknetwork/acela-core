@@ -1,4 +1,4 @@
-import { createProjectionFromDto } from "../../../utils/createProjectionFromDto";
+import { createProjectionFromDto } from '../../../utils/createProjectionFromDto';
 
 export class DbVideoToPublishDto {
   readonly owner: string;
@@ -23,4 +23,4 @@ export class DbVideoToPublishDto {
   readonly rewardPowerup: boolean;
 }
 
-export const dbVideoToPublishProjection = createProjectionFromDto(DbVideoToPublishDto)
+export const dbVideoToPublishProjection = createProjectionFromDto(DbVideoToPublishDto);

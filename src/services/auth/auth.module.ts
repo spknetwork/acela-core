@@ -1,9 +1,9 @@
-import 'dotenv/config'
+import 'dotenv/config';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule, JwtService } from '@nestjs/jwt';
-import { JwtStrategy, LocalStrategy } from './auth.strategy';
+import { LocalStrategy } from './auth.strategy';
 import { UserModule } from '../../repositories/user/user.module';
 import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
 import { SessionModule } from '../../repositories/session/session.module';
@@ -27,18 +27,16 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     SessionModule,
     PassportModule,
     JwtModule.register({
-      secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
+      privateKey: process.env.JWT_PRIVATE_KEY,
       signOptions: { expiresIn: '30d' },
     }),
   ],
-  providers: [ AuthService, LocalStrategy, JwtService, ConfigService ],
-  controllers: [ AuthController ],
-  exports: [ AuthService ],
+  providers: [AuthService, LocalStrategy, JwtService, ConfigService],
+  controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(AuthMiddleware)
-      .forRoutes('/api/v1/auth/login_singleton/did');
+    consumer.apply(AuthMiddleware).forRoutes('/api/v1/auth/login_singleton/did');
   }
 }

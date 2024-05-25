@@ -8,6 +8,6 @@ import { HiveModule } from '../../repositories/hive/hive.module';
   imports: [VideoModule, CreatorModule, HiveModule],
   controllers: [],
   providers: [PublishingService],
-  exports: [PublishingService]
+  exports: [PublishingService],
 })
 export class PublishingModule {}

@@ -4,10 +4,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Video } from './schemas/video.schema';
 import { DbVideoToPublishDto, dbVideoToPublishProjection } from './dto/videos-to-publish.dto';
 import { UpdateResult } from 'mongodb';
-import { UploadDto } from '../upload/dto/upload.dto';
 import moment from 'moment';
 
-type TrendingChainResponse = Array<({
+type TrendingChainResponse = Array<{
   permlink: string;
   title: string;
   duration: number;
@@ -15,13 +14,14 @@ type TrendingChainResponse = Array<({
   language: string;
   views: number;
   trending_position: number;
-  author: string; images: {
+  author: string;
+  images: {
     thumbnail: string;
     poster: string;
     post: string;
-  }
+  };
   tags: string[];
-})>;
+}>;
 
 @Injectable()
 export class VideoRepository {
@@ -40,7 +40,7 @@ export class VideoRepository {
         },
         dbVideoToPublishProjection,
       )
-      .sort('-created')
+      .sort('-created');
   }
 
   async getVideoToPublish(owner: string, permlink: string): Promise<DbVideoToPublishDto> {
@@ -53,21 +53,21 @@ export class VideoRepository {
         dbVideoToPublishProjection,
       )
       .sort('-created')
-      .limit(1)
-    return results[0]
+      .limit(1);
+    return results[0];
   }
 
   async updateVideoFailureStatus(
     owner: Video['owner'],
     failureStatuses: { lowRc: Video['lowRc']; publishFailed: Video['publishFailed'] },
   ): Promise<UpdateResult> {
-    return await this.videoModel.updateOne({ owner }, { $set: failureStatuses }).exec()
+    return await this.videoModel.updateOne({ owner }, { $set: failureStatuses }).exec();
   }
 
   async setPostedToChain(owner: Video['owner'], ipfs?: Video['ipfs']): Promise<UpdateResult> {
     return await this.videoModel
       .updateOne({ owner }, { $set: { steemPosted: true, lowRc: false, needsHiveUpdate: !!ipfs } })
-      .exec()
+      .exec();
   }
 
   async setThumbnail(video_id: string, thumbnail: string) {
@@ -80,7 +80,7 @@ export class VideoRepository {
           thumbnail,
         },
       },
-    )
+    );
   }
 
   async getUpvoteEligibleVideosInTimePeriod(
@@ -94,7 +94,7 @@ export class VideoRepository {
       owner: { $nin: bannedCreatorsList },
       created: { $gte: startPeriod.toISOString(), $lte: endPeriod.toISOString() },
       upvoteEligible: { $ne: false },
-    })
+    });
   }
 
   async createNewHiveVideoPost({
@@ -109,20 +109,20 @@ export class VideoRepository {
     beneficiaries,
     permlink,
   }: {
-    video_id: string
+    video_id: string;
     user: {
-      sub: string
-      username: string
-      id?: string
-    }
-    title: string
-    description: string
-    tags: string[]
-    community: string
-    language: string
-    videoUploadLink: string
-    beneficiaries: string
-    permlink: string
+      sub: string;
+      username: string;
+      id?: string;
+    };
+    title: string;
+    description: string;
+    tags: string[];
+    community: string;
+    language: string;
+    videoUploadLink: string;
+    beneficiaries: string;
+    permlink: string;
   }): Promise<Video> {
     return await this.videoModel.create({
       video_id,
@@ -152,7 +152,7 @@ export class VideoRepository {
       network: 'hive',
       __flags: [],
       __v: '0.1',
-    })
+    });
   }
 
   async updateHiveVideoPost({
@@ -170,19 +170,19 @@ export class VideoRepository {
     size,
     duration,
   }: {
-    video_id: string
-    title: string
-    description: string
-    tags: string[]
-    community: string
-    language: string
-    videoUploadLink: string
-    beneficiaries: string
-    permlink: string
-    originalFilename: string
-    filename: string
-    size: number
-    duration: number
+    video_id: string;
+    title: string;
+    description: string;
+    tags: string[];
+    community: string;
+    language: string;
+    videoUploadLink: string;
+    beneficiaries: string;
+    permlink: string;
+    originalFilename: string;
+    filename: string;
+    size: number;
+    duration: number;
   }): Promise<Video | null> {
     return await this.videoModel.findOneAndUpdate(
       {
@@ -216,6 +216,6 @@ export class VideoRepository {
           __v: '0.1',
         },
       },
-    )
+    );
   }
 }

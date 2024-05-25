@@ -13,7 +13,7 @@ export type CommentOption = [
     allow_votes: boolean;
     allow_curation_rewards: boolean;
     extensions: any[];
-  }
+  },
 ];
 
 export interface PostBeneficiary {
@@ -37,21 +37,27 @@ export interface AuthorPerm {
   permlink: string;
 }
 
-export type PostOperation = (string | {
-  parent_author: string;
-  parent_permlink: string;
-  author: string;
-  permlink: string;
-  title: string;
-  body: string;
-  json_metadata: string;
-})[];
+export type PostOperation = (
+  | string
+  | {
+      parent_author: string;
+      parent_permlink: string;
+      author: string;
+      permlink: string;
+      title: string;
+      body: string;
+      json_metadata: string;
+    }
+)[];
 
-export type CustomJsonOperation = (string | {
-  required_posting_auths: string[];
-  required_auths: any[];
-  id: string;
-  json: string;
-})[];
+export type CustomJsonOperation = (
+  | string
+  | {
+      required_posting_auths: string[];
+      required_auths: any[];
+      id: string;
+      json: string;
+    }
+)[];
 
 export type OperationsArray = (PostOperation | CustomJsonOperation | CommentOption)[];

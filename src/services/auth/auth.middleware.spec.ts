@@ -5,14 +5,9 @@ import * as KeyResolver from 'key-did-resolver'
 import { DID } from 'dids'
 import { Response } from 'express'
 import { jest } from '@jest/globals'
-
-import * as uint8arrays from 'uint8arrays'
-
 import { toString } from 'uint8arrays/to-string'
 import { decode } from 'codeco'
 import { type DagJWS, uint8ArrayAsBase64pad, uint8ArrayAsBase64url } from '@didtools/codecs'
-
-import stringify from 'fast-json-stable-stringify'
 
 export function encodeBase64(bytes: Uint8Array): string {
     return uint8ArrayAsBase64pad.encode(bytes)

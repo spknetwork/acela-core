@@ -11,6 +11,6 @@ import { ConfigModule } from '@nestjs/config';
   ],
   controllers: [],
   providers: [SessionRepository],
-  exports: [SessionRepository]
+  exports: [SessionRepository],
 })
 export class SessionModule {}

@@ -10,10 +10,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     {
       provide: IpfsService,
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => 
+      useFactory: (configService: ConfigService) =>
         MockFactory(IpfsService, MockIpfsService, configService, 'local'),
     },
   ],
-  exports: [IpfsService]
+  exports: [IpfsService],
 })
 export class IpfsModule {}

@@ -14,7 +14,7 @@ export function MockFactory<T, M>(
   mockService: new (model?: M) => T,
   configService: ConfigService,
   mockTilStage: 'local' | 'staging',
-  model?: M
+  model?: M,
 ): T {
   const env = configService.get<string>('ENVIRONMENT');
 

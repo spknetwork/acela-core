@@ -8,10 +8,10 @@ export type UserAccountDocument = mongoose.Document & UserAccount;
 export class UserAccount {
   @Prop({ type: String, required: false })
   confirmationCode: string;
-  
+
   @Prop({ type: Date, required: true, default: Date.now })
   createdAt: Date;
-  
+
   @Prop({ type: String, unique: true })
   email: string;
 
@@ -29,7 +29,7 @@ export class UserAccount {
 
   @Prop({ type: Boolean, default: false })
   keysSent: boolean;
-  
+
   @Prop({ type: String, required: false })
   password: string;
 

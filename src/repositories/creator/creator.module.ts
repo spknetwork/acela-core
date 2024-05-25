@@ -6,11 +6,14 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: ContentCreator.name, schema: ContentCreatorSchema }], 'threespeak'),
+    MongooseModule.forFeature(
+      [{ name: ContentCreator.name, schema: ContentCreatorSchema }],
+      'threespeak',
+    ),
     ConfigModule,
   ],
   controllers: [],
   providers: [CreatorRepository],
-  exports: [CreatorRepository]
+  exports: [CreatorRepository],
 })
 export class CreatorModule {}

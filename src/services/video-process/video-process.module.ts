@@ -7,6 +7,6 @@ import { UploadModule } from '../../repositories/upload/upload.module';
   imports: [UploadModule, ConfigModule],
   controllers: [],
   providers: [VideoProcessService],
-  exports: [VideoProcessService]
+  exports: [VideoProcessService],
 })
 export class VideoProcessModule {}

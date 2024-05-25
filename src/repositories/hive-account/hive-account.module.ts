@@ -5,10 +5,13 @@ import { HiveAccountRepository } from './hive-account.repository';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: HiveAccount.name, schema: HiveAccountSchema }], 'threespeak'),
+    MongooseModule.forFeature(
+      [{ name: HiveAccount.name, schema: HiveAccountSchema }],
+      'threespeak',
+    ),
   ],
   controllers: [],
   providers: [HiveAccountRepository],
-  exports: [HiveAccountRepository]
+  exports: [HiveAccountRepository],
 })
 export class HiveAccountModule {}

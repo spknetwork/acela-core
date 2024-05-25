@@ -20,9 +20,9 @@ import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
 
 describe('AuthController', () => {
-  let app: INestApplication;
-  const seedBuf = new Uint8Array(32);
-  seedBuf.fill(27);
+  let app: INestApplication
+  const seedBuf = new Uint8Array(32)
+  seedBuf.fill(27)
   const key = new Ed25519Provider(seedBuf)
   const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
   let mongod;
@@ -30,8 +30,8 @@ describe('AuthController', () => {
 
 
   beforeAll(async () => {
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    mongod = await MongoMemoryServer.create()
+    const uri: string = mongod.getUri()
 
     @Module({
       imports: [
@@ -42,7 +42,7 @@ describe('AuthController', () => {
           readPreference: 'primary',
           connectionName: 'threespeak',
           dbName: 'threespeak',
-          autoIndex: true
+          autoIndex: true,
         }),
         MongooseModule.forRoot(uri, {
           ssl: false,
@@ -58,7 +58,7 @@ describe('AuthController', () => {
           connectionName: 'acela-core',
           dbName: 'acela-core',
         }),
-        UserAccountModule, 
+        UserAccountModule,
         SessionModule,
         HiveAccountModule,
         UserModule,
@@ -68,7 +68,7 @@ describe('AuthController', () => {
         }),
         HiveModule,
         EmailModule,
-        AuthModule
+        AuthModule,
       ],
       controllers: [AuthController],
       providers: [AuthService]
@@ -84,10 +84,9 @@ describe('AuthController', () => {
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init()
-  });
+  })
 
   describe('Login using did', () => {
-
     it(`/POST login singleton`, async () => {
       await did.authenticate()
 

@@ -1,7 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { HiveRepository } from "./hive.repository";
-import { OperationsArray } from "./types";
-import { TransactionConfirmation } from "@hiveio/dhive";
+import { Injectable, Logger } from '@nestjs/common';
+import { HiveRepository } from './hive.repository';
+import { OperationsArray } from './types';
+import { TransactionConfirmation } from '@hiveio/dhive';
 
 @Injectable()
 export class MockHiveRepository extends HiveRepository {
@@ -15,7 +15,7 @@ export class MockHiveRepository extends HiveRepository {
     this.#logger.log('Mocking broadcastOperations');
 
     if (!operations) {
-      throw new Error('No operations suppplied')
+      throw new Error('No operations suppplied');
     }
 
     // List of potential error messages.
@@ -25,7 +25,7 @@ export class MockHiveRepository extends HiveRepository {
       'Missing Posting Authority',
       'Title size limit exceeded.',
       'Updating parameters for comment that is paid out is forbidden',
-      'Comment already has beneficiaries specified'
+      'Comment already has beneficiaries specified',
     ];
 
     // Randomly decide whether to return success or an error message.
@@ -38,15 +38,22 @@ export class MockHiveRepository extends HiveRepository {
     }
   }
 
-  async vote(options: { author: string, permlink: string, voter: string, weight: number }): Promise<TransactionConfirmation> {
+  async vote(options: {
+    author: string;
+    permlink: string;
+    voter: string;
+    weight: number;
+  }): Promise<TransactionConfirmation> {
     if (options.weight < 0 || options.weight > 10_000) {
-      this.#logger.error(`Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`)
+      this.#logger.error(
+        `Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`,
+      );
       throw new Error('Vote attempted with an invalid weight');
     }
-    this.#logger.log('Voting:', options)
+    this.#logger.log('Voting:', options);
 
     return Promise.resolve({
-      id: "mock_id",
+      id: 'mock_id',
       block_num: 123456,
       trx_num: 789,
       expired: false,

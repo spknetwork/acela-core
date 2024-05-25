@@ -13,13 +13,13 @@ export class HiveAccount extends Document {
 }
 
 export interface HiveAccountCreation {
-  status: 'requested' | 'created' | 'released'
-  username: string
-  keys_requested: boolean
-  created_by: string | null
-  requested_at: Date
-  created_at: Date
-  [x: string]: any
+  status: 'requested' | 'created' | 'released';
+  username: string;
+  keys_requested: boolean;
+  created_by: string | null;
+  requested_at: Date;
+  created_at: Date;
+  [x: string]: any;
 }
 
 export const HiveAccountSchema = SchemaFactory.createForClass(HiveAccount);

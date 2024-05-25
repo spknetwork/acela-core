@@ -8,8 +8,15 @@ import { EmailModule } from '../email/email.module';
 import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 
 @Module({
-  imports: [ AuthModule, UserModule, HiveAccountModule, HiveModule, LinkedAccountModule, EmailModule ],
-  controllers: [ ApiController ],
+  imports: [
+    AuthModule,
+    UserModule,
+    HiveAccountModule,
+    HiveModule,
+    LinkedAccountModule,
+    EmailModule,
+  ],
+  controllers: [ApiController],
   providers: [],
 })
 export class ApiModule {}
