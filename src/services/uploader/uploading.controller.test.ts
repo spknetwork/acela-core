@@ -16,6 +16,7 @@ import { VideoModule } from '../../repositories/video/video.module';
 import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
+import sharp from 'sharp';
 
 describe('UploadingController', () => {
   let app: INestApplication;
@@ -83,13 +84,21 @@ describe('UploadingController', () => {
   describe('/POST upload/thumbnail', () => {
     it('should upload a thumbnail and return CID', async () => {
       const jwtToken = 'test_jwt_token';
-      const filePath = path.join(path.resolve(), 'src/services/uploader/test-resources/test.png');
-      const fileBuffer = fs.readFileSync(filePath);
+      const semiTransparentRedPng = await sharp({
+        create: {
+          width: 48,
+          height: 48,
+          channels: 4,
+          background: { r: 255, g: 0, b: 0, alpha: 0.5 }
+        }
+      })
+        .png()
+        .toBuffer();
 
       return request(app.getHttpServer())
         .post('/api/v1/upload/thumbnail')
         .set('Authorization', `Bearer ${jwtToken}`)
-        .attach('file', fileBuffer, 'test-image.png')
+        .attach('file', semiTransparentRedPng, 'test-image.png')
         .field('video_id', 'test_video_id')
         .expect(201)
         .then(response => {
