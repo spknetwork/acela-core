@@ -6,13 +6,13 @@ import { ObjectId } from 'mongodb';
 import { UpdateResult } from '../types';
 
 @Injectable()
-export class MockCreatorService extends CreatorRepository {
+export class MockCreatorRepository extends CreatorRepository {
   readonly #logger: Logger;
 
   constructor(creatorModel: Model<ContentCreator>) {
     super(creatorModel);
 
-    this.#logger = new Logger(MockCreatorService.name);
+    this.#logger = new Logger(MockCreatorRepository.name);
   }
 
   async setUserToVisible(username: string): Promise<UpdateResult> {

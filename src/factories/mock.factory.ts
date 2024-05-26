@@ -13,13 +13,18 @@ export function MockFactory<T, M>(
   realService: new (model?: M) => T,
   mockService: new (model?: M) => T,
   configService: ConfigService,
+  mockTilStage: 'local' | 'staging',
   model?: M,
 ): T {
   const env = configService.get<string>('ENVIRONMENT');
-  const mongoUrl = configService.get<string>('CORE_MONGODB_URL');
-  if (env !== 'prod' && mongoUrl !== 'mongodb://mongo:27017') {
-    return new mockService(model);
-  } else {
+
+  if (env === 'prod') {
     return new realService(model);
   }
+
+  if (mockTilStage === 'local' && env === 'staging') {
+    return new realService(model);
+  }
+
+  return new mockService(model);
 }

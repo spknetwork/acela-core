@@ -1,11 +1,8 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule, getModelToken } from '@nestjs/mongoose';
+import { MongooseModule } from '@nestjs/mongoose';
 import { VideoRepository } from './video.repository';
 import { Video, VideoSchema } from './schemas/video.schema';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MockVideoRepository } from './video.repository.mock';
-import { Model } from 'mongoose';
-import { MockFactory } from '../../factories/mock.factory';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -13,19 +10,7 @@ import { MockFactory } from '../../factories/mock.factory';
     ConfigModule,
   ],
   controllers: [],
-  providers: [
-    {
-      provide: VideoRepository,
-      inject: [ConfigService, getModelToken(Video.name, 'threespeak')],
-      useFactory: (configService: ConfigService, videoModel: Model<Video>) =>
-        MockFactory<VideoRepository, Model<Video>>(
-          VideoRepository,
-          MockVideoRepository,
-          configService,
-          videoModel,
-        ),
-    },
-  ],
+  providers: [VideoRepository],
   exports: [VideoRepository],
 })
 export class VideoModule {}

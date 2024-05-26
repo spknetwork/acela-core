@@ -12,7 +12,12 @@ import { MockFactory } from '../../factories/mock.factory';
       provide: HiveRepository,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
-        MockFactory<HiveRepository, undefined>(HiveRepository, MockHiveRepository, configService),
+        MockFactory<HiveRepository, undefined>(
+          HiveRepository,
+          MockHiveRepository,
+          configService,
+          'local',
+        ),
     },
   ],
   exports: [HiveRepository],

@@ -2,6 +2,7 @@ import FormData from 'form-data';
 import 'dotenv/config';
 import { Injectable } from '@nestjs/common';
 import Axios from 'axios';
+import { IIpfsService, IpfsAddOptions, IpfsAddResult, IpfsPinOptions } from './ipfs.types';
 
 type BaseOptions = {
   name?: string;
@@ -55,13 +56,13 @@ type EncodeOptions = BaseOptions & {
 };
 
 @Injectable()
-export class IpfsService {
+export class IpfsService implements IIpfsService {
   // readonly #axios = new Axios();
 
   /**
    * @param {API.PinOptions} options
    */
-  encodePinOptions = (options: DataOptions) =>
+  encodePinOptions = (options: IpfsPinOptions) =>
     this.encodeParams({
       name: options.name,
       mode: options.mode,
@@ -79,19 +80,19 @@ export class IpfsService {
    *
    * @param {Record<string, string>} metadata
    */
-  encodeMetadata = (metadata = {}) =>
+  encodeMetadata = (metadata: Record<string, string> = {}) =>
     Object.fromEntries(Object.entries(metadata).map(([k, v]) => [`meta-${k}`, v]));
 
   /**
    * @template {Object} T
    * @param {T} options
-   * @returns {{[K in keyof T]: Exclude<T[K], undefined>}}
+   * @returns {{[K: string]: T}}
    */
-  encodeParams = (options: EncodeOptions) =>
+  encodeParams = <T>(options: T) =>
     // @ts-ignore - it can't infer this
-    Object.fromEntries(Object.entries(options).filter(([, v]) => v != null));
+    Object.fromEntries<T>(Object.entries(options).filter(([, v]) => v != null));
 
-  encodeAddParams = (options: DataOptions) =>
+  encodeAddParams = (options: IpfsAddOptions) =>
     this.encodeParams({
       ...this.encodePinOptions(options),
       local: options.local,
@@ -115,7 +116,7 @@ export class IpfsService {
       'no-copy': options.noCopy,
     });
 
-  addData = async (cluster, file, options: DataOptions): Promise<{ cid: string }> => {
+  addData = async (cluster, file, options: IpfsAddOptions): Promise<IpfsAddResult> => {
     const body = new FormData();
     body.append('file', file);
 
