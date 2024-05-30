@@ -53,6 +53,11 @@ export class LockService {
     return selectedNode ? selectedNode[1] : start_id;
   }
 
+  /**
+   * Executes a given task with lock control to prevent concurrent execution.
+   * @param taskId - A unique identifier for the task.
+   * @param task - A callback function representing the task to be executed.
+   */
   async executeWithLock(taskId: string, task: () => Promise<void>): Promise<void> {
     const lockId = `${taskId}`;
     try {
@@ -107,6 +112,10 @@ export class LockService {
     return lock;
   }
 
+  /**
+   * Unregisters a previously acquired lock, making it available for other instances.
+   * @param id - The unique identifier of the lock to be unregistered.
+   */
   async unregisterLock(id: string): Promise<void> {
     const lock = await this.lockRepository.findOneById(id);
 
