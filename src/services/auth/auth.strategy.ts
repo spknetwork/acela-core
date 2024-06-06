@@ -28,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     console.log(jwtPrivateKey);
     if (!jwtPrivateKey) throw new Error('Missing JWT_PRIVATE_KEY in .env');
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken,
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: jwtPrivateKey,
     });
