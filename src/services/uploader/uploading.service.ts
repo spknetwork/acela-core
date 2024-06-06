@@ -7,7 +7,7 @@ import { UpdateUploadDto } from './dto/update-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg';
 import crypto from 'crypto';
-import { Upload } from './types';
+import { Upload } from './uploading.types';
 import { v4 as uuid } from 'uuid';
 
 @Injectable()

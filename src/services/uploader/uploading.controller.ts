@@ -14,6 +14,7 @@ import {
   HttpStatus,
   Req,
   Headers,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -24,7 +25,7 @@ import { UpdateUploadDto } from './dto/update-upload.dto';
 import { StartEncodeDto } from './dto/start-encode.dto';
 import { UploadingService } from './uploading.service';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
-import { Upload } from './types';
+import { Upload, UserRequest, requestSchema } from './uploading.types';
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -34,6 +35,8 @@ MulterModule.registerAsync({
 
 @Controller('/api/v1/upload')
 export class UploadingController {
+  readonly #logger = new Logger(UploadingController.name);
+
   constructor(
     private readonly uploadingService: UploadingService,
     private readonly hiveRepository: HiveRepository,
@@ -76,17 +79,19 @@ export class UploadingController {
   @UseInterceptors(UserDetailsInterceptor)
   @Get('create_upload')
   async createUpload(
-    @Request()
-    req: {
-      user: {
-        sub: string;
-        username: string;
-        id?: string | undefined;
-      };
-    },
+    @Body()
+    body: unknown,
   ) {
-    const user = req.user;
-    return await this.uploadingService.createUpload(user);
+    console.log(body);
+    let parsedRequest: UserRequest;
+    try {
+      parsedRequest = requestSchema.parse(body);
+    } catch (e) {
+      this.#logger.error(e);
+      throw new HttpException({ reason: e, errorType: 'MISSING_USER' }, HttpStatus.BAD_REQUEST);
+    }
+
+    return await this.uploadingService.createUpload(parsedRequest.user);
   }
 
   @UseGuards(AuthGuard('jwt'))
