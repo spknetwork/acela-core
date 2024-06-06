@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
-import { ulid } from 'ulid';
+import { v4 as uuid } from 'uuid';
 
 export type UserAccountDocument = mongoose.Document & UserAccount;
 
@@ -42,7 +42,7 @@ export class UserAccount {
   @Prop({ type: Date, required: true, default: Date.now })
   updatedAt: Date;
 
-  @Prop({ type: String, default: () => ulid(), required: true })
+  @Prop({ type: String, default: () => uuid(), required: true })
   username: string;
 
   @Prop({ type: ['UNCONFIRMED', 'CONFIRMED'], default: 'UNCONFIRMED', required: true })

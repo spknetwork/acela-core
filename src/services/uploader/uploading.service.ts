@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
-import { ulid } from 'ulid';
 import moment from 'moment';
 import { UpdateUploadDto } from './dto/update-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg';
 import crypto from 'crypto';
 import { Upload } from './types';
+import { v4 as uuid } from 'uuid';
 
 @Injectable()
 export class UploadingService {
@@ -24,7 +24,7 @@ export class UploadingService {
     video_id: string,
     user: { sub: string; username: string; id?: string },
   ) {
-    const id = ulid();
+    const id = uuid();
 
     const { cid }: { cid: string } = await this.ipfsService.addData(
       process.env.IPFS_CLUSTER_URL,
@@ -48,8 +48,8 @@ export class UploadingService {
   }
 
   async createUpload(user: { sub: string; username: string; id?: string }) {
-    const video_id = ulid();
-    const upload_id = ulid();
+    const video_id = uuid();
+    const upload_id = uuid();
     const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '');
 
     await this.videoRepository.createNewHiveVideoPost({

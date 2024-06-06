@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserAccount } from './schemas/user-account.schema';
-import { ulid } from 'ulid';
+import { v4 as uuid } from 'uuid';
 import { CreateUserAccountDto } from './dto/user-account.dto';
 
 @Injectable()
@@ -35,7 +35,7 @@ export class UserAccountRepository {
   ): Promise<CreateUserAccountDto> {
     return this.userAccountModel.create({
       email,
-      email_code: ulid(),
+      email_code: uuid(),
       auth_methods: {
         password: {
           value: hashedPassword,
