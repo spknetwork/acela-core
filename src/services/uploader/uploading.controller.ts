@@ -79,13 +79,12 @@ export class UploadingController {
   @UseInterceptors(UserDetailsInterceptor)
   @Get('create_upload')
   async createUpload(
-    @Body()
-    body: unknown,
+    @Request()
+    request,
   ) {
-    console.log(body);
     let parsedRequest: UserRequest;
     try {
-      parsedRequest = requestSchema.parse(body);
+      parsedRequest = requestSchema.parse(request);
     } catch (e) {
       this.#logger.error(e);
       throw new HttpException({ reason: e, errorType: 'MISSING_USER' }, HttpStatus.BAD_REQUEST);
