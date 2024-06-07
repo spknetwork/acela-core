@@ -81,6 +81,11 @@ export class VideoProcessService {
     // console.log(readyUploads)
 
     for (const upload of readyUploads) {
+      if (!upload.file_path) {
+        this.#logger.warn('No file path applied to this upload yet');
+        continue;
+      }
+
       const { cid }: { cid: string } = await this.#cluster.addData(
         fs.createReadStream(upload.file_path),
         {

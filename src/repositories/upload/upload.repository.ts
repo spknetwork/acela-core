@@ -23,7 +23,11 @@ export class UploadRepository {
     return this.uploadModel.findOne(filter).exec();
   }
 
-  async findAll(): Promise<UploadDto[]> {
+  async findOneByUploadId(upload_id: string) {
+    return await this.uploadModel.findOne({ upload_id }).lean().exec();
+  }
+
+  async findAll(): Promise<Upload[]> {
     return this.uploadModel.find().exec();
   }
 

@@ -6,7 +6,6 @@ import moment from 'moment';
 import { UpdateUploadDto } from './dto/update-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg';
-import crypto from 'crypto';
 import { Upload } from './uploading.types';
 import { v4 as uuid } from 'uuid';
 
@@ -48,26 +47,20 @@ export class UploadingService {
   }
 
   async createUpload(user: { sub: string; username: string; id?: string }) {
-    const video_id = uuid();
-    const upload_id = uuid();
-    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '');
-
-    await this.videoRepository.createNewHiveVideoPost({
-      video_id,
+    const video = await this.videoRepository.createNewHiveVideoPost({
       user,
       title: ' ',
       description: ' ',
       tags: [],
       community: '',
       language: 'en',
-      videoUploadLink: video_id,
       beneficiaries: '[]',
-      permlink: permlink,
     });
 
-    await this.uploadRepository.insertOne({
-      upload_id,
-      video_id,
+    if (!video.video_id) throw new Error('No video id!');
+
+    const upload = await this.uploadRepository.insertOne({
+      video_id: video.video_id,
       expires: moment().add('1', 'day').toDate(),
       created_by: user.id || user.sub,
       ipfs_status: 'pending',
@@ -75,11 +68,26 @@ export class UploadingService {
       immediatePublish: false,
     });
 
+    if (!upload.upload_id) throw new Error('No upload id!');
+
+    console.log(upload);
     return {
-      video_id,
-      upload_id,
-      permlink,
+      video_id: video.video_id,
+      upload_id: upload.upload_id,
+      permlink: video.permlink,
     };
+  }
+
+  async getAllUploads() {
+    return await this.uploadRepository.findAll();
+  }
+
+  async getUploadByUploadId(upload_id: string) {
+    return await this.uploadRepository.findOneByUploadId(upload_id);
+  }
+
+  async getVideoByVideoId(video_id: string) {
+    return await this.videoRepository.findOneByVideoId(video_id);
   }
 
   async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {
