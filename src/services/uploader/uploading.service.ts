@@ -70,7 +70,6 @@ export class UploadingService {
 
     if (!upload.upload_id) throw new Error('No upload id!');
 
-    console.log(upload);
     return {
       video_id: video.video_id,
       upload_id: upload.upload_id,
