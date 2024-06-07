@@ -11,9 +11,9 @@ import {
 } from '../../repositories/hive/types';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
-import { DbVideoToPublishDto } from '../../repositories/video/dto/videos-to-publish.dto';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
 import 'dotenv/config';
+import { Video } from '../../repositories/video/schemas/video.schema';
 
 const videoPostTemplate = `<center>
 
@@ -56,7 +56,7 @@ export class PublishingService {
     }
   }
 
-  async publish(video: DbVideoToPublishDto): Promise<void> {
+  async publish(video: Video): Promise<void> {
     try {
       if (
         await this.#hiveRepository.hivePostExists({ author: video.owner, permlink: video.permlink })
@@ -64,6 +64,13 @@ export class PublishingService {
         await this.#videoRepository.setPostedToChain(video.owner, video.ipfs);
         this.#logger.warn(`## SKIPPED ${video.owner}/${video.permlink} ALREADY PUBLISHED!`);
         return;
+      }
+
+      if (!video.size) {
+        this.#logger.error(
+          'Videos are not being populated with a size field at time of publishing!',
+        );
+        video.size = 0;
       }
 
       const publish = await this.#publishVideoToChain({
@@ -75,7 +82,7 @@ export class PublishingService {
         size: video.size,
         filename: video.filename,
         firstUpload: video.firstUpload,
-        fromMobile: video.fromMobile,
+        fromMobile: video.fromMobile || false,
         beneficiaries: video.beneficiaries,
         declineRewards: video.declineRewards,
         rewardPowerup: video.rewardPowerup,

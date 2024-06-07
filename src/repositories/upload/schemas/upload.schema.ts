@@ -6,29 +6,29 @@ export type UploadDocument = HydratedDocument<Upload>;
 
 @Schema()
 export class Upload {
-  @Prop({ type: String, required: true, default: () => uuid() })
-  upload_id: string;
+  @Prop({ type: String, default: () => uuid() })
+  upload_id?: string;
 
-  @Prop({ type: String, required: true, default: () => uuid() })
+  @Prop({ type: String, required: true })
   video_id: string;
 
   @Prop({ type: Date, default: Date.now })
-  expires: Date;
+  expires?: Date;
 
   @Prop({ type: String, required: false })
-  file_name: string;
+  file_name?: string;
 
   @Prop({ type: String, required: false })
-  file_path: string;
+  file_path?: string;
 
   @Prop({ type: Boolean, required: false, default: false })
-  immediatePublish: boolean;
+  immediatePublish?: boolean;
 
-  @Prop({ type: String, required: true, enum: ['pending', 'done', 'error'] })
-  ipfs_status: 'pending' | 'done' | 'error';
+  @Prop({ type: String, required: false, enum: ['pending', 'done', 'error'], default: 'pending' })
+  ipfs_status?: 'pending' | 'done' | 'error';
 
   @Prop({ type: String, required: false })
-  cid: string;
+  cid?: string;
 
   @Prop({ type: String, required: true, enum: ['video', 'thumbnail', 'other'] })
   type: 'video' | 'thumbnail' | 'other';
@@ -36,11 +36,11 @@ export class Upload {
   @Prop({ type: String, required: true })
   created_by: string;
 
-  @Prop({ type: String })
-  encode_status: 'running' | 'ready' | 'done';
+  @Prop({ type: String, default: 'ready' })
+  encode_status?: 'running' | 'ready' | 'done';
 
   @Prop({ type: String })
-  encode_id: string;
+  encode_id?: string;
 }
 
 export const UploadSchema = SchemaFactory.createForClass(Upload);
