@@ -78,15 +78,15 @@ export class UploadingService {
   }
 
   async getAllUploads() {
-    return await this.uploadRepository.findAll();
+    return this.uploadRepository.findAll();
   }
 
   async getUploadByUploadId(upload_id: string) {
-    return await this.uploadRepository.findOneByUploadId(upload_id);
+    return this.uploadRepository.findOneByUploadId(upload_id);
   }
 
   async getVideoByVideoId(video_id: string) {
-    return await this.videoRepository.findOneByVideoId(video_id);
+    return this.videoRepository.findOneByVideoId(video_id);
   }
 
   async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {

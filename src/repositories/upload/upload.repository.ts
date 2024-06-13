@@ -8,7 +8,7 @@ export class UploadRepository {
   constructor(@InjectModel('uploads', 'acela-core') private uploadModel: Model<Upload>) {}
 
   async insertOne(data: Upload): Promise<Upload> {
-    return await this.uploadModel.create<Upload>(data);
+    return this.uploadModel.create<Upload>(data);
   }
 
   async findOneAndUpdate(
@@ -24,7 +24,7 @@ export class UploadRepository {
   }
 
   async findOneByUploadId(upload_id: string) {
-    return await this.uploadModel.findOne({ upload_id }).lean().exec();
+    return this.uploadModel.findOne({ upload_id }).lean().exec();
   }
 
   async findAll(): Promise<Upload[]> {
@@ -32,7 +32,7 @@ export class UploadRepository {
   }
 
   async upsertThumbnailUpload(id: string, cid: string, video_id: string): Promise<Upload | null> {
-    return await this.uploadModel.findOneAndUpdate(
+    return this.uploadModel.findOneAndUpdate(
       {
         id: id,
       },

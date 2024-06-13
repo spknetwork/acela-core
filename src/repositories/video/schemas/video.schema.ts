@@ -8,7 +8,7 @@ export type VideoDocument = HydratedDocument<Video>;
 @Schema()
 export class Video {
   @Prop({ default: () => uuid() })
-  video_id?: string;
+  video_id: string;
 
   @Prop()
   filename: string;
@@ -75,10 +75,10 @@ export class Video {
   isVOD: boolean;
 
   @Prop({ default: () => Date.now() })
-  created?: Date;
+  created: Date;
 
   @Prop({ default: () => Date.now() })
-  updated?: Date;
+  updated: Date;
 
   @Prop()
   published?: Date;
