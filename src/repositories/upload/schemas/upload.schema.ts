@@ -36,7 +36,7 @@ export class Upload {
   @Prop({ type: String, required: true })
   created_by: string;
 
-  @Prop({ type: String, default: 'ready' })
+  @Prop({ type: String, enum: ['running', 'ready', 'done'], default: 'ready' })
   encode_status?: 'running' | 'ready' | 'done';
 
   @Prop({ type: String })

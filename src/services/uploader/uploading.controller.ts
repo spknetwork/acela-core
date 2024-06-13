@@ -80,7 +80,7 @@ export class UploadingController {
   @Get('create_upload')
   async createUpload(
     @Request()
-    request,
+    request: unknown,
   ) {
     let parsedRequest: UserRequest;
     try {
@@ -90,7 +90,7 @@ export class UploadingController {
       throw new HttpException({ reason: e, errorType: 'MISSING_USER' }, HttpStatus.BAD_REQUEST);
     }
 
-    return await this.uploadingService.createUpload(parsedRequest.user);
+    return this.uploadingService.createUpload(parsedRequest.user);
   }
 
   @UseGuards(AuthGuard('jwt'))

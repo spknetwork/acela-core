@@ -23,7 +23,7 @@ export class VideoRepository {
   }
 
   async findOneByVideoId(video_id: string) {
-    return await this.videoModel.findOne({ video_id }).lean();
+    return this.videoModel.findOne({ video_id }).lean();
   }
 
   async getVideoToPublish(owner: string, permlink: string): Promise<Video> {
