@@ -8,6 +8,7 @@ import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
 import { HiveModule } from '../../repositories/hive/hive.module';
 import { JwtModule } from '@nestjs/jwt';
+import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { JwtModule } from '@nestjs/jwt';
     }),
   ],
   controllers: [UploadingController],
-  providers: [UploadingService],
+  providers: [UploadingService, UserDetailsInterceptor, RequireHiveVerify],
   exports: [UploadingService],
 })
 export class UploadingModule {}

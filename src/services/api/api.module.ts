@@ -6,6 +6,7 @@ import { HiveAccountModule } from '../../repositories/hive-account/hive-account.
 import { HiveModule } from '../../repositories/hive/hive.module';
 import { EmailModule } from '../email/email.module';
 import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
+import { RequireHiveVerify } from './utils';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-a
     LinkedAccountModule,
     EmailModule,
   ],
-  controllers: [ApiController],
+  controllers: [ApiController, RequireHiveVerify],
   providers: [],
 })
 export class ApiModule {}
