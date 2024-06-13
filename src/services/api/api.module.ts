@@ -17,7 +17,7 @@ import { RequireHiveVerify } from './utils';
     LinkedAccountModule,
     EmailModule,
   ],
-  controllers: [ApiController, RequireHiveVerify],
-  providers: [],
+  controllers: [ApiController],
+  providers: [RequireHiveVerify],
 })
 export class ApiModule {}
