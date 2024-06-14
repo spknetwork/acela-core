@@ -70,7 +70,7 @@ export class PublishingService {
         this.#logger.error(
           'Videos are not being populated with a size field at time of publishing!',
         );
-        video.size = 0;
+        return;
       }
 
       const publish = await this.#publishVideoToChain({
