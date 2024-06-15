@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, QueryOptions, Types, UpdateQuery } from 'mongoose';
-import { Upload, UploadDocument } from './schemas/upload.schema';
-import { UploadDto } from './dto/upload.dto';
+import { Upload } from './schemas/upload.schema';
 
 @Injectable()
 export class UploadRepository {
   constructor(@InjectModel('uploads', 'acela-core') private uploadModel: Model<Upload>) {}
 
-  async insertOne(data: UploadDto): Promise<UploadDto> {
-    return await this.uploadModel.create<UploadDto>(data);
+  async insertOne(data: Upload): Promise<Upload> {
+    return this.uploadModel.create<Upload>(data);
   }
 
   async findOneAndUpdate(
@@ -20,20 +19,20 @@ export class UploadRepository {
     return await this.uploadModel.findOneAndUpdate<Upload>(filter, update, options).lean().exec();
   }
 
-  async findOne(filter: FilterQuery<Upload>): Promise<UploadDto | null> {
+  async findOne(filter: FilterQuery<Upload>) {
     return this.uploadModel.findOne(filter).exec();
   }
 
-  async findAll(): Promise<UploadDto[]> {
+  async findOneByUploadId(upload_id: string) {
+    return this.uploadModel.findOne({ upload_id }).lean().exec();
+  }
+
+  async findAll(): Promise<Upload[]> {
     return this.uploadModel.find().exec();
   }
 
-  async upsertThumbnailUpload(
-    id: string,
-    cid: string,
-    video_id: string,
-  ): Promise<UploadDocument | null> {
-    return await this.uploadModel.findOneAndUpdate(
+  async upsertThumbnailUpload(id: string, cid: string, video_id: string): Promise<Upload | null> {
+    return this.uploadModel.findOneAndUpdate(
       {
         id: id,
       },
@@ -63,7 +62,7 @@ export class UploadRepository {
       username: string;
       id?: string;
     },
-  ): Promise<UploadDocument> {
+  ): Promise<Upload> {
     return await this.uploadModel.create({
       id,
       video_id,

@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
 import { SessionModule } from '../../repositories/session/session.module';
 import { AuthController } from './auth.controller';
@@ -18,6 +19,7 @@ import { Ed25519Provider } from 'key-did-provider-ed25519';
 import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
+import crypto from 'crypto';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -32,6 +34,8 @@ describe('AuthController', () => {
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create()
     const uri: string = mongod.getUri()
+
+    process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
 
     @Module({
       imports: [
@@ -63,7 +67,7 @@ describe('AuthController', () => {
         HiveAccountModule,
         UserModule,
         JwtModule.register({
-          secretOrPrivateKey: 'ac746c4dc9faf199d7fec029f1e8646c08da3698d9c95b931a1df2ceb666e336dbdacf46763a89777206cf48fc43be42cbe0f988e4bd4a10e7610173d29310ea987d93bae49f6391b91a5338cffbf2389797d7217903b2db1cbf983632f64e088fb515537262d2475589370fc1f5aa7820c34f0f5523fb88f75dace392d22caf',
+          secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
           signOptions: { expiresIn: '30d' },
         }),
         HiveModule,

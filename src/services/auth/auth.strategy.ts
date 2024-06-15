@@ -25,10 +25,9 @@ export class LocalStrategy extends PassportStrategy(StrategyLocal) {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     const jwtPrivateKey = process.env.JWT_PRIVATE_KEY;
-    console.log(jwtPrivateKey);
     if (!jwtPrivateKey) throw new Error('Missing JWT_PRIVATE_KEY in .env');
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken,
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: jwtPrivateKey,
     });

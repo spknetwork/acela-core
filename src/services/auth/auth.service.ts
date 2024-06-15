@@ -15,7 +15,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async jwtSign(payload: Object) {
+  async jwtSign(payload: Record<string, string>) {
     return this.jwtService.sign(payload);
   }
 

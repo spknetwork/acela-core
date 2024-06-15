@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { UploadingController } from './uploading.controller';
 import { UploadingService } from './uploading.service';
 import { Test } from '@nestjs/testing';
@@ -17,6 +18,8 @@ import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
 import sharp from 'sharp';
+import { JwtModule } from '@nestjs/jwt';
+import crypto from 'crypto';
 
 describe('UploadingController', () => {
   let app: INestApplication;
@@ -26,6 +29,8 @@ describe('UploadingController', () => {
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create();
     const uri = mongod.getUri();
+
+    process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
 
     @Module({
       imports: [
@@ -50,7 +55,11 @@ describe('UploadingController', () => {
         UploadModule,
         IpfsModule,
         PublishingModule,
-        UploadingModule,
+        JwtModule.register({
+          secretOrPrivateKey: 'ac746c4dc9faf199d7fec029f1e8646c08da3698d9c95b931a1df2ceb666e336dbdacf46763a89777206cf48fc43be42cbe0f988e4bd4a10e7610173d29310ea987d93bae49f6391b91a5338cffbf2389797d7217903b2db1cbf983632f64e088fb515537262d2475589370fc1f5aa7820c34f0f5523fb88f75dace392d22caf',
+          signOptions: { expiresIn: '30d' },
+        }),
+        UploadingModule
       ],
       controllers: [UploadingController],
       providers: [UploadingService, HiveRepository], // Ensure HiveRepository is provided if it's used in the service
@@ -64,7 +73,7 @@ describe('UploadingController', () => {
       .useValue({
         canActivate: (context) => {
           const request = context.switchToHttp().getRequest();
-          request.user = { id: 'test_user_id' }; // Mock user
+          request.user = { id: 'test_user_id' };
           return true;
         },
       })
@@ -107,6 +116,25 @@ describe('UploadingController', () => {
             thumbnail_cid: 'mock-cid',
           });
         });
+    });
+  });
+
+  describe('createUpload', () => {
+    it('should create an upload document', async () => {
+      const response = await uploadingService.createUpload({ sub: 'blah', username: 'foo', id: 'bar' })
+      expect(response).toEqual({
+        permlink: expect.any(String),
+        upload_id: expect.any(String),
+        video_id: expect.any(String)
+      })
+
+      const upload = await uploadingService.getUploadByUploadId(response.upload_id)
+
+      expect(upload).toBeTruthy()
+
+      const video = await uploadingService.getVideoByVideoId(response.video_id)
+
+      expect(upload).toBeTruthy()
     });
   });
 });

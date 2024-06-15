@@ -2,13 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
-import { ulid } from 'ulid';
 import moment from 'moment';
 import { UpdateUploadDto } from './dto/update-upload.dto';
 import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg';
-import crypto from 'crypto';
-import { Upload } from './types';
+import { Upload } from './uploading.types';
+import { v4 as uuid } from 'uuid';
 
 @Injectable()
 export class UploadingService {
@@ -24,7 +23,7 @@ export class UploadingService {
     video_id: string,
     user: { sub: string; username: string; id?: string },
   ) {
-    const id = ulid();
+    const id = uuid();
 
     const { cid }: { cid: string } = await this.ipfsService.addData(
       process.env.IPFS_CLUSTER_URL,
@@ -48,26 +47,20 @@ export class UploadingService {
   }
 
   async createUpload(user: { sub: string; username: string; id?: string }) {
-    const video_id = ulid();
-    const upload_id = ulid();
-    const permlink = crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', '');
-
-    await this.videoRepository.createNewHiveVideoPost({
-      video_id,
+    const video = await this.videoRepository.createNewHiveVideoPost({
       user,
       title: ' ',
       description: ' ',
       tags: [],
       community: '',
       language: 'en',
-      videoUploadLink: video_id,
       beneficiaries: '[]',
-      permlink: permlink,
     });
 
-    await this.uploadRepository.insertOne({
-      upload_id,
-      video_id,
+    if (!video.video_id) throw new Error('No video id!');
+
+    const upload = await this.uploadRepository.insertOne({
+      video_id: video.video_id,
       expires: moment().add('1', 'day').toDate(),
       created_by: user.id || user.sub,
       ipfs_status: 'pending',
@@ -75,11 +68,25 @@ export class UploadingService {
       immediatePublish: false,
     });
 
+    if (!upload.upload_id) throw new Error('No upload id!');
+
     return {
-      video_id,
-      upload_id,
-      permlink,
+      video_id: video.video_id,
+      upload_id: upload.upload_id,
+      permlink: video.permlink,
     };
+  }
+
+  async getAllUploads() {
+    return this.uploadRepository.findAll();
+  }
+
+  async getUploadByUploadId(upload_id: string) {
+    return this.uploadRepository.findOneByUploadId(upload_id);
+  }
+
+  async getVideoByVideoId(video_id: string) {
+    return this.videoRepository.findOneByVideoId(video_id);
   }
 
   async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {

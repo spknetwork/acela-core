@@ -1,11 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { v4 as uuid } from 'uuid';
+import * as crypto from 'crypto';
 
 export type VideoDocument = HydratedDocument<Video>;
 
 @Schema()
 export class Video {
-  @Prop({ required: true })
+  @Prop({ default: () => uuid() })
   video_id: string;
 
   @Prop()
@@ -57,10 +59,13 @@ export class Video {
   @Prop()
   raw_description?: string;
 
-  @Prop({ required: true })
-  size: number;
+  @Prop()
+  size?: number;
 
-  @Prop({ required: true })
+  @Prop({
+    required: false,
+    default: () => crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
+  })
   permlink: string;
 
   @Prop()
@@ -69,10 +74,10 @@ export class Video {
   @Prop({ required: true, default: false })
   isVOD: boolean;
 
-  @Prop({ required: true, default: () => Date.now() })
+  @Prop({ default: () => Date.now() })
   created: Date;
 
-  @Prop({ required: true, default: () => Date.now() })
+  @Prop({ default: () => Date.now() })
   updated: Date;
 
   @Prop()
@@ -208,7 +213,7 @@ export class Video {
   thumbUrl: string;
 
   @Prop({ default: false })
-  fromMobile: boolean;
+  fromMobile?: boolean;
 }
 
 export const VideoSchema = SchemaFactory.createForClass(Video);

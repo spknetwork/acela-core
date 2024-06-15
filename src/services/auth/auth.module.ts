@@ -3,7 +3,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule, JwtService } from '@nestjs/jwt';
-import { LocalStrategy } from './auth.strategy';
+import { JwtStrategy, LocalStrategy } from './auth.strategy';
 import { UserModule } from '../../repositories/user/user.module';
 import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
 import { SessionModule } from '../../repositories/session/session.module';
@@ -18,20 +18,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   imports: [
     ConfigModule,
     UserModule,
-    PassportModule,
     UserAccountModule,
     UserModule,
     HiveAccountModule,
     HiveModule,
     EmailModule,
     SessionModule,
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       privateKey: process.env.JWT_PRIVATE_KEY,
       signOptions: { expiresIn: '30d' },
     }),
   ],
-  providers: [AuthService, LocalStrategy, JwtService, ConfigService],
+  providers: [AuthService, LocalStrategy, JwtService, ConfigService, JwtStrategy],
   controllers: [AuthController],
   exports: [AuthService],
 })
