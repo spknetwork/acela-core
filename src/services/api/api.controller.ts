@@ -8,11 +8,13 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
+  UseInterceptors,
+  Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth/auth.service';
 import { v4 as uuid } from 'uuid';
-import { RequireHiveVerify } from './utils';
+import { RequireHiveVerify, UserDetailsInterceptor } from './utils';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -28,9 +30,12 @@ import { VotePostResponseDto } from './dto/VotePostResponse.dto';
 import { VotePostDto } from './dto/VotePost.dto';
 import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
+import { parseAndValidateRequest } from '../auth/auth.utils';
 
 @Controller('/api/v1')
 export class ApiController {
+  readonly #logger = new Logger();
+
   constructor(
     private readonly authService: AuthService,
     private readonly hiveAccountRepository: HiveAccountRepository,
@@ -147,19 +152,22 @@ export class ApiController {
     },
   })
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
   @Post(`/hive/linkaccount`)
-  async linkAccount(
-    @Body() data: LinkAccountPostDto,
-    @Request() req: { user: { user_id: string } },
-  ) {
-    const { user_id } = req.user; // TODO: security
+  async linkAccount(@Body() data: LinkAccountPostDto, @Request() req: unknown) {
+    const parsedRequest = parseAndValidateRequest(req, this.#logger);
     const linkedAccount = await this.linkedAccountsRepository.findOneByUserIdAndAccountName({
-      user_id: user_id,
+      user_id: parsedRequest.user.sub,
       account: data.username,
     });
     if (!linkedAccount) {
+      // TODO: and zero knowledge proof of hive account ownership
       const challenge = uuid();
-      await this.linkedAccountsRepository.linkHiveAccount(user_id, data.username, challenge);
+      await this.linkedAccountsRepository.linkHiveAccount(
+        parsedRequest.user.sub,
+        data.username,
+        challenge,
+      );
 
       return {
         challenge,

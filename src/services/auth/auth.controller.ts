@@ -40,12 +40,7 @@ import { HiveRepository } from '../../repositories/hive/hive.repository';
 import { EmailService } from '../email/email.service';
 import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';
-import { z } from 'zod';
-
-const ProofPayloadSchema = z.object({
-  account: z.string(),
-  ts: z.number(),
-});
+import { ProofPayloadSchema } from './auth.types';
 
 @Controller('/api/v1/auth')
 export class AuthController {
@@ -119,7 +114,7 @@ export class AuthController {
       new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
     ) {
       if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
-        return await this.authService.authenticateUser(proof_payload.account, 'hive');
+        return await this.authService.authenticateUser('singleton', proof_payload.account, 'hive');
       } else {
         throw new HttpException(
           {
@@ -157,7 +152,7 @@ export class AuthController {
   async loginSingletonReturn(@Body() body: WithAuthData) {
     try {
       await this.authService.getOrCreateUserByDid(body.did);
-      return await this.authService.authenticateUser(body.did, 'did');
+      return await this.authService.authenticateUser('singleton', body.did, 'did');
     } catch (e) {
       console.log(e);
       this.#logger.error(e);
@@ -267,8 +262,10 @@ export class AuthController {
         // )
         await this.hiveAccountRepository.createLite(username, body.secret);
 
-        const jwt = await this.authService.jwtSign({
+        const jwt = this.authService.jwtSign({
+          sub: this.authService.generateSub('lite', username, 'hive'),
           username,
+          network: 'hive',
         });
 
         return {
