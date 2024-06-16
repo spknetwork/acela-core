@@ -59,4 +59,20 @@ export class MockHiveRepository extends HiveRepository {
       expired: false,
     });
   }
+
+  async comment(
+    author: string,
+    content: string,
+    comment_options: { parent_author: string; parent_permlink: string },
+  ) {
+    this.#logger.log(
+      `${author} is commenting ${content} on ${comment_options.parent_author}/${comment_options.parent_permlink}`,
+    );
+    return {
+      id: 'test',
+      block_num: 1,
+      trx_num: 8008135,
+      expired: false,
+    };
+  }
 }
