@@ -21,6 +21,7 @@ import { AuthModule } from '../auth/auth.module';
 import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
 import { HiveModule } from '../../repositories/hive/hive.module';
 import { EmailModule } from '../email/email.module';
+import * as crypto from 'crypto';
 
 describe('ApiController', () => {
   let app: INestApplication;
@@ -35,6 +36,9 @@ describe('ApiController', () => {
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create();
     const uri = mongod.getUri();
+
+    process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
+    process.env.ENVIRONMENT = 'local'
 
     @Module({
       imports: [
@@ -68,7 +72,7 @@ describe('ApiController', () => {
         HiveModule,
         ApiModule,
         JwtModule.register({
-          secret: 'ac746c4dc9faf199d7fec029f1e8646c08da3698d9c95b931a1df2ceb666e336dbdacf46763a89777206cf48fc43be42cbe0f988e4bd4a10e7610173d29310ea987d93bae49f6391b91a5338cffbf2389797d7217903b2db1cbf983632f64e088fb515537262d2475589370fc1f5aa7820c34f0f5523fb88f75dace392d22caf',
+          secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
           signOptions: { expiresIn: '30d' },
         }),
         LinkedAccountModule

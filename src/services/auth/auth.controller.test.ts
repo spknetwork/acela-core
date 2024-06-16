@@ -36,6 +36,7 @@ describe('AuthController', () => {
     const uri: string = mongod.getUri()
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
+    process.env.ENVIRONMENT = 'local'
 
     @Module({
       imports: [
