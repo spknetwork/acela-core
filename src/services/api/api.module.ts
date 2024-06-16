@@ -7,6 +7,7 @@ import { HiveModule } from '../../repositories/hive/hive.module';
 import { EmailModule } from '../email/email.module';
 import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 import { RequireHiveVerify } from './utils';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -16,6 +17,10 @@ import { RequireHiveVerify } from './utils';
     HiveModule,
     LinkedAccountModule,
     EmailModule,
+    JwtModule.register({
+      privateKey: process.env.JWT_PRIVATE_KEY,
+      signOptions: { expiresIn: '30d' },
+    }),
   ],
   controllers: [ApiController],
   providers: [RequireHiveVerify],

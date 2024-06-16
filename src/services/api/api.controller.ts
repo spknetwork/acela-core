@@ -191,6 +191,43 @@ export class ApiController {
         'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
     },
   })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        accounts: {
+          type: 'array',
+          default: [],
+        },
+      },
+    },
+  })
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
+  @Get('/hive/linked-account/list')
+  async listLinkedAccounts(@Request() req: unknown) {
+    const request = parseAndValidateRequest(req, this.#logger);
+    if (!request.user.sub) {
+      throw new HttpException(
+        {
+          reason: 'Logged in with a lite account, full account needed to check linked accounts.',
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    // TODO: before going live, check that current linked accounts will still show since user.sub is a proprietary new format
+    const accounts = await this.linkedAccountsRepository.findAllByUserId(request.user.sub);
+    return { accounts: accounts.map((account) => account.account) };
+  }
+
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'JWT Authorization',
+    required: true,
+    schema: {
+      example:
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+    },
+  })
   @ApiBody({
     schema: {
       properties: {

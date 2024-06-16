@@ -5,8 +5,8 @@ export type LinkedAccountDocument = HydratedDocument<LinkedAccount>;
 
 @Schema()
 export class LinkedAccount {
-  @Prop({ default: false })
-  verified: boolean;
+  @Prop({ required: true, default: 'unferified', enum: ['verified', 'unverified'] })
+  status: string;
 
   @Prop({ required: true })
   account: string;
@@ -16,9 +16,6 @@ export class LinkedAccount {
 
   @Prop({ required: true })
   challenge: string;
-
-  @Prop({ required: true, default: 'unferified' })
-  status: string;
 }
 
 export const LinkedAccountSchema = SchemaFactory.createForClass(LinkedAccount);
