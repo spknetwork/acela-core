@@ -1,7 +1,7 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { UserRequest, interceptedRequestSchema } from './auth.types';
 
-export function parseAndValidateRequest(request: unknown, logger: any): UserRequest {
+export function parseAndValidateRequest(request: unknown, logger: Logger): UserRequest {
   let parsedRequest: UserRequest;
   try {
     parsedRequest = interceptedRequestSchema.parse(request);
