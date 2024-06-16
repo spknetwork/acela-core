@@ -39,11 +39,9 @@ export class AuthService {
     return Boolean(await this.userAccountRepository.findOneByDid(did));
   }
 
-  async login(user: any) {
-    console.log(user);
-    const payload: User = { username: user.email, sub: user._id, network: 'email' };
+  async login(user: User) {
     return {
-      access_token: this.jwtSign(payload),
+      access_token: this.jwtSign(user),
     };
   }
 

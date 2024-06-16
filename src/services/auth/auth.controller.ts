@@ -41,6 +41,7 @@ import { EmailService } from '../email/email.service';
 import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';
 import { ProofPayloadSchema } from './auth.types';
+import { parseAndValidateRequest } from './auth.utils';
 
 @Controller('/api/v1/auth')
 export class AuthController {
@@ -62,7 +63,8 @@ export class AuthController {
     type: LoginResponseDto,
   })
   async login(@Request() req, @Body() body: LoginDto) {
-    return this.authService.login(req.user);
+    const request = parseAndValidateRequest(req, this.#logger);
+    return this.authService.login(request.user);
   }
 
   //@UseGuards(AuthGuard('local'))
