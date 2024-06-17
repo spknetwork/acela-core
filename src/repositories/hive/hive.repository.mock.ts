@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HiveRepository } from './hive.repository';
 import { OperationsArray } from './types';
-import { TransactionConfirmation } from '@hiveio/dhive';
+import { ExtendedAccount, TransactionConfirmation } from '@hiveio/dhive';
 
 @Injectable()
 export class MockHiveRepository extends HiveRepository {
@@ -74,5 +74,9 @@ export class MockHiveRepository extends HiveRepository {
       trx_num: 8008135,
       expired: false,
     };
+  }
+
+  verifyHiveMessage(message: Buffer, signature: string, account: ExtendedAccount): boolean {
+    return true;
   }
 }
