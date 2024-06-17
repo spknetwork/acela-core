@@ -156,12 +156,14 @@ export class HiveRepository {
 
   verifyHiveMessage(message: Buffer, signature: string, account: ExtendedAccount): boolean {
     for (const auth of account.posting.key_auths) {
-      const sigValidity = PublicKey.fromString(auth[0].toString()).verify(
-        Buffer.from(message),
-        Signature.fromBuffer(Buffer.from(signature, 'hex')),
-      );
-      if (sigValidity) {
+      try {
+        PublicKey.fromString(auth[0].toString()).verify(
+          Buffer.from(message),
+          Signature.fromBuffer(Buffer.from(signature, 'hex')),
+        );
         return true;
+      } catch {
+        /* empty */
       }
     }
     return false;
