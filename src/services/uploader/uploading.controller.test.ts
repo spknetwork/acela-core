@@ -23,10 +23,10 @@ import crypto from 'crypto';
 
 describe('UploadingController', () => {
   let app: INestApplication;
-  let mongod;
+  let mongod: MongoMemoryServer;
   let uploadingService: UploadingService;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     mongod = await MongoMemoryServer.create();
     const uri = mongod.getUri();
 
@@ -86,7 +86,7 @@ describe('UploadingController', () => {
     await app.init();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await app.close();
     await mongod.stop();
   });

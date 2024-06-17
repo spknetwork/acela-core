@@ -25,7 +25,7 @@ import * as crypto from 'crypto';
 
 describe('ApiController', () => {
   let app: INestApplication;
-  let mongod;
+  let mongod: MongoMemoryServer;
   let authService: AuthService;
   let hiveAccountRepository: HiveAccountRepository;
   let userRepository: UserRepository;
@@ -33,7 +33,7 @@ describe('ApiController', () => {
   let linkedAccountsRepository: LinkedAccountRepository;
   let emailService: EmailService;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     mongod = await MongoMemoryServer.create();
     const uri = mongod.getUri();
 
@@ -103,7 +103,7 @@ describe('ApiController', () => {
     await app.init();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await app.close();
     await mongod.stop();
   });
