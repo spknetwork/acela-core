@@ -107,26 +107,13 @@ export class AuthController {
       );
     }
 
-    if (
-      this.hiveRepository.verifyHiveMessage(
-        cryptoUtils.sha256(JSON.stringify(proof_payload)),
-        body.proof,
-        accountDetails,
-      ) &&
-      new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
-    ) {
-      if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
-        return await this.authService.authenticateUser('singleton', proof_payload.account, 'hive');
-      } else {
-        throw new HttpException(
-          {
-            reason: `Hive Account @${proof_payload.account} has not granted posting authority to @threespeak`,
-            errorType: 'MISSING_POSTING_AUTHORITY',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    } else {
+    const verifiedMessage = this.hiveRepository.verifyHiveMessage(
+      cryptoUtils.sha256(JSON.stringify(proof_payload)),
+      body.proof,
+      accountDetails,
+    );
+
+    if (!verifiedMessage) {
       throw new HttpException(
         {
           reason: 'Invalid Signature',
@@ -135,6 +122,31 @@ export class AuthController {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    const proofCreatedWithinAMinute =
+      new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate();
+
+    if (!proofCreatedWithinAMinute) {
+      throw new HttpException(
+        {
+          reason: 'Invalid Signature',
+          errorType: 'INVALID_SIGNATURE',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (!this.hiveRepository.verifyPostingAuth(accountDetails)) {
+      throw new HttpException(
+        {
+          reason: `Hive Account @${proof_payload.account} has not granted posting authority to @threespeak`,
+          errorType: 'MISSING_POSTING_AUTHORITY',
+        },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    return await this.authService.authenticateUser('singleton', proof_payload.account, 'hive');
   }
 
   //@UseGuards(AuthGuard('local'))
