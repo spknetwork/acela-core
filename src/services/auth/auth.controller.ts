@@ -79,7 +79,7 @@ export class AuthController {
   @ApiInternalServerErrorResponse({
     description: 'Internal Server Error - unrelated to request body',
   })
-  @Post(['/login/singleton', '/login/singleton/hive'])
+  @Post('/login/singleton/hive')
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
     let proof_payload: { account: string; ts: number };
     try {
@@ -162,7 +162,7 @@ export class AuthController {
     description: 'Internal Server Error - unrelated to request body',
   })
   @HttpCode(200)
-  @Post('/login_singleton/did')
+  @Post('/login/singleton/did')
   async loginSingletonReturn(@Body() body: WithAuthData) {
     try {
       await this.authService.getOrCreateUserByDid(body.did);
