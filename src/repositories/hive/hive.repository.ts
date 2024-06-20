@@ -219,7 +219,7 @@ export class HiveRepository {
     );
   }
 
-  verifyPostingAuth(account: any): boolean {
+  verifyPostingAuth(account: ExtendedAccount): boolean {
     let doWe = false;
     if (Array.isArray(account.posting.account_auths)) {
       account.posting.account_auths.forEach(function (item) {
