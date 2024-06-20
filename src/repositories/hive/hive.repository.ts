@@ -223,7 +223,7 @@ export class HiveRepository {
     let doWe = false;
     if (Array.isArray(account.posting.account_auths)) {
       account.posting.account_auths.forEach(function (item) {
-        if (item[0] === process.env.VOTER_ACCOUNT) {
+        if (item[0] === process.env.DELEGATED_ACCOUNT) {
           doWe = true;
         }
       });
