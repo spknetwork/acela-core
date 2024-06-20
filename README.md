@@ -30,6 +30,9 @@ In development mode, if using vs code you can attach a debugger by going to the 
 
 ![alt text](docs/debugging.png)
 
+### To debug individual tests in vscode:
+Look for green / red icons next to tests, right click > run & debug
+
 ## Deploy
 ### Staging
 `sudo docker compose -f docker-compose.staging.yml up --build -d`

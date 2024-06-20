@@ -2,5 +2,6 @@
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit"
   },
+  "debug.javascript.autoAttachFilter": "always",
   "typescript.tsdk": "node_modules/typescript/lib"
 }
