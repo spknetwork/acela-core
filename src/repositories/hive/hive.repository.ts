@@ -21,7 +21,7 @@ hiveJsPackage.config.set('rebranded_api', 'true');
 
 @Injectable()
 export class HiveRepository {
-  readonly #logger: Logger;
+  readonly #logger: Logger = new Logger(HiveRepository.name);
   readonly #hiveJs = hiveJsPackage;
   readonly #hive: Client = new Client(
     process.env.HIVE_HOST?.split(',') || [
@@ -156,14 +156,15 @@ export class HiveRepository {
 
   verifyHiveMessage(message: Buffer, signature: string, account: ExtendedAccount): boolean {
     for (const auth of account.posting.key_auths) {
+      const publicKey = PublicKey.fromString(auth[0].toString());
       try {
-        PublicKey.fromString(auth[0].toString()).verify(
-          Buffer.from(message),
-          Signature.fromBuffer(Buffer.from(signature, 'hex')),
-        );
-        return true;
-      } catch {
-        /* empty */
+        const signatureBuffer = Signature.fromBuffer(Buffer.from(signature, 'hex'));
+        const verified = publicKey.verify(message, signatureBuffer);
+        if (verified) {
+          return true;
+        }
+      } catch (e) {
+        this.#logger.debug(e);
       }
     }
     return false;
