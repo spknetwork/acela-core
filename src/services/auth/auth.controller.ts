@@ -40,7 +40,6 @@ import { HiveRepository } from '../../repositories/hive/hive.repository';
 import { EmailService } from '../email/email.service';
 import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';
-import { ProofPayloadSchema } from './auth.types';
 import { parseAndValidateRequest } from './auth.utils';
 
 @Controller('/api/v1/auth')
@@ -81,26 +80,12 @@ export class AuthController {
   })
   @Post('/login/singleton/hive')
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    let proof_payload: { account: string; ts: number };
-    try {
-      proof_payload = ProofPayloadSchema.parse(JSON.parse(body.proof_payload));
-    } catch (error) {
-      throw new HttpException(
-        {
-          reason: 'Validation failed',
-          errorType: 'INVALID_PROOF_PAYLOAD',
-          details: error.errors,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const accountDetails = await this.hiveRepository.getAccount(proof_payload.account);
+    const accountDetails = await this.hiveRepository.getAccount(body.account);
 
     if (!accountDetails) {
       throw new HttpException(
         {
-          reason: `Hive Account @${proof_payload.account} does not exist`,
+          reason: `Hive Account @${body.account} does not exist`,
           errorType: 'ACCOUNT_NOT_FOUND',
         },
         HttpStatus.BAD_REQUEST,
@@ -108,7 +93,7 @@ export class AuthController {
     }
 
     const verifiedMessage = this.hiveRepository.verifyHiveMessage(
-      cryptoUtils.sha256(JSON.stringify(proof_payload)),
+      cryptoUtils.sha256(JSON.stringify(body.proof_payload)),
       body.proof,
       accountDetails,
     );
@@ -119,12 +104,12 @@ export class AuthController {
           reason: 'Invalid Signature',
           errorType: 'INVALID_SIGNATURE',
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.UNAUTHORIZED,
       );
     }
 
     const proofCreatedWithinAMinute =
-      new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate();
+      new Date(body.proof_payload.ts) > moment().subtract('1', 'minute').toDate();
 
     if (!proofCreatedWithinAMinute) {
       throw new HttpException(
@@ -132,21 +117,21 @@ export class AuthController {
           reason: 'Invalid Signature',
           errorType: 'INVALID_SIGNATURE',
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.UNAUTHORIZED,
       );
     }
 
     if (!this.hiveRepository.verifyPostingAuth(accountDetails)) {
       throw new HttpException(
         {
-          reason: `Hive Account @${proof_payload.account} has not granted posting authority to @threespeak`,
+          reason: `Hive Account @${body.account} has not granted posting authority to @threespeak`,
           errorType: 'MISSING_POSTING_AUTHORITY',
         },
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    return await this.authService.authenticateUser('singleton', proof_payload.account, 'hive');
+    return await this.authService.authenticateUser('singleton', body.account, 'hive');
   }
 
   //@UseGuards(AuthGuard('local'))

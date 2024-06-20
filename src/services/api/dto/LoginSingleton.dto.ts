@@ -5,8 +5,11 @@ export class LoginSingletonHiveDto {
   @IsNotEmpty()
   @ApiProperty({})
   authority_type?: string;
-  proof_payload: string;
+  proof_payload: {
+    ts: number;
+  };
   proof: string;
+  account: string;
 }
 
 export class LoginSingletonDidDto {

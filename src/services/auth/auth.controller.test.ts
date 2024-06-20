@@ -21,6 +21,7 @@ import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
 import crypto from 'crypto';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { PrivateKey } from '@hiveio/dhive';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -39,6 +40,7 @@ describe('AuthController', () => {
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
     process.env.ENVIRONMENT = 'local'
+    process.env.DELEGATED_ACCOUNT = 'threespeak'
 
     @Module({
       imports: [
@@ -130,11 +132,15 @@ describe('AuthController', () => {
 
   describe('/POST login singleton hive', () => {
     it('Logs in sucessfully on the happy path', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { ts: Date.now() };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
       const body = {
+        account: 'sisygoboom',
         authority_type: 'posting',
-        proof_payload: JSON.stringify({ account: 'starkerz', ts: Date.now() }),
-        proof: 'dsa',
+        proof_payload: message,
+        proof: signature.toString(),
       }
 
       return request(app.getHttpServer())
@@ -148,11 +154,15 @@ describe('AuthController', () => {
     })
 
     it('Fails to log in when the user does not have posting authority', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { ts: Date.now() };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
       const body = {
+        account: 'ned',
         authority_type: 'posting',
-        proof_payload: JSON.stringify({ account: 'bilbo-baggins', ts: Date.now() }),
-        proof: 'dsa',
+        proof_payload: message,
+        proof: signature.toString(),
       }
 
       return request(app.getHttpServer())
@@ -162,23 +172,27 @@ describe('AuthController', () => {
         .then(response => {
           expect(response.body).toEqual({
             errorType: "MISSING_POSTING_AUTHORITY",
-            reason: "Hive Account @bilbo-baggins has not granted posting authority to @threespeak"
+            reason: "Hive Account @ned has not granted posting authority to @threespeak"
           })
         })
     })
 
     it('Fails to log in when the proof is out of date', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { ts: 1984 };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
       const body = {
+        account: 'starkerz',
         authority_type: 'posting',
-        proof_payload: JSON.stringify({ account: 'starkerz', ts: 1984 }),
-        proof: 'dsa',
+        proof_payload: message,
+        proof: signature.toString(),
       }
 
       return request(app.getHttpServer())
         .post('/api/v1/auth/login/singleton/hive')
         .send(body)
-        .expect(400)
+        .expect(401)
         .then(response => {
           expect(response.body).toEqual({
             errorType: "INVALID_SIGNATURE",
