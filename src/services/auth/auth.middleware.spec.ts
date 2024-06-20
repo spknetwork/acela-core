@@ -34,10 +34,6 @@ describe('AuthMiddleware', () => {
     const key = new Ed25519Provider(seedBuf)
     const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
 
-    beforeAll(() => {
-        process.env.ENVIRONMENT = 'local'
-    })
-
     beforeEach(() => {
         authMiddleware = new AuthMiddleware();
     });

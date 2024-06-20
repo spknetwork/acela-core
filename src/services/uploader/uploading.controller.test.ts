@@ -31,7 +31,6 @@ describe('UploadingController', () => {
     const uri = mongod.getUri();
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
-    process.env.ENVIRONMENT = 'local'
 
     @Module({
       imports: [
