@@ -157,6 +157,7 @@ export class HiveRepository {
   verifyHiveMessage(message: Buffer, signature: string, account: ExtendedAccount): boolean {
     for (const auth of account.posting.key_auths) {
       const publicKey = PublicKey.fromString(auth[0].toString());
+      if (auth[1] < account.posting.weight_threshold) continue;
       try {
         const signatureBuffer = Signature.fromBuffer(Buffer.from(signature, 'hex'));
         const verified = publicKey.verify(message, signatureBuffer);
