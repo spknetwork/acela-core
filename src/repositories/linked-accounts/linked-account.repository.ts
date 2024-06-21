@@ -36,7 +36,7 @@ export class LinkedAccountRepository {
   }
 
   async verify(_id: ObjectId) {
-    this.linkedAccountModel.updateOne(
+    return this.linkedAccountModel.updateOne(
       {
         _id,
       },
@@ -46,5 +46,12 @@ export class LinkedAccountRepository {
         },
       },
     );
+  }
+
+  async findAllByUserId(user_id: string) {
+    return this.linkedAccountModel
+      .find({ user_id, status: 'verified' }, { account: 1, _id: 0 })
+      .lean()
+      .exec();
   }
 }

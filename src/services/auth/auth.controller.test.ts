@@ -27,11 +27,11 @@ describe('AuthController', () => {
   seedBuf.fill(27)
   const key = new Ed25519Provider(seedBuf)
   const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
-  let mongod;
+  let mongod: MongoMemoryServer;
   let authService: AuthService;
 
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     mongod = await MongoMemoryServer.create()
     const uri: string = mongod.getUri()
 
@@ -89,6 +89,11 @@ describe('AuthController', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init()
   })
+
+  afterEach(async () => {
+    await app.close();
+    await mongod.stop();
+  });
 
   describe('Login using did', () => {
     it(`/POST login singleton`, async () => {

@@ -25,7 +25,8 @@ import { UpdateUploadDto } from './dto/update-upload.dto';
 import { StartEncodeDto } from './dto/start-encode.dto';
 import { UploadingService } from './uploading.service';
 import { HiveRepository } from '../../repositories/hive/hive.repository';
-import { Upload, UserRequest, requestSchema } from './uploading.types';
+import { Upload } from './uploading.types';
+import { parseAndValidateRequest } from '../auth/auth.utils';
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -82,14 +83,7 @@ export class UploadingController {
     @Request()
     request: unknown,
   ) {
-    let parsedRequest: UserRequest;
-    try {
-      parsedRequest = requestSchema.parse(request);
-    } catch (e) {
-      this.#logger.error(e);
-      throw new HttpException({ reason: e, errorType: 'MISSING_USER' }, HttpStatus.BAD_REQUEST);
-    }
-
+    const parsedRequest = parseAndValidateRequest(request, this.#logger);
     return this.uploadingService.createUpload(parsedRequest.user);
   }
 
@@ -97,14 +91,20 @@ export class UploadingController {
   @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
-    const user = req.user;
-    const username: string = user.username;
+    const request = parseAndValidateRequest(req, this.#logger);
+    if (request.user.network !== 'hive') {
+      throw new HttpException(
+        'Must be signed in with a hive account to perform this operation',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    const username: string = request.user.username;
     const accountDetails = await this.hiveRepository.getAccount(username);
     // Check 1: Do we have posting authority?
     if (this.hiveRepository.verifyPostingAuth(accountDetails) === false) {
       const reason = `Hive Account @${username} has not granted posting authority to @threespeak`;
       const errorType = 'MISSING_POSTING_AUTHORITY';
-      throw new HttpException({ reason: reason, errorType: errorType }, HttpStatus.BAD_REQUEST);
+      throw new HttpException({ reason: reason, errorType: errorType }, HttpStatus.FORBIDDEN);
     }
     // Check 2: Is post title too big or too small?
     const videoTitleLength = await this.uploadingService.getVideoTitleLength(

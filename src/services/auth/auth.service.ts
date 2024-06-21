@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import { UserAccountRepository } from '../../repositories/userAccount/user-account.repository';
 import { v4 as uuid } from 'uuid';
 import { SessionRepository } from '../../repositories/session/session.repository';
-import { Network } from './types';
+import { AccountType, Network, User } from './auth.types';
 
 @Injectable()
 export class AuthService {
@@ -15,7 +15,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async jwtSign(payload: Record<string, string>) {
+  jwtSign(payload: User) {
     return this.jwtService.sign(payload);
   }
 
@@ -39,39 +39,38 @@ export class AuthService {
     return Boolean(await this.userAccountRepository.findOneByDid(did));
   }
 
-  async login(user: any) {
-    console.log(user);
-    const payload = { username: user.email, sub: user._id };
+  async login(user: User) {
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtSign(user),
     };
   }
 
-  generateSub(account: string, network: Network) {
-    return `singleton/${network}/${account}`;
+  generateSub(accountType: AccountType, account: string, network: Network) {
+    return `${accountType}/${network}/${account}`;
   }
 
-  async authenticateUser(account: string, network: Network) {
+  async authenticateUser(type: AccountType, account: string, network: Network) {
     const id = uuid();
-    const access_token = this.jwtService.sign({
+    const access_token = this.jwtSign({
       id: id,
-      type: 'singleton',
-      sub: this.generateSub(account, network),
+      type,
+      sub: this.generateSub(type, account, network),
       username: account,
+      network,
     });
 
-    await this.createSession(id, account, network);
+    await this.createSession(type, id, account, network);
 
     return {
       access_token,
     };
   }
 
-  async createSession(id: string, account: string, network: Network) {
+  async createSession(type: AccountType, id: string, account: string, network: Network) {
     return await this.sessionRepository.insertOne({
       id,
-      type: 'singleton',
-      sub: this.generateSub(account, network),
+      type,
+      sub: this.generateSub(type, account, network),
     });
   }
 

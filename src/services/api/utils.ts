@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Observable } from 'rxjs';
+import { User } from '../auth/auth.types';
 
 @Injectable()
 export class RequireHiveVerify implements CanActivate {
@@ -35,13 +36,40 @@ export class UserDetailsInterceptor implements NestInterceptor {
       const token = authorizationHeader.split(' ')[1];
       try {
         const decodedToken = this.jwtService.decode(token);
+        if (!decodedToken) {
+          throw new Error('Invalid token');
+        }
         console.log(decodedToken);
         request.user = decodedToken;
       } catch (err) {
-        console.error('Invalid token', err);
+        throw new Error('Invalid token');
       }
     }
 
+    return next.handle();
+  }
+}
+
+@Injectable()
+export class MockAuthGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest();
+    request.user = { id: 'test_user_id', user_id: 'test_user_id' }; // Mock user
+    return true;
+  }
+}
+
+@Injectable()
+export class MockUserDetailsInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const request = context.switchToHttp().getRequest();
+    request.user = {
+      id: 'test_user_id',
+      sub: 'singleton/bob/did',
+      username: 'test_user_id',
+      network: 'did',
+      type: 'singleton',
+    } satisfies User; // Mock user
     return next.handle();
   }
 }
