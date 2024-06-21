@@ -108,8 +108,11 @@ export class AuthController {
       );
     }
 
+    const proofCreationTimestamp = new Date(body.proof_payload.ts);
+
     const proofCreatedWithinAMinute =
-      new Date(body.proof_payload.ts) > moment().subtract('1', 'minute').toDate();
+      proofCreationTimestamp > moment().subtract('1', 'minute').toDate() &&
+      proofCreationTimestamp < new Date();
 
     if (!proofCreatedWithinAMinute) {
       throw new HttpException(
