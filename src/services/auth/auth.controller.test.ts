@@ -135,6 +135,8 @@ describe('AuthController', () => {
       const message = { account: 'sisygoboom', ts: Date.now() };
       const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
+      process.env.TEST_PUBLIC_KEY = privateKey.createPublic().toString();
+
       const body = {
         authority_type: 'posting',
         proof_payload: message,
@@ -155,6 +157,8 @@ describe('AuthController', () => {
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
       const message = { account: 'ned', ts: Date.now() };
       const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
+
+      process.env.TEST_PUBLIC_KEY = privateKey.createPublic().toString();
 
       const body = {
         authority_type: 'posting',
@@ -177,6 +181,31 @@ describe('AuthController', () => {
     it('Fails to log in when the proof is out of date', async () => {
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
       const message = { account: 'starkerz', ts: 1984 };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
+
+      process.env.TEST_PUBLIC_KEY = privateKey.createPublic().toString();
+
+      const body = {
+        authority_type: 'posting',
+        proof_payload: message,
+        proof: signature.toString(),
+      }
+
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/login/singleton/hive')
+        .send(body)
+        .expect(401)
+        .then(response => {
+          expect(response.body).toEqual({
+            errorType: "INVALID_SIGNATURE",
+            reason: "Invalid Signature",
+          })
+        })
+    })
+
+    it('Fails to log in when the proof is from the wrong account', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { account: 'starkerz', ts: Date.now() };
       const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
       const body = {

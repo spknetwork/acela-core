@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HiveRepository } from './hive.repository';
 import { OperationsArray } from './types';
-import { ExtendedAccount, TransactionConfirmation } from '@hiveio/dhive';
+import { TransactionConfirmation } from '@hiveio/dhive';
 
 @Injectable()
 export class MockHiveRepository extends HiveRepository {
@@ -76,7 +76,10 @@ export class MockHiveRepository extends HiveRepository {
     };
   }
 
-  verifyHiveMessage(message: Buffer, signature: string, account: ExtendedAccount): boolean {
-    return true;
+  async getAccount(author: string) {
+    const [hiveAccount] = await this._hive.database.getAccounts([author]);
+    if (process.env.TEST_PUBLIC_KEY)
+      hiveAccount.posting.key_auths.push([process.env.TEST_PUBLIC_KEY, 0]);
+    return hiveAccount;
   }
 }
