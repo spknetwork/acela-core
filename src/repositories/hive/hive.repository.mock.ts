@@ -79,7 +79,10 @@ export class MockHiveRepository extends HiveRepository {
   async getAccount(author: string) {
     const [hiveAccount] = await this._hive.database.getAccounts([author]);
     if (process.env.TEST_PUBLIC_KEY)
-      hiveAccount.posting.key_auths.push([process.env.TEST_PUBLIC_KEY, 1]);
+      hiveAccount.posting.key_auths.push([
+        process.env.TEST_PUBLIC_KEY,
+        hiveAccount.posting.weight_threshold,
+      ]);
     return hiveAccount;
   }
 }
