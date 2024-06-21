@@ -7,7 +7,7 @@ import { Test } from '@nestjs/testing';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import { AuthModule } from './auth.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
@@ -20,7 +20,7 @@ import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
 import crypto from 'crypto';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { PrivateKey } from '@hiveio/dhive';
 
 describe('AuthController', () => {
@@ -74,7 +74,7 @@ describe('AuthController', () => {
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
           signOptions: { expiresIn: '30d' },
         }),
-        HiveModule,
+        HiveChainModule,
         EmailModule,
         AuthModule,
       ],

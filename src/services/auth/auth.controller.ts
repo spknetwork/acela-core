@@ -36,7 +36,7 @@ import { LoginSingletonHiveDto } from '../api/dto/LoginSingleton.dto';
 import { AuthService } from './auth.service';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { UserRepository } from '../../repositories/user/user.repository';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { EmailService } from '../email/email.service';
 import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';

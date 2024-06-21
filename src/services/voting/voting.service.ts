@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import moment from 'moment';
 import { ExtendedAccount, VoteOperation } from '@hiveio/dhive';
 import { VideoMap } from './types';

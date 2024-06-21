@@ -10,7 +10,7 @@ import { ApiModule } from './api.module';
 import { AuthService } from '../auth/auth.service';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { UserRepository } from '../../repositories/user/user.repository';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
@@ -19,7 +19,7 @@ import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-a
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from '../auth/auth.module';
 import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import * as crypto from 'crypto';
 
@@ -68,7 +68,7 @@ describe('ApiController', () => {
         UserModule,
         AuthModule,
         EmailModule,
-        HiveModule,
+        HiveChainModule,
         ApiModule,
         JwtModule.register({
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,

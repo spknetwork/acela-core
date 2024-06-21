@@ -9,7 +9,7 @@ import { CreatorModule } from './repositories/creator/creator.module';
 import { UserModule } from './repositories/user/user.module';
 import { ApiModule } from './services/api/api.module';
 import { AuthModule } from './services/auth/auth.module';
-import { HiveModule } from './repositories/hive/hive.module';
+import { HiveChainModule } from './repositories/hive-chain/hive-chain.module';
 import { DelegatedAuthorityModule } from './repositories/delegated-authority/delegated-auhthority.module';
 import { HiveAccountModule } from './repositories/hive-account/hive-account.module';
 import { LinkedAccountModule } from './repositories/linked-accounts/linked-account.module';
@@ -60,7 +60,7 @@ const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
     PublishingModule,
     AuthModule,
     TasksModule,
-    HiveModule,
+    HiveChainModule,
     IpfsModule,
     UploadingModule,
     DelegatedAuthorityModule,

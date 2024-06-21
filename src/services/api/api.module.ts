@@ -3,7 +3,7 @@ import { ApiController } from './api.controller';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../../repositories/user/user.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 import { RequireHiveVerify } from './utils';
@@ -14,7 +14,7 @@ import { JwtModule } from '@nestjs/jwt';
     AuthModule,
     UserModule,
     HiveAccountModule,
-    HiveModule,
+    HiveChainModule,
     LinkedAccountModule,
     EmailModule,
     JwtModule.register({

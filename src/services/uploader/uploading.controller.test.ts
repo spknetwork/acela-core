@@ -4,7 +4,7 @@ import { UploadingService } from './uploading.service';
 import { Test } from '@nestjs/testing';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { UploadingModule } from './uploading.module';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -16,7 +16,7 @@ import { UploadModule } from '../../repositories/upload/upload.module';
 import { VideoModule } from '../../repositories/video/video.module';
 import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import sharp from 'sharp';
 import { JwtModule } from '@nestjs/jwt';
 import crypto from 'crypto';
@@ -51,7 +51,7 @@ describe('UploadingController', () => {
           dbName: 'acela-core',
         }),
         VideoModule,
-        HiveModule,
+        HiveChainModule,
         UploadModule,
         IpfsModule,
         PublishingModule,

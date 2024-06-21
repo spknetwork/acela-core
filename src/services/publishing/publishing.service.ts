@@ -8,10 +8,10 @@ import {
   HiveAccountMetadata,
   CustomJsonOperation,
   OperationsArray,
-} from '../../repositories/hive/types';
+} from '../../repositories/hive-chain/types';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import 'dotenv/config';
 import { Video } from '../../repositories/video/schemas/video.schema';
 

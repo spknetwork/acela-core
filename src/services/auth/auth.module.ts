@@ -10,7 +10,7 @@ import { SessionModule } from '../../repositories/session/session.module';
 import { AuthController } from './auth.controller';
 import { EmailModule } from '../email/email.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { AuthMiddleware } from './auth.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -21,7 +21,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     UserAccountModule,
     UserModule,
     HiveAccountModule,
-    HiveModule,
+    HiveChainModule,
     EmailModule,
     SessionModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),

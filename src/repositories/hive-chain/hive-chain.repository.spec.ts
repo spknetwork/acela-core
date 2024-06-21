@@ -1,5 +1,5 @@
 
-import { HiveRepository } from './hive.repository';
+import { HiveRepository } from './hive-chain.repository';
 import { ExtendedAccount, PrivateKey } from '@hiveio/dhive';
 import * as crypto from "crypto";
 

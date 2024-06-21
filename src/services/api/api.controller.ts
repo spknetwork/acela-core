@@ -24,7 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { UserRepository } from '../../repositories/user/user.repository';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { LinkAccountPostDto } from './dto/LinkAccountPost.dto';
 import { VotePostResponseDto } from './dto/VotePostResponse.dto';
 import { VotePostDto } from './dto/VotePost.dto';

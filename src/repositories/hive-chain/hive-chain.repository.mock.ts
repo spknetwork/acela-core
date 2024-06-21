@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { HiveRepository } from './hive.repository';
+import { HiveRepository } from './hive-chain.repository';
 import { OperationsArray } from './types';
 import { TransactionConfirmation } from '@hiveio/dhive';
 
