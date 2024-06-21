@@ -7,9 +7,9 @@ export class LoginSingletonHiveDto {
   authority_type?: string;
   proof_payload: {
     ts: number;
+    account: string;
   };
   proof: string;
-  account: string;
 }
 
 export class LoginSingletonDidDto {

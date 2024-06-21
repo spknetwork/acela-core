@@ -80,12 +80,12 @@ export class AuthController {
   })
   @Post('/login/singleton/hive')
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    const accountDetails = await this.hiveRepository.getAccount(body.account);
+    const accountDetails = await this.hiveRepository.getAccount(body.proof_payload.account);
 
     if (!accountDetails) {
       throw new HttpException(
         {
-          reason: `Hive Account @${body.account} does not exist`,
+          reason: `Hive Account @${body.proof_payload.account} does not exist`,
           errorType: 'ACCOUNT_NOT_FOUND',
         },
         HttpStatus.BAD_REQUEST,
@@ -124,14 +124,14 @@ export class AuthController {
     if (!this.hiveRepository.verifyPostingAuth(accountDetails)) {
       throw new HttpException(
         {
-          reason: `Hive Account @${body.account} has not granted posting authority to @threespeak`,
+          reason: `Hive Account @${body.proof_payload.account} has not granted posting authority to @threespeak`,
           errorType: 'MISSING_POSTING_AUTHORITY',
         },
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    return await this.authService.authenticateUser('singleton', body.account, 'hive');
+    return await this.authService.authenticateUser('singleton', body.proof_payload.account, 'hive');
   }
 
   //@UseGuards(AuthGuard('local'))

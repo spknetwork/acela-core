@@ -132,11 +132,10 @@ describe('AuthController', () => {
   describe('/POST login singleton hive', () => {
     it('Logs in sucessfully on the happy path', async () => {
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
-      const message = { ts: Date.now() };
+      const message = { account: 'sisygoboom', ts: Date.now() };
       const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
       const body = {
-        account: 'sisygoboom',
         authority_type: 'posting',
         proof_payload: message,
         proof: signature.toString(),
@@ -154,11 +153,10 @@ describe('AuthController', () => {
 
     it('Fails to log in when the user does not have posting authority', async () => {
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
-      const message = { ts: Date.now() };
+      const message = { account: 'ned', ts: Date.now() };
       const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
       const body = {
-        account: 'ned',
         authority_type: 'posting',
         proof_payload: message,
         proof: signature.toString(),
@@ -178,11 +176,10 @@ describe('AuthController', () => {
 
     it('Fails to log in when the proof is out of date', async () => {
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
-      const message = { ts: 1984 };
+      const message = { account: 'starkerz', ts: 1984 };
       const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
 
       const body = {
-        account: 'starkerz',
         authority_type: 'posting',
         proof_payload: message,
         proof: signature.toString(),
