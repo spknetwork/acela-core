@@ -20,6 +20,8 @@ import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
 import crypto from 'crypto';
+import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { PrivateKey } from '@hiveio/dhive';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -29,6 +31,7 @@ describe('AuthController', () => {
   const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
   let mongod: MongoMemoryServer;
   let authService: AuthService;
+  let hiveRepository: HiveRepository;
 
 
   beforeEach(async () => {
@@ -36,6 +39,7 @@ describe('AuthController', () => {
     const uri: string = mongod.getUri()
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
+    process.env.DELEGATED_ACCOUNT = 'threespeak';
 
     @Module({
       imports: [
@@ -85,6 +89,7 @@ describe('AuthController', () => {
       imports: [TestModule],
     }).compile();
     authService = moduleRef.get<AuthService>(AuthService);
+    hiveRepository = moduleRef.get<HiveRepository>(HiveRepository)
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init()
@@ -95,8 +100,8 @@ describe('AuthController', () => {
     await mongod.stop();
   });
 
-  describe('Login using did', () => {
-    it(`/POST login singleton`, async () => {
+  describe('/POST login singleton did', () => {
+    it(`Logs in successfully on the happy path`, async () => {
       await did.authenticate()
 
       // Correctly prepare the payload and sign the JWT
@@ -110,7 +115,7 @@ describe('AuthController', () => {
       const jws = await did.createJWS(payload);
 
       return request(app.getHttpServer())
-        .post('/api/v1/auth/login_singleton/did')
+        .post('/api/v1/auth/login/singleton/did')
         .send(jws)
         .set('Content-Type', 'application/json')
         .set('Accept', 'application/json')
@@ -123,4 +128,127 @@ describe('AuthController', () => {
         });
     });
   });
+
+  describe('/POST login singleton hive', () => {
+    it('Logs in sucessfully on the happy path', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { account: 'sisygoboom', ts: Date.now() };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
+
+      process.env.TEST_PUBLIC_KEY = privateKey.createPublic().toString();
+
+      const body = {
+        authority_type: 'posting',
+        proof_payload: message,
+        proof: signature.toString(),
+      }
+
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/login/singleton/hive')
+        .send(body)
+        .expect(201)
+        .then(response => {
+          expect(response.body).toHaveProperty('access_token');
+          expect(typeof response.body.access_token).toBe('string');
+        })
+    })
+
+    it('Fails to log in when the user does not have posting authority', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { account: 'ned', ts: Date.now() };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
+
+      process.env.TEST_PUBLIC_KEY = privateKey.createPublic().toString();
+
+      const body = {
+        authority_type: 'posting',
+        proof_payload: message,
+        proof: signature.toString(),
+      }
+
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/login/singleton/hive')
+        .send(body)
+        .expect(401)
+        .then(response => {
+          expect(response.body).toEqual({
+            errorType: "MISSING_POSTING_AUTHORITY",
+            reason: "Hive Account @ned has not granted posting authority to @threespeak"
+          })
+        })
+    })
+
+    it('Fails to log in when the proof is out of date', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { account: 'starkerz', ts: 1984 };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
+
+      process.env.TEST_PUBLIC_KEY = privateKey.createPublic().toString();
+
+      const body = {
+        authority_type: 'posting',
+        proof_payload: message,
+        proof: signature.toString(),
+      }
+
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/login/singleton/hive')
+        .send(body)
+        .expect(401)
+        .then(response => {
+          expect(response.body).toEqual({
+            errorType: "INVALID_SIGNATURE",
+            reason: "Invalid Signature",
+          })
+        })
+    })
+
+    it('Fails to log in when the proof is in the future', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { account: 'starkerz', ts: Date.now() + 30000 };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
+
+      process.env.TEST_PUBLIC_KEY = privateKey.createPublic().toString();
+
+      const body = {
+        authority_type: 'posting',
+        proof_payload: message,
+        proof: signature.toString(),
+      }
+
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/login/singleton/hive')
+        .send(body)
+        .expect(401)
+        .then(response => {
+          expect(response.body).toEqual({
+            errorType: "INVALID_SIGNATURE",
+            reason: "Invalid Signature",
+          })
+        })
+    })
+
+    it('Fails to log in when the proof is from the wrong account', async () => {
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const message = { account: 'starkerz', ts: Date.now() };
+      const signature = privateKey.sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest());
+
+      const body = {
+        authority_type: 'posting',
+        proof_payload: message,
+        proof: signature.toString(),
+      }
+
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/login/singleton/hive')
+        .send(body)
+        .expect(401)
+        .then(response => {
+          expect(response.body).toEqual({
+            errorType: "INVALID_SIGNATURE",
+            reason: "Invalid Signature",
+          })
+        })
+    })
+  })
 });

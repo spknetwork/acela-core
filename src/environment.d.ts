@@ -12,9 +12,6 @@ declare global {
       ACCOUNT_CREATOR: string;
       ACCOUNT_CREATOR_ACTIVE: string;
 
-      VOTER_ACCOUNT: string;
-      VOTER_ACCOUNT_POSTING: string;
-
       CAPTCHA_SITE_KEY: string;
       CAPTCHA_SECRET: string;
 

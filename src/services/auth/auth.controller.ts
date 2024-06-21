@@ -40,7 +40,6 @@ import { HiveRepository } from '../../repositories/hive/hive.repository';
 import { EmailService } from '../email/email.service';
 import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';
-import { ProofPayloadSchema } from './auth.types';
 import { parseAndValidateRequest } from './auth.utils';
 
 @Controller('/api/v1/auth')
@@ -79,62 +78,63 @@ export class AuthController {
   @ApiInternalServerErrorResponse({
     description: 'Internal Server Error - unrelated to request body',
   })
-  @Post(['/login/singleton', '/login/singleton/hive'])
+  @Post('/login/singleton/hive')
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    let proof_payload: { account: string; ts: number };
-    try {
-      proof_payload = ProofPayloadSchema.parse(JSON.parse(body.proof_payload));
-    } catch (error) {
-      throw new HttpException(
-        {
-          reason: 'Validation failed',
-          errorType: 'INVALID_PROOF_PAYLOAD',
-          details: error.errors,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const accountDetails = await this.hiveRepository.getAccount(proof_payload.account);
+    const accountDetails = await this.hiveRepository.getAccount(body.proof_payload.account);
 
     if (!accountDetails) {
       throw new HttpException(
         {
-          reason: `Hive Account @${proof_payload.account} does not exist`,
+          reason: `Hive Account @${body.proof_payload.account} does not exist`,
           errorType: 'ACCOUNT_NOT_FOUND',
         },
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    if (
-      this.hiveRepository.verifyHiveMessage(
-        cryptoUtils.sha256(JSON.stringify(proof_payload)),
-        body.proof,
-        accountDetails,
-      ) &&
-      new Date(proof_payload.ts) > moment().subtract('1', 'minute').toDate() //Extra safety to prevent request reuse
-    ) {
-      if (this.hiveRepository.verifyPostingAuth(accountDetails)) {
-        return await this.authService.authenticateUser('singleton', proof_payload.account, 'hive');
-      } else {
-        throw new HttpException(
-          {
-            reason: `Hive Account @${proof_payload.account} has not granted posting authority to @threespeak`,
-            errorType: 'MISSING_POSTING_AUTHORITY',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    } else {
+    const verifiedMessage = this.hiveRepository.verifyHiveMessage(
+      cryptoUtils.sha256(JSON.stringify(body.proof_payload)),
+      body.proof,
+      accountDetails,
+    );
+
+    if (!verifiedMessage) {
       throw new HttpException(
         {
           reason: 'Invalid Signature',
           errorType: 'INVALID_SIGNATURE',
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.UNAUTHORIZED,
       );
     }
+
+    const proofCreationTimestamp = new Date(body.proof_payload.ts);
+
+    const proofCreatedWithinAMinute =
+      proofCreationTimestamp > moment().subtract('1', 'minute').toDate() &&
+      proofCreationTimestamp < new Date();
+
+    if (!proofCreatedWithinAMinute) {
+      throw new HttpException(
+        {
+          reason: 'Invalid Signature',
+          errorType: 'INVALID_SIGNATURE',
+        },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (!this.hiveRepository.verifyPostingAuth(accountDetails)) {
+      throw new HttpException(
+        {
+          reason: `Hive Account @${body.proof_payload.account} has not granted posting authority to @threespeak`,
+          errorType: 'MISSING_POSTING_AUTHORITY',
+        },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    return await this.authService.authenticateUser('singleton', body.proof_payload.account, 'hive');
   }
 
   //@UseGuards(AuthGuard('local'))
@@ -150,7 +150,7 @@ export class AuthController {
     description: 'Internal Server Error - unrelated to request body',
   })
   @HttpCode(200)
-  @Post('/login_singleton/did')
+  @Post('/login/singleton/did')
   async loginSingletonReturn(@Body() body: WithAuthData) {
     try {
       await this.authService.getOrCreateUserByDid(body.did);

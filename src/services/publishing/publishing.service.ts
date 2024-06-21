@@ -367,7 +367,7 @@ export class PublishingService {
     return [
       'custom_json',
       {
-        required_posting_auths: [process.env.VOTER_ACCOUNT || 'threespeak', detail.author],
+        required_posting_auths: [process.env.DELEGATED_ACCOUNT || 'threespeak', detail.author],
         required_auths: [],
         id: '3speak-publish',
         json: JSON.stringify({

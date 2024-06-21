@@ -21,9 +21,9 @@ hiveJsPackage.config.set('rebranded_api', 'true');
 
 @Injectable()
 export class HiveRepository {
-  readonly #logger: Logger;
-  readonly #hiveJs = hiveJsPackage;
-  readonly #hive: Client = new Client(
+  readonly #logger: Logger = new Logger(HiveRepository.name);
+  readonly _hiveJs = hiveJsPackage;
+  readonly _hive: Client = new Client(
     process.env.HIVE_HOST?.split(',') || [
       'https://anyx.io',
       'https://hived.privex.io',
@@ -38,7 +38,7 @@ export class HiveRepository {
   constructor() {}
 
   async broadcastOperations(operations: OperationsArray) {
-    return await this.#hiveJs.broadcast
+    return await this._hiveJs.broadcast
       .sendAsync(
         {
           operations,
@@ -55,7 +55,7 @@ export class HiveRepository {
 
   async hivePostExists({ author, permlink }: AuthorPerm) {
     try {
-      const content = await this.#hiveJs.api.getContent(author, permlink);
+      const content = await this._hiveJs.api.getContent(author, permlink);
       // Check if the content is an object and has a body. This implicitly checks for non-empty strings.
       return typeof content === 'object' && !!content.body;
     } catch (e) {
@@ -66,7 +66,7 @@ export class HiveRepository {
 
   async hasEnoughRC({ author }: { author: string }): Promise<boolean> {
     try {
-      const rc = (await this.#hive.rc.findRCAccounts([author])) as any[];
+      const rc = (await this._hive.rc.findRCAccounts([author])) as any[];
       const rcInBillion = rc[0].rc_manabar.current_mana / 1_000_000_000;
       console.log(`Resource Credits for ${author}:`, rcInBillion);
       return rcInBillion > 6;
@@ -77,7 +77,7 @@ export class HiveRepository {
   }
 
   async getCommentCount({ author, permlink }: AuthorPerm): Promise<number | undefined> {
-    const res: { children: number } = await this.#hive.database.call('get_content', [
+    const res: { children: number } = await this._hive.database.call('get_content', [
       author,
       permlink,
     ]);
@@ -88,7 +88,7 @@ export class HiveRepository {
   }
 
   async getAccount(author: string) {
-    const [hiveAccount] = await this.#hive.database.getAccounts([author]);
+    const [hiveAccount] = await this._hive.database.getAccounts([author]);
     return hiveAccount;
   }
 
@@ -148,7 +148,7 @@ export class HiveRepository {
 
     const operations: Operation[] = [['create_claimed_account', accountData]];
 
-    return await this.#hive.broadcast.sendOperations(
+    return await this._hive.broadcast.sendOperations(
       operations,
       PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE || ''), // check this
     );
@@ -156,12 +156,16 @@ export class HiveRepository {
 
   verifyHiveMessage(message: Buffer, signature: string, account: ExtendedAccount): boolean {
     for (const auth of account.posting.key_auths) {
-      const sigValidity = PublicKey.fromString(auth[0].toString()).verify(
-        Buffer.from(message),
-        Signature.fromBuffer(Buffer.from(signature, 'hex')),
-      );
-      if (sigValidity) {
-        return true;
+      const publicKey = PublicKey.fromString(auth[0].toString());
+      if (auth[1] < account.posting.weight_threshold) continue;
+      try {
+        const signatureBuffer = Signature.fromBuffer(Buffer.from(signature, 'hex'));
+        const verified = publicKey.verify(message, signatureBuffer);
+        if (verified) {
+          return true;
+        }
+      } catch (e) {
+        this.#logger.debug(e);
       }
     }
     return false;
@@ -174,25 +178,25 @@ export class HiveRepository {
       );
       return;
     }
-    return this.#hive.broadcast.vote(
+    return this._hive.broadcast.vote(
       options,
       PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
     );
   }
 
   async getActiveVotes({ author, permlink }: { author: string; permlink: string }) {
-    return await this.#hive.database.call('get_active_votes', [author, permlink]);
+    return await this._hive.database.call('get_active_votes', [author, permlink]);
   }
 
   decodeMessage(memo: string) {
-    const decoded: string = this.#hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
+    const decoded: string = this._hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
     const message: unknown = JSON.parse(decoded.substr(1));
 
     return message;
   }
 
   async getPublicKeys(memo: string): Promise<string[]> {
-    return this.#hiveJs.memo.getPubKeys(memo);
+    return this._hiveJs.memo.getPubKeys(memo);
   }
 
   async comment(
@@ -200,7 +204,7 @@ export class HiveRepository {
     content: string,
     comment_options: { parent_author: string; parent_permlink: string },
   ) {
-    return await this.#hive.broadcast.comment(
+    return await this._hive.broadcast.comment(
       {
         parent_author: comment_options.parent_author || '',
         parent_permlink: comment_options.parent_permlink || '',
@@ -216,11 +220,11 @@ export class HiveRepository {
     );
   }
 
-  verifyPostingAuth(account: any): boolean {
+  verifyPostingAuth(account: ExtendedAccount): boolean {
     let doWe = false;
     if (Array.isArray(account.posting.account_auths)) {
       account.posting.account_auths.forEach(function (item) {
-        if (item[0] === process.env.VOTER_ACCOUNT) {
+        if (item[0] === process.env.DELEGATED_ACCOUNT) {
           doWe = true;
         }
       });

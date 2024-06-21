@@ -3,44 +3,28 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginSingletonHiveDto {
   @IsNotEmpty()
-  @ApiProperty({
-    description: 'Username of the account',
-    default: 'test-account',
-  })
-  username?: string;
-
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Network of the identity; Can be HIVE or CERAMIC',
-    default: 'HIVE',
-  })
-  network: string;
-
-  @IsNotEmpty()
   @ApiProperty({})
   authority_type?: string;
-  proof_payload: string;
+  proof_payload: {
+    ts: number;
+    account: string;
+  };
   proof: string;
 }
 
 export class LoginSingletonDidDto {
   @IsNotEmpty()
   @ApiProperty({
-    description: 'Username of the account',
-    default: 'test-account',
+    description: 'Did of the account',
+    default: 'test-did',
   })
-  username?: string;
+  did: string;
 
   @IsNotEmpty()
   @ApiProperty({
-    description: 'Network of the identity; Can be HIVE or CERAMIC',
-    default: 'HIVE',
+    description:
+      'Issued at (timestamp) - milliseconds denominated timestamp representing when the token was issued',
+    default: Date.now(),
   })
-  network: string;
-
-  @IsNotEmpty()
-  @ApiProperty({})
-  authority_type?: string;
-  proof_payload: string;
-  proof: string;
+  iat: number;
 }

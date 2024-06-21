@@ -183,7 +183,7 @@ export class VotingService {
       permlink: op.permlink,
     });
 
-    const voter = this.#configService.get<string>('VOTER_ACCOUNT');
+    const voter = this.#configService.get<string>('DELEGATED_ACCOUNT');
 
     if (!voter) {
       throw new Error('Voter account not set');
