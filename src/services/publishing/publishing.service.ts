@@ -11,7 +11,7 @@ import {
 } from '../../repositories/hive-chain/types';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
-import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import 'dotenv/config';
 import { Video } from '../../repositories/video/schemas/video.schema';
 
@@ -36,12 +36,12 @@ export class PublishingService {
   readonly #logger: Logger;
   readonly #videoRepository: VideoRepository;
   readonly #creatorRepository: CreatorRepository;
-  readonly #hiveRepository: HiveRepository;
+  readonly #hiveRepository: HiveChainRepository;
 
   constructor(
     videoRepository: VideoRepository,
     creatorRepository: CreatorRepository,
-    hiveRepository: HiveRepository,
+    hiveRepository: HiveChainRepository,
   ) {
     this.#videoRepository = videoRepository;
     this.#creatorRepository = creatorRepository;

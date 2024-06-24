@@ -1,13 +1,13 @@
 
-import { HiveRepository } from './hive-chain.repository';
+import { HiveChainRepository } from './hive-chain.repository';
 import { ExtendedAccount, PrivateKey } from '@hiveio/dhive';
 import * as crypto from "crypto";
 
 describe('HiveRepository', () => {
-  let hiveRepository: HiveRepository;
+  let hiveRepository: HiveChainRepository;
 
   beforeEach(() => {
-    hiveRepository = new HiveRepository();
+    hiveRepository = new HiveChainRepository();
   });
 
   describe('verifyHiveMessage', () => {

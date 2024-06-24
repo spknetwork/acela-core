@@ -10,7 +10,7 @@ import { ApiModule } from './api.module';
 import { AuthService } from '../auth/auth.service';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { UserRepository } from '../../repositories/user/user.repository';
-import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
@@ -29,7 +29,7 @@ describe('ApiController', () => {
   let authService: AuthService;
   let hiveAccountRepository: HiveAccountRepository;
   let userRepository: UserRepository;
-  let hiveRepository: HiveRepository;
+  let hiveRepository: HiveChainRepository;
   let linkedAccountsRepository: LinkedAccountRepository;
   let emailService: EmailService;
 
@@ -93,7 +93,7 @@ describe('ApiController', () => {
     authService = moduleRef.get<AuthService>(AuthService);
     hiveAccountRepository = moduleRef.get<HiveAccountRepository>(HiveAccountRepository);
     userRepository = moduleRef.get<UserRepository>(UserRepository);
-    hiveRepository = moduleRef.get<HiveRepository>(HiveRepository);
+    hiveRepository = moduleRef.get<HiveChainRepository>(HiveChainRepository);
     linkedAccountsRepository = moduleRef.get<LinkedAccountRepository>(LinkedAccountRepository);
     emailService = moduleRef.get<EmailService>(EmailService);
 

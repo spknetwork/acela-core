@@ -20,7 +20,7 @@ import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
 import crypto from 'crypto';
-import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { PrivateKey } from '@hiveio/dhive';
 
 describe('AuthController', () => {
@@ -31,7 +31,7 @@ describe('AuthController', () => {
   const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
   let mongod: MongoMemoryServer;
   let authService: AuthService;
-  let hiveRepository: HiveRepository;
+  let hiveChainRepository: HiveChainRepository;
 
 
   beforeEach(async () => {
@@ -89,7 +89,7 @@ describe('AuthController', () => {
       imports: [TestModule],
     }).compile();
     authService = moduleRef.get<AuthService>(AuthService);
-    hiveRepository = moduleRef.get<HiveRepository>(HiveRepository)
+    hiveChainRepository = moduleRef.get<HiveChainRepository>(HiveChainRepository);
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init()

@@ -16,7 +16,7 @@ import { UploadModule } from '../../repositories/upload/upload.module';
 import { VideoModule } from '../../repositories/video/video.module';
 import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
-import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import sharp from 'sharp';
 import { JwtModule } from '@nestjs/jwt';
 import crypto from 'crypto';
@@ -62,7 +62,7 @@ describe('UploadingController', () => {
         UploadingModule
       ],
       controllers: [UploadingController],
-      providers: [UploadingService, HiveRepository], // Ensure HiveRepository is provided if it's used in the service
+      providers: [UploadingService, HiveChainRepository], // Ensure HiveRepository is provided if it's used in the service
     })
     class TestModule {}
 

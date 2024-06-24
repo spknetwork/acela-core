@@ -31,6 +31,7 @@ import { VotePostDto } from './dto/VotePost.dto';
 import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
 import { parseAndValidateRequest } from '../auth/auth.utils';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 
 @Controller('/api/v1')
 export class ApiController {
@@ -40,7 +41,7 @@ export class ApiController {
     private readonly authService: AuthService,
     private readonly hiveAccountRepository: HiveAccountRepository,
     private readonly userRepository: UserRepository,
-    private readonly hiveRepository: HiveRepository,
+    private readonly hiveChainRepository: HiveChainRepository,
     //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
     private readonly linkedAccountsRepository: LinkedAccountRepository,
     private readonly emailService: EmailService,
@@ -101,7 +102,7 @@ export class ApiController {
     // console.log(body)
 
     //TODO: Do validation of account ownership before doing operation
-    return await this.hiveRepository.comment(author, body, { parent_author, parent_permlink });
+    return await this.hiveChainRepository.comment(author, body, { parent_author, parent_permlink });
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -253,14 +254,14 @@ export class ApiController {
     const { memo } = data;
     console.log(memo);
 
-    const message = this.hiveRepository.decodeMessage(memo) as {
+    const message = this.hiveChainRepository.decodeMessage(memo) as {
       account: string;
       authority: string;
       message: string;
     };
-    const pubKeys = await this.hiveRepository.getPublicKeys(memo);
+    const pubKeys = await this.hiveChainRepository.getPublicKeys(memo);
 
-    const account = await this.hiveRepository.getAccount(message.account);
+    const account = await this.hiveChainRepository.getAccount(message.account);
 
     if (!account) {
       throw new HttpException({ reason: 'Account not found' }, HttpStatus.BAD_REQUEST);
