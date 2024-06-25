@@ -4,11 +4,12 @@ import { ApiProperty } from '@nestjs/swagger';
 export class LoginSingletonHiveDto {
   @IsNotEmpty()
   @ApiProperty({})
-  authority_type?: string;
   proof_payload: {
     ts: number;
     account: string;
   };
+  @IsNotEmpty()
+  @ApiProperty({})
   proof: string;
 }
 
