@@ -5,6 +5,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ExtractJwt } from 'passport-jwt';
 import 'dotenv/config';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(StrategyLocal) {
@@ -23,8 +24,8 @@ export class LocalStrategy extends PassportStrategy(StrategyLocal) {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
-    const jwtPrivateKey = process.env.JWT_PRIVATE_KEY;
+  constructor(configService: ConfigService) {
+    const jwtPrivateKey = configService.get<string>('JWT_PRIVATE_KEY');
     if (!jwtPrivateKey) throw new Error('Missing JWT_PRIVATE_KEY in .env');
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
