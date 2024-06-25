@@ -1,5 +1,13 @@
 import { IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import crypto from 'crypto';
+import { PrivateKey } from '@hiveio/dhive';
+
+const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString('hex'));
+const message = { account: 'sisygoboom', ts: Date.now() };
+const signature = privateKey
+  .sign(crypto.createHash('sha256').update(JSON.stringify(message)).digest())
+  .toString();
 
 /**
  * Data Transfer Object (DTO) for login singleton hive
@@ -16,7 +24,7 @@ export class LoginSingletonHiveDto {
       ts: {
         type: 'number',
         description: 'Timestamp of the proof payload',
-        example: 1625158800,
+        example: Date.now(),
       },
       account: {
         type: 'string',
@@ -24,6 +32,7 @@ export class LoginSingletonHiveDto {
         example: 'user123',
       },
     },
+    example: message,
   })
   proof_payload: {
     ts: number;
@@ -37,7 +46,7 @@ export class LoginSingletonHiveDto {
   @ApiProperty({
     description: 'Proof string for authentication',
     type: 'string',
-    example: 'proofString123',
+    example: signature,
   })
   proof: string;
 }
