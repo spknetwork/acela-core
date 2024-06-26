@@ -22,6 +22,7 @@ describe('AuthController', () => {
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
     process.env.DELEGATED_ACCOUNT = 'threespeak';
+    process.env.ACCOUNT_CREATOR = 'threespeak';
 
     @Module({
       imports: [
@@ -60,9 +61,6 @@ describe('AuthController', () => {
 
   describe('Create hive account', () => {
     it('Creates an account on the happy path', async () => {
-
-      process.env.ACCOUNT_CREATOR = 'threespeak';
-
       const sub = 'sad';
       const response = await hiveService.requestHiveAccount('madeupusername77', sub)
       
@@ -75,9 +73,6 @@ describe('AuthController', () => {
     })
 
     it('Fails when a user requests a second account', async () => {
-
-      process.env.ACCOUNT_CREATOR = 'threespeak';
-
       const sub = 'sad';
       await hiveService.requestHiveAccount('madeupusername21', sub)
       await expect(hiveService.requestHiveAccount('madeupusername77', sub)).rejects.toThrow('Http Exception');

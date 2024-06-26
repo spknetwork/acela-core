@@ -43,6 +43,7 @@ describe('AuthController', () => {
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
     process.env.DELEGATED_ACCOUNT = 'threespeak';
+    process.env.ACCOUNT_CREATOR = 'threespeak';
 
     @Module({
       imports: [
