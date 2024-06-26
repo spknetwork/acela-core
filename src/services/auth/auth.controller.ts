@@ -1,4 +1,4 @@
-import { cryptoUtils } from '@hiveio/dhive';
+import { TransactionConfirmation, cryptoUtils } from '@hiveio/dhive';
 import {
   BadRequestException,
   Body,
@@ -393,14 +393,29 @@ export class AuthController {
           type: 'string',
           default: 'f555e5e690aefa99f5d6c1fe47c08db6ad79af1f',
         },
+        block_num: {
+          type: 'number',
+          default: 1,
+        },
+        trx_num: {
+          type: 'number',
+          default: 1,
+        },
+        expired: {
+          type: 'boolean',
+          default: false,
+        },
       },
     },
   })
   @UseGuards(AuthGuard('jwt'))
   @Post('/request_hive_account')
-  async requestHiveAccount(@Body() body: RequestHiveAccountDto, @Request() req) {
+  async requestHiveAccount(
+    @Body() body: RequestHiveAccountDto,
+    @Request() req,
+  ): Promise<TransactionConfirmation> {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
 
-    await this.hiveService.requestHiveAccount(body.username, parsedRequest.user.sub);
+    return await this.hiveService.requestHiveAccount(body.username, parsedRequest.user.sub);
   }
 }
