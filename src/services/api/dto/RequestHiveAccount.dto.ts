@@ -4,8 +4,8 @@ import { IsNotEmpty } from 'class-validator';
 export class RequestHiveAccountDto {
   @IsNotEmpty()
   @ApiProperty({
-    description: 'Did of the account',
-    default: 'test-did',
+    description: 'Username for the new Hive account',
+    default: 'myUsername123',
   })
   username: string;
 }
