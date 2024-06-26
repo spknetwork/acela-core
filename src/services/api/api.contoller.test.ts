@@ -161,8 +161,10 @@ describe('ApiController', () => {
         .expect(200)
         .then(response => {
           expect(response.body).toEqual({
-            id: 'test_user_id',
-            user_id: 'test_user_id'
+            id: "test_user_id",
+            network: "did",
+            sub: "test_user_id",
+            username: "test",
           });
         });
     });
