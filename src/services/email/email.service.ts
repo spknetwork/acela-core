@@ -35,7 +35,7 @@ export class EmailService {
     await this.send(
       email,
       'Complete 3Speak registration',
-      `test registration. Click <a href="http://${this.configService.get('PUBLIC_CALLBACK_URL') || 'localhost:4569'}/api/v1/auth/verifyemail?code=${email_code}">here</a> to verify email address.`,
+      `test registration. Click <a href="http://${this.configService.get('PUBLIC_CALLBACK_URL') || 'localhost:4569'}/v1/auth/verifyemail?code=${email_code}">here</a> to verify email address.`,
     );
   }
 }
