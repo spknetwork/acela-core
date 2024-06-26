@@ -20,8 +20,11 @@ import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
 import crypto from 'crypto';
-import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { PrivateKey } from '@hiveio/dhive';
+import { AuthGuard } from '@nestjs/passport';
+import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
+import { HiveService } from '../hive/hive.service';
+import { HiveModule } from '../hive/hive.module';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -31,7 +34,7 @@ describe('AuthController', () => {
   const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
   let mongod: MongoMemoryServer;
   let authService: AuthService;
-  let hiveChainRepository: HiveChainRepository;
+  let hiveService: HiveService;
 
 
   beforeEach(async () => {
@@ -77,6 +80,7 @@ describe('AuthController', () => {
         HiveChainModule,
         EmailModule,
         AuthModule,
+        HiveModule
       ],
       controllers: [AuthController],
       providers: [AuthService]
@@ -87,9 +91,13 @@ describe('AuthController', () => {
 
     moduleRef = await Test.createTestingModule({
       imports: [TestModule],
-    }).compile();
+    }).overrideGuard(AuthGuard('jwt'))
+      .useClass(MockAuthGuard)
+      .overrideInterceptor(UserDetailsInterceptor)
+      .useClass(MockUserDetailsInterceptor)
+      .compile();
     authService = moduleRef.get<AuthService>(AuthService);
-    hiveChainRepository = moduleRef.get<HiveChainRepository>(HiveChainRepository);
+    hiveService = moduleRef.get<HiveService>(HiveService);
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init()
@@ -129,7 +137,40 @@ describe('AuthController', () => {
     });
   });
 
-  describe('/POST login singleton hive', () => {
+  describe('/POST /request_hive_account', () => {
+    it('creates a Hive account successfully', async () => {
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/request_hive_account')
+        .send({ username: 'test_user_id' })
+        .set('Authorization', 'Bearer <your_mocked_jwt_token>')
+        .expect(201)
+        .then(response => {
+          expect(response.body).toEqual({});
+        });
+    });
+  
+    it('throws error when user has already created a Hive account', async () => {
+
+      await hiveService.requestHiveAccount('yeet', 'test_user_id')
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/request_hive_account')
+        .send({ username: 'yeet' })
+        .set('Authorization', 'Bearer <your_mocked_jwt_token>')
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual({
+            reason: "You have already created the maximum of 1 free Hive account",
+          });
+        });
+    });
+  });
+  
+
+  describe('/POST login_singleton_hive', () => {
     it('Logs in sucessfully on the happy path', async () => {
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
       const message = { account: 'sisygoboom', ts: Date.now() };

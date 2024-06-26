@@ -93,8 +93,8 @@ export class HiveChainRepository {
   }
 
   async createAccountWithAuthority(
-    newAccountname,
-    authorityAccountname,
+    newAccountname: string,
+    authorityAccountname: string,
     options?: {
       posting_auths?: string[];
       active_auths?: string[];

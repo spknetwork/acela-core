@@ -24,14 +24,13 @@ import {
 } from '@nestjs/swagger';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { UserRepository } from '../../repositories/user/user.repository';
-import { HiveRepository } from '../../repositories/hive-chain/hive-chain.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { LinkAccountPostDto } from './dto/LinkAccountPost.dto';
 import { VotePostResponseDto } from './dto/VotePostResponse.dto';
 import { VotePostDto } from './dto/VotePost.dto';
 import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
 import { parseAndValidateRequest } from '../auth/auth.utils';
-import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 
 @Controller('/api/v1')
 export class ApiController {
@@ -316,7 +315,7 @@ export class ApiController {
     if (delegatedAuth) {
       try {
         // console.log(out)
-        return this.hiveRepository.vote({ author, permlink, voter, weight: 500 });
+        return this.hiveChainRepository.vote({ author, permlink, voter, weight: 500 });
       } catch (ex) {
         console.log(ex);
         console.log(ex.message);

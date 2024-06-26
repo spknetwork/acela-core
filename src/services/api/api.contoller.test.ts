@@ -22,6 +22,7 @@ import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } fro
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import * as crypto from 'crypto';
+import { HiveModule } from '../hive/hive.module';
 
 describe('ApiController', () => {
   let app: INestApplication;
@@ -64,11 +65,12 @@ describe('ApiController', () => {
           connectionName: '3speakAuth',
           dbName: '3speakAuth',
         }),
-        HiveAccountModule,
+        HiveModule,
         UserModule,
         AuthModule,
-        EmailModule,
+        HiveAccountModule,
         HiveChainModule,
+        EmailModule,
         ApiModule,
         JwtModule.register({
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,

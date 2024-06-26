@@ -8,18 +8,23 @@ import { UserAccountModule } from '../../repositories/userAccount/user-account.m
 import { SessionModule } from '../../repositories/session/session.module';
 import { AuthController } from './auth.controller';
 import { EmailModule } from '../email/email.module';
-import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
-import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { AuthMiddleware } from './auth.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HiveModule } from '../hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
+import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
 
 @Module({
   imports: [
     ConfigModule,
     UserModule,
     UserAccountModule,
+    HiveChainModule,
     HiveAccountModule,
     HiveChainModule,
+    HiveAccountModule,
+    UserModule,
+    HiveModule,
     EmailModule,
     SessionModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -28,7 +33,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
         const key = configService.get<string>('JWT_PRIVATE_KEY');
-        console.log(key);
         return {
           secretOrPrivateKey: key,
           signOptions: { expiresIn: '30d' },

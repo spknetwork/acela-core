@@ -41,6 +41,8 @@ import { EmailService } from '../email/email.service';
 import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';
 import { parseAndValidateRequest } from './auth.utils';
+import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
+import { HiveService } from '../hive/hive.service';
 
 @Controller('/api/v1/auth')
 export class AuthController {
@@ -51,6 +53,7 @@ export class AuthController {
     private readonly hiveAccountRepository: HiveAccountRepository,
     private readonly userRepository: UserRepository,
     private readonly hiveRepository: HiveChainRepository,
+    private readonly hiveService: HiveService,
     //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
     private readonly emailService: EmailService,
   ) {}
@@ -382,17 +385,6 @@ export class AuthController {
       'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
     required: true,
   })
-  @ApiBody({
-    schema: {
-      properties: {
-        username: {
-          type: 'string',
-          default: 'test-account',
-          description: 'Username of requested HIVE account',
-        },
-      },
-    },
-  })
   @ApiOkResponse({
     description: 'Account created',
     schema: {
@@ -406,42 +398,9 @@ export class AuthController {
   })
   @UseGuards(AuthGuard('jwt'))
   @Post('/request_hive_account')
-  async requestHiveAccount(
-    @Body() body: { username: string },
-    @Request() req: { user: { user_id: string } },
-  ) {
-    const existingAcocunt = await this.hiveAccountRepository.findOneByOwner(req.user.user_id);
-    if (existingAcocunt) {
-      throw new HttpException(
-        { reason: 'You have already created the maximum of 1 free Hive account' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    // console.log(existingAcocunt)
-    const output = await HiveClient.database.getAccounts([body.username]);
-    // console.log(output)
-    if (output.length === 0) {
-      try {
-        const accountCreation = await this.hiveRepository.createAccountWithAuthority(
-          body.username,
-          process.env.ACCOUNT_CREATOR,
-        );
-        //Here will be thrown if failed at this point
+  async requestHiveAccount(@Body() body: RequestHiveAccountDto, @Request() req) {
+    const parsedRequest = parseAndValidateRequest(req, this.#logger);
 
-        await this.hiveAccountRepository.insertCreated(body.username, req.user.user_id);
-
-        return accountCreation;
-      } catch (ex) {
-        throw new HttpException(
-          { reason: `On chain error - ${ex.message}` },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-    } else {
-      throw new HttpException(
-        { reason: 'Hive account with the requested name already exists' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    await this.hiveService.requestHiveAccount(body.username, parsedRequest.user.sub);
   }
 }
