@@ -148,7 +148,12 @@ describe('AuthController', () => {
         .set('Authorization', 'Bearer <your_mocked_jwt_token>')
         .expect(201)
         .then(response => {
-          expect(response.body).toEqual({});
+          expect(response.body).toEqual({
+            block_num: 1,
+            expired: false,
+            id: "id",
+            trx_num: 10,
+          });
         });
     });
   
