@@ -42,7 +42,7 @@ import bcrypt from 'bcryptjs';
 import { WithAuthData } from './auth.interface';
 import { parseAndValidateRequest } from './auth.utils';
 
-@Controller('/api/v1/auth')
+@Controller('/v1/auth')
 export class AuthController {
   readonly #logger = new Logger(AuthController.name);
 

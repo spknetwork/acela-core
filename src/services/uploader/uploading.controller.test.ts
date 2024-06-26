@@ -105,7 +105,7 @@ describe('UploadingController', () => {
         .toBuffer();
 
       return request(app.getHttpServer())
-        .post('/api/v1/upload/thumbnail')
+        .post('/v1/upload/thumbnail')
         .set('Authorization', `Bearer ${jwtToken}`)
         .attach('file', semiTransparentRedPng, 'test-image.png')
         .field('video_id', 'test_video_id')

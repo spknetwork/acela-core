@@ -34,7 +34,7 @@ MulterModule.registerAsync({
   }),
 });
 
-@Controller('/api/v1/upload')
+@Controller('/v1/upload')
 export class UploadingController {
   readonly #logger = new Logger(UploadingController.name);
 

@@ -115,7 +115,7 @@ describe('AuthController', () => {
       const jws = await did.createJWS(payload);
 
       return request(app.getHttpServer())
-        .post('/api/v1/auth/login/singleton/did')
+        .post('/v1/auth/login/singleton/did')
         .send(jws)
         .set('Content-Type', 'application/json')
         .set('Accept', 'application/json')
@@ -144,7 +144,7 @@ describe('AuthController', () => {
       }
 
       return request(app.getHttpServer())
-        .post('/api/v1/auth/login/singleton/hive')
+        .post('/v1/auth/login/singleton/hive')
         .send(body)
         .expect(201)
         .then(response => {
@@ -167,7 +167,7 @@ describe('AuthController', () => {
       }
 
       return request(app.getHttpServer())
-        .post('/api/v1/auth/login/singleton/hive')
+        .post('/v1/auth/login/singleton/hive')
         .send(body)
         .expect(401)
         .then(response => {
@@ -192,7 +192,7 @@ describe('AuthController', () => {
       }
 
       return request(app.getHttpServer())
-        .post('/api/v1/auth/login/singleton/hive')
+        .post('/v1/auth/login/singleton/hive')
         .send(body)
         .expect(401)
         .then(response => {
@@ -217,7 +217,7 @@ describe('AuthController', () => {
       }
 
       return request(app.getHttpServer())
-        .post('/api/v1/auth/login/singleton/hive')
+        .post('/v1/auth/login/singleton/hive')
         .send(body)
         .expect(401)
         .then(response => {
@@ -240,7 +240,7 @@ describe('AuthController', () => {
       }
 
       return request(app.getHttpServer())
-        .post('/api/v1/auth/login/singleton/hive')
+        .post('/v1/auth/login/singleton/hive')
         .send(body)
         .expect(401)
         .then(response => {

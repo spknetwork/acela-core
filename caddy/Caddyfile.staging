@@ -1,0 +1,9 @@
+staging.3speak.tv {
+  handle_path /api/* {
+    reverse_proxy acela-core:4569
+  }
+
+  handle_path /tusd/* {
+    reverse_proxy tusd:1080
+  }
+}
