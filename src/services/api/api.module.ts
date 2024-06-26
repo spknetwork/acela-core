@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Module } from '@nestjs/common';
 import { ApiController } from './api.controller';
 import { AuthModule } from '../auth/auth.module';
@@ -8,6 +9,7 @@ import { EmailModule } from '../email/email.module';
 import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 import { RequireHiveVerify } from './utils';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -17,9 +19,13 @@ import { JwtModule } from '@nestjs/jwt';
     HiveChainModule,
     LinkedAccountModule,
     EmailModule,
-    JwtModule.register({
-      privateKey: process.env.JWT_PRIVATE_KEY,
-      signOptions: { expiresIn: '30d' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secretOrPrivateKey: configService.get<string>('JWT_PRIVATE_KEY'),
+        signOptions: { expiresIn: '30d' },
+      }),
     }),
   ],
   controllers: [ApiController],

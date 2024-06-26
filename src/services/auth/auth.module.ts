@@ -1,8 +1,7 @@
-import 'dotenv/config';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
-import { JwtModule, JwtService } from '@nestjs/jwt';
+import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy, LocalStrategy } from './auth.strategy';
 import { UserModule } from '../../repositories/user/user.module';
 import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
@@ -19,18 +18,25 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     ConfigModule,
     UserModule,
     UserAccountModule,
-    UserModule,
     HiveAccountModule,
     HiveChainModule,
     EmailModule,
     SessionModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      privateKey: process.env.JWT_PRIVATE_KEY,
-      signOptions: { expiresIn: '30d' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        const key = configService.get<string>('JWT_PRIVATE_KEY');
+        console.log(key);
+        return {
+          secretOrPrivateKey: key,
+          signOptions: { expiresIn: '30d' },
+        };
+      },
     }),
   ],
-  providers: [AuthService, LocalStrategy, JwtService, ConfigService, JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy, ConfigService],
   controllers: [AuthController],
   exports: [AuthService],
 })
