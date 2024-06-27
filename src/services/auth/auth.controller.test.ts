@@ -143,7 +143,7 @@ describe('AuthController', () => {
   
       // Make the request to the endpoint
       return request(app.getHttpServer())
-        .post('/api/v1/auth/request_hive_account')
+        .post('/v1/auth/request_hive_account')
         .send({ username: 'test_user_id' })
         .set('Authorization', 'Bearer <your_mocked_jwt_token>')
         .expect(201)
@@ -163,7 +163,7 @@ describe('AuthController', () => {
   
       // Make the request to the endpoint
       return request(app.getHttpServer())
-        .post('/api/v1/auth/request_hive_account')
+        .post('/v1/auth/request_hive_account')
         .send({ username: 'yeet' })
         .set('Authorization', 'Bearer <your_mocked_jwt_token>')
         .expect(400)
