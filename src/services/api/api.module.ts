@@ -7,9 +7,9 @@ import { HiveAccountModule } from '../../repositories/hive-account/hive-account.
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
-import { RequireHiveVerify } from './utils';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HiveModule } from '../hive/hive.module';
 
 @Module({
   imports: [
@@ -17,6 +17,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     UserModule,
     HiveAccountModule,
     HiveChainModule,
+    HiveModule,
     LinkedAccountModule,
     EmailModule,
     JwtModule.registerAsync({
@@ -29,6 +30,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
   ],
   controllers: [ApiController],
-  providers: [RequireHiveVerify],
+  providers: [],
 })
 export class ApiModule {}
