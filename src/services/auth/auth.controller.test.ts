@@ -7,7 +7,7 @@ import { Test } from '@nestjs/testing';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import { AuthModule } from './auth.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
@@ -20,8 +20,11 @@ import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
 import crypto from 'crypto';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
 import { PrivateKey } from '@hiveio/dhive';
+import { AuthGuard } from '@nestjs/passport';
+import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
+import { HiveService } from '../hive/hive.service';
+import { HiveModule } from '../hive/hive.module';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -31,7 +34,7 @@ describe('AuthController', () => {
   const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
   let mongod: MongoMemoryServer;
   let authService: AuthService;
-  let hiveRepository: HiveRepository;
+  let hiveService: HiveService;
 
 
   beforeEach(async () => {
@@ -40,6 +43,7 @@ describe('AuthController', () => {
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
     process.env.DELEGATED_ACCOUNT = 'threespeak';
+    process.env.ACCOUNT_CREATOR = 'threespeak';
 
     @Module({
       imports: [
@@ -74,9 +78,10 @@ describe('AuthController', () => {
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
           signOptions: { expiresIn: '30d' },
         }),
-        HiveModule,
+        HiveChainModule,
         EmailModule,
         AuthModule,
+        HiveModule
       ],
       controllers: [AuthController],
       providers: [AuthService]
@@ -87,9 +92,13 @@ describe('AuthController', () => {
 
     moduleRef = await Test.createTestingModule({
       imports: [TestModule],
-    }).compile();
+    }).overrideGuard(AuthGuard('jwt'))
+      .useClass(MockAuthGuard)
+      .overrideInterceptor(UserDetailsInterceptor)
+      .useClass(MockUserDetailsInterceptor)
+      .compile();
     authService = moduleRef.get<AuthService>(AuthService);
-    hiveRepository = moduleRef.get<HiveRepository>(HiveRepository)
+    hiveService = moduleRef.get<HiveService>(HiveService);
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init()
@@ -129,7 +138,45 @@ describe('AuthController', () => {
     });
   });
 
-  describe('/POST login singleton hive', () => {
+  describe('/POST /request_hive_account', () => {
+    it('creates a Hive account successfully', async () => {
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/request_hive_account')
+        .send({ username: 'test_user_id' })
+        .set('Authorization', 'Bearer <your_mocked_jwt_token>')
+        .expect(201)
+        .then(response => {
+          expect(response.body).toEqual({
+            block_num: 1,
+            expired: false,
+            id: "id",
+            trx_num: 10,
+          });
+        });
+    });
+  
+    it('throws error when user has already created a Hive account', async () => {
+
+      await hiveService.requestHiveAccount('yeet', 'test_user_id')
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/api/v1/auth/request_hive_account')
+        .send({ username: 'yeet' })
+        .set('Authorization', 'Bearer <your_mocked_jwt_token>')
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual({
+            reason: "You have already created the maximum of 1 free Hive account",
+          });
+        });
+    });
+  });
+  
+
+  describe('/POST login_singleton_hive', () => {
     it('Logs in sucessfully on the happy path', async () => {
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
       const message = { account: 'sisygoboom', ts: Date.now() };

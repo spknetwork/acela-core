@@ -20,8 +20,8 @@ hiveJsPackage.api.setOptions({
 hiveJsPackage.config.set('rebranded_api', 'true');
 
 @Injectable()
-export class HiveRepository {
-  readonly #logger: Logger = new Logger(HiveRepository.name);
+export class HiveChainRepository {
+  readonly #logger: Logger = new Logger(HiveChainRepository.name);
   readonly _hiveJs = hiveJsPackage;
   readonly _hive: Client = new Client(
     process.env.HIVE_HOST?.split(',') || [
@@ -93,8 +93,8 @@ export class HiveRepository {
   }
 
   async createAccountWithAuthority(
-    newAccountname,
-    authorityAccountname,
+    newAccountname: string,
+    authorityAccountname: string,
     options?: {
       posting_auths?: string[];
       active_auths?: string[];

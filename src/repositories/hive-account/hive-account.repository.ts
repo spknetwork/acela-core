@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { HiveAccount } from './schemas/hive-account.schema';
+import { ObjectId } from 'mongodb';
 
 @Injectable()
 export class HiveAccountRepository {
@@ -11,8 +12,21 @@ export class HiveAccountRepository {
     @InjectModel(HiveAccount.name, 'threespeak') private hiveAccountModel: Model<HiveAccount>,
   ) {}
 
-  async findOneByOwner(created_by: string): Promise<HiveAccount | null> {
-    const acelaUser = await this.hiveAccountModel.findOne({ created_by });
+  async findOneByOwnerIdAndHiveAccountName({
+    user_id,
+    account,
+  }: {
+    user_id: string | ObjectId;
+    account: string;
+  }): Promise<HiveAccount | null> {
+    const acelaUser = await this.hiveAccountModel.findOne({ user_id, account });
+    this.#logger.log(acelaUser);
+
+    return acelaUser;
+  }
+
+  async findOneByOwnerId({ user_id }: { user_id: string | ObjectId }): Promise<HiveAccount | null> {
+    const acelaUser = await this.hiveAccountModel.findOne({ user_id });
     this.#logger.log(acelaUser);
 
     return acelaUser;
@@ -31,14 +45,10 @@ export class HiveAccountRepository {
     });
   }
 
-  async insertCreated(username: string, created_by) {
+  async insertCreated(username: string, created_by: string) {
     return await this.hiveAccountModel.create({
-      status: 'created',
-      username,
-      keys_requested: false,
-      created_by,
-      requested_at: new Date(),
-      created_at: new Date(),
+      account: username,
+      user_id: created_by,
     });
   }
 }

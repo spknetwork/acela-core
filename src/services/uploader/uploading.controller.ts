@@ -24,7 +24,7 @@ import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto';
 import { UpdateUploadDto } from './dto/update-upload.dto';
 import { StartEncodeDto } from './dto/start-encode.dto';
 import { UploadingService } from './uploading.service';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { Upload } from './uploading.types';
 import { parseAndValidateRequest } from '../auth/auth.utils';
 
@@ -40,7 +40,7 @@ export class UploadingController {
 
   constructor(
     private readonly uploadingService: UploadingService,
-    private readonly hiveRepository: HiveRepository,
+    private readonly hiveRepository: HiveChainRepository,
   ) {}
 
   @ApiConsumes('multipart/form-data', 'application/json')

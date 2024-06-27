@@ -6,7 +6,7 @@ import { VideoModule } from '../../repositories/video/video.module';
 import { UploadingService } from './uploading.service';
 import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { JwtModule } from '@nestjs/jwt';
 import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -17,7 +17,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     VideoModule,
     IpfsModule,
     PublishingModule,
-    HiveModule,
+    HiveChainModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
