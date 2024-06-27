@@ -28,7 +28,7 @@ export class HiveService {
       );
     }
 
-    const accountCreation = await this.createAccountWithAuthority(hiveUsername);
+    const accountCreation = await this.#createAccountWithAuthority(hiveUsername);
 
     console.log(accountCreation);
 
@@ -37,7 +37,7 @@ export class HiveService {
     return accountCreation;
   }
 
-  async createAccountWithAuthority(hiveUsername: string) {
+  async #createAccountWithAuthority(hiveUsername: string) {
     if (!process.env.ACCOUNT_CREATOR) {
       throw new Error('Please set the ACCOUNT_CREATOR env var');
     }
