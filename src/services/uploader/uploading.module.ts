@@ -6,9 +6,10 @@ import { VideoModule } from '../../repositories/video/video.module';
 import { UploadingService } from './uploading.service';
 import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { JwtModule } from '@nestjs/jwt';
 import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -16,10 +17,14 @@ import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils';
     VideoModule,
     IpfsModule,
     PublishingModule,
-    HiveModule,
-    JwtModule.register({
-      privateKey: process.env.JWT_PRIVATE_KEY,
-      signOptions: { expiresIn: '30d' },
+    HiveChainModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secretOrPrivateKey: configService.get<string>('JWT_PRIVATE_KEY'),
+        signOptions: { expiresIn: '30d' },
+      }),
     }),
   ],
   controllers: [UploadingController],

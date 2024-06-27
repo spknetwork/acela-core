@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { HiveRepository } from './hive.repository';
+import { HiveChainRepository } from './hive-chain.repository';
 import { OperationsArray } from './types';
-import { TransactionConfirmation } from '@hiveio/dhive';
+import { Operation, TransactionConfirmation } from '@hiveio/dhive';
 
 @Injectable()
-export class MockHiveRepository extends HiveRepository {
+export class MockHiveRepository extends HiveChainRepository {
   readonly #logger: Logger = new Logger(MockHiveRepository.name);
 
   constructor() {
@@ -58,6 +58,65 @@ export class MockHiveRepository extends HiveRepository {
       trx_num: 789,
       expired: false,
     });
+  }
+
+  async createAccountWithAuthority(
+    newAccountname: string,
+    authorityAccountname: string,
+    options?: {
+      posting_auths?: string[];
+      active_auths?: string[];
+    },
+  ) {
+    const owner = {
+      weight_threshold: 1,
+      account_auths: [[authorityAccountname, 1]],
+      key_auths: [],
+    };
+    const active = {
+      weight_threshold: 1,
+      account_auths: [
+        [authorityAccountname, 1],
+        ...(options?.active_auths || []).map((e) => {
+          return [e, 1];
+        }),
+      ],
+      key_auths: [],
+    };
+    const posting = {
+      weight_threshold: 1,
+      account_auths: [
+        [authorityAccountname, 1],
+        ...(options?.posting_auths || []).map((e) => {
+          return [e, 1];
+        }),
+      ],
+      key_auths: [],
+    };
+    const memo_key = 'STM7C9FCSZ6ntNsrwkU5MCvAB7TV44bUF8J4pwWLWpGY5Z7Ba7Q6e';
+
+    const accountData = {
+      creator: authorityAccountname,
+      new_account_name: newAccountname,
+      owner,
+      active,
+      posting,
+      memo_key,
+      json_metadata: JSON.stringify({
+        // beneficiaries: [
+        //   {
+        //     name: 'spk.beneficiary',
+        //     weight: 500,
+        //     label: 'provider',
+        //   },
+        // ],
+      }),
+      extensions: [],
+    };
+
+    const operations: Operation[] = [['create_claimed_account', accountData]];
+
+    return { id: 'id', block_num: 1, expired: false, trx_num: 10 };
   }
 
   async comment(

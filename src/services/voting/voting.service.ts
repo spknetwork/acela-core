@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { CreatorRepository } from '../../repositories/creator/creator.repository';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import moment from 'moment';
 import { ExtendedAccount, VoteOperation } from '@hiveio/dhive';
 import { VideoMap } from './types';
@@ -12,13 +12,13 @@ export class VotingService {
   readonly #logger: Logger;
   readonly #videoRepository: VideoRepository;
   readonly #creatorRepository: CreatorRepository;
-  readonly #hiveRepository: HiveRepository;
+  readonly #hiveRepository: HiveChainRepository;
   readonly #configService: ConfigService;
 
   constructor(
     videoRepository: VideoRepository,
     creatorRepository: CreatorRepository,
-    hiveRepository: HiveRepository,
+    hiveRepository: HiveChainRepository,
     configService: ConfigService,
   ) {
     this.#videoRepository = videoRepository;

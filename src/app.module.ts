@@ -1,16 +1,16 @@
+import 'dotenv/config';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TasksModule } from './services/tasks/tasks.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { VideoModule } from './repositories/video/video.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PublishingModule } from './services/publishing/publishing.module';
 import { CreatorModule } from './repositories/creator/creator.module';
 import { UserModule } from './repositories/user/user.module';
 import { ApiModule } from './services/api/api.module';
 import { AuthModule } from './services/auth/auth.module';
-import { HiveModule } from './repositories/hive/hive.module';
-import { DelegatedAuthorityModule } from './repositories/delegated-authority/delegated-auhthority.module';
+import { HiveChainModule } from './repositories/hive-chain/hive-chain.module';
 import { HiveAccountModule } from './repositories/hive-account/hive-account.module';
 import { LinkedAccountModule } from './repositories/linked-accounts/linked-account.module';
 import { SessionModule } from './repositories/session/session.module';
@@ -60,10 +60,9 @@ const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
     PublishingModule,
     AuthModule,
     TasksModule,
-    HiveModule,
+    HiveChainModule,
     IpfsModule,
     UploadingModule,
-    DelegatedAuthorityModule,
     HiveAccountModule,
     LinkedAccountModule,
     SessionModule,
@@ -72,7 +71,14 @@ const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
     UserAccountModule,
     ApiModule,
     VotingModule,
-    JwtModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secretOrPrivateKey: configService.get<string>('JWT_PRIVATE_KEY'),
+        signOptions: { expiresIn: '30d' },
+      }),
+    }),
   ],
   controllers: [],
   providers: [],

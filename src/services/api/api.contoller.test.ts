@@ -10,7 +10,7 @@ import { ApiModule } from './api.module';
 import { AuthService } from '../auth/auth.service';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { UserRepository } from '../../repositories/user/user.repository';
-import { HiveRepository } from '../../repositories/hive/hive.repository';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
@@ -19,9 +19,10 @@ import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-a
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from '../auth/auth.module';
 import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
-import { HiveModule } from '../../repositories/hive/hive.module';
+import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import * as crypto from 'crypto';
+import { HiveModule } from '../hive/hive.module';
 
 describe('ApiController', () => {
   let app: INestApplication;
@@ -29,7 +30,7 @@ describe('ApiController', () => {
   let authService: AuthService;
   let hiveAccountRepository: HiveAccountRepository;
   let userRepository: UserRepository;
-  let hiveRepository: HiveRepository;
+  let hiveRepository: HiveChainRepository;
   let linkedAccountsRepository: LinkedAccountRepository;
   let emailService: EmailService;
 
@@ -64,11 +65,12 @@ describe('ApiController', () => {
           connectionName: '3speakAuth',
           dbName: '3speakAuth',
         }),
-        HiveAccountModule,
+        HiveModule,
         UserModule,
         AuthModule,
+        HiveAccountModule,
+        HiveChainModule,
         EmailModule,
-        HiveModule,
         ApiModule,
         JwtModule.register({
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
@@ -93,7 +95,7 @@ describe('ApiController', () => {
     authService = moduleRef.get<AuthService>(AuthService);
     hiveAccountRepository = moduleRef.get<HiveAccountRepository>(HiveAccountRepository);
     userRepository = moduleRef.get<UserRepository>(UserRepository);
-    hiveRepository = moduleRef.get<HiveRepository>(HiveRepository);
+    hiveRepository = moduleRef.get<HiveChainRepository>(HiveChainRepository);
     linkedAccountsRepository = moduleRef.get<LinkedAccountRepository>(LinkedAccountRepository);
     emailService = moduleRef.get<EmailService>(EmailService);
 
@@ -161,8 +163,10 @@ describe('ApiController', () => {
         .expect(200)
         .then(response => {
           expect(response.body).toEqual({
-            id: 'test_user_id',
-            user_id: 'test_user_id'
+            id: "test_user_id",
+            network: "did",
+            sub: "test_user_id",
+            username: "test",
           });
         });
     });

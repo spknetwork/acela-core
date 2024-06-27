@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { HiveRepository as HiveRepository } from './hive.repository';
+import { HiveChainRepository } from './hive-chain.repository';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MockHiveRepository } from './hive.repository.mock';
+import { MockHiveRepository } from './hive-chain.repository.mock';
 import { MockFactory } from '../../factories/mock.factory';
 
 @Module({
@@ -9,17 +9,17 @@ import { MockFactory } from '../../factories/mock.factory';
   controllers: [],
   providers: [
     {
-      provide: HiveRepository,
+      provide: HiveChainRepository,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
-        MockFactory<HiveRepository, undefined>(
-          HiveRepository,
+        MockFactory<HiveChainRepository, undefined>(
+          HiveChainRepository,
           MockHiveRepository,
           configService,
           'local',
         ),
     },
   ],
-  exports: [HiveRepository],
+  exports: [HiveChainRepository],
 })
-export class HiveModule {}
+export class HiveChainModule {}
