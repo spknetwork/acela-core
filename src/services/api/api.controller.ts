@@ -32,7 +32,7 @@ import { parseAndValidateRequest } from '../auth/auth.utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 
-@Controller('/api/v1')
+@Controller('/v1')
 export class ApiController {
   readonly #logger: Logger = new Logger(ApiController.name);
 
