@@ -232,6 +232,7 @@ export class StorageClusterPeer extends StorageCluster {
               allocations: {
                 id: this.getPeerId(),
                 allocated_at: msgTs,
+                reported_size: 0,
               },
             },
             $inc: {
@@ -348,6 +349,7 @@ export class StorageClusterPeer extends StorageCluster {
       type: SocketMsgTypes.PIN_FAILED,
       data: {
         cid: cid,
+        size: 0,
       },
       ts: failedTs,
     });
