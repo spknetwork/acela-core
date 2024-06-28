@@ -113,7 +113,7 @@ export interface PinAllocate {
   id: string;
   allocated_at: number;
   pinned_at?: number | undefined;
-  reported_size?: number | undefined;
+  reported_size: number;
 }
 
 export interface Pin {

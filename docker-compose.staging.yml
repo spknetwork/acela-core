@@ -6,18 +6,24 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/Caddyfile.staging:/etc/caddy/Caddyfile
       - /data/caddy/data:/data
       - /data/caddy/config:/config
     networks:
       - web
       - acela-core
-  acela-core: # name of the service
+    environment:
+      - ACME_AGREE=true
+    depends_on:
+      - acela-core
+      - tusd
+
+  acela-core:
     build:
-      context: . # the directory containing Docker context (".", meaning the current directory)
-      dockerfile: Dockerfile.staging # specify the local Dockerfile
-    container_name: acela-core # what to label the container for docker ps
-    restart: always # restart if failed, until we stop it ourselves
+      context: .
+      dockerfile: Dockerfile.staging
+    container_name: acela-core
+    restart: always
     env_file:
       - .env.staging
     #external_links:
@@ -32,9 +38,10 @@ services:
       UPLOAD_PATH: /acela-uploads
     volumes:
       - ./data/acela-uploads:/acela-uploads
+
   tusd:
     image: tusproject/tusd:v1.9
-    command: -s3-bucket mybucket -s3-endpoint http://minio:9000 -host=0.0.0.0 -port=1080 -behind-proxy -max-size 5000000000 -hooks-http http://acela-core:4569/api/v1/tus-callback
+    command: -host=0.0.0.0 -port=1080 -base-path /tusd/files/ -behind-proxy -max-size 5000000000 -hooks-http http://acela-core:4569/v1/upload/tus-callback
     volumes:
       - ./data/tusd-uploads:/data
     networks:
@@ -45,6 +52,7 @@ services:
       AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
       AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       AWS_REGION: eu-west-1
+
   minio:
     image: minio/minio:RELEASE.2019-08-14T20-37-41Z
     networks: 

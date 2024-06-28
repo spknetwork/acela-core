@@ -32,7 +32,7 @@ import { LinkedAccountRepository } from '../../repositories/linked-accounts/link
 import { EmailService } from '../email/email.service';
 import { parseAndValidateRequest } from '../auth/auth.utils';
 
-@Controller('/api/v1')
+@Controller('/v1')
 export class ApiController {
   readonly #logger = new Logger();
 

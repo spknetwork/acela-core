@@ -15,7 +15,7 @@ async function startup(): Promise<void> {
   app.useGlobalPipes(new ValidationPipe());
   const config = new DocumentBuilder().build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('/api/v1/docs', app, document);
+  SwaggerModule.setup('/v1/docs', app, document);
   await app.listen(4569);
 }
 

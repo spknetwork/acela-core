@@ -46,6 +46,6 @@ import { HiveAccountModule } from '../../repositories/hive-account/hive-account.
 })
 export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthMiddleware).forRoutes('/api/v1/auth/login_singleton/did');
+    consumer.apply(AuthMiddleware).forRoutes('/v1/auth/login_singleton/did');
   }
 }

@@ -293,6 +293,7 @@ export class StorageClusterAllocator extends StorageCluster {
         allocations: {
           id: peerId,
           allocated_at: ts,
+          reported_size: 0,
         },
       },
       $inc: {
@@ -410,6 +411,10 @@ export class StorageClusterAllocator extends StorageCluster {
     const reported_sizes = pinned.allocations
       .map((a) => a.reported_size)
       .filter((size) => size !== null && typeof size !== 'undefined');
+    if (!completedPin.size) {
+      console.error('No size found for pin ' + completedPin.cid);
+      completedPin.size = 0;
+    }
     reported_sizes.push(completedPin.size);
     if (preAllocated === -1) {
       await this.pins.updateOne(
@@ -420,7 +425,7 @@ export class StorageClusterAllocator extends StorageCluster {
               id: peerId,
               allocated_at: msgTs,
               pinned_at: msgTs,
-              reported_size: completedPin.size || 0,
+              reported_size: completedPin.size,
             },
           },
           $inc: {
@@ -510,7 +515,7 @@ export class StorageClusterAllocator extends StorageCluster {
       id: peerId,
       allocated_at: msgTs,
       pinned_at: msgTs,
-      reported_size: newPin.size,
+      reported_size: newPin.size || 0,
     };
     if (!alreadyExists || alreadyExists.status === 'deleted')
       await this.pins.updateOne(
@@ -524,7 +529,7 @@ export class StorageClusterAllocator extends StorageCluster {
             last_updated: msgTs,
             allocations: [newAlloc],
             allocationCount: 1,
-            median_size: newPin.size || 0, // Ensure median_size is of type number
+            median_size: newPin.size, // Ensure median_size is of type number
             metadata: newPin.metadata || {},
           },
         },

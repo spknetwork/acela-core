@@ -109,7 +109,7 @@ describe('ApiController', () => {
     await mongod.stop();
   });
 
-  describe('/POST /api/v1/hive/post_comment', () => {
+  describe('/POST /v1/hive/post_comment', () => {
     it('should post a comment to HIVE blockchain', async () => {
       const jwtToken = 'test_jwt_token';
       const body = {
@@ -120,7 +120,7 @@ describe('ApiController', () => {
       };
 
       return request(app.getHttpServer())
-        .post('/api/v1/hive/post_comment')
+        .post('/v1/hive/post_comment')
         .set('Authorization', `Bearer ${jwtToken}`)
         .send(body)
         .expect(201)
@@ -135,13 +135,13 @@ describe('ApiController', () => {
     });
   });
 
-  describe('/POST /api/v1/hive/linkaccount', () => {
+  describe('/POST /v1/hive/linkaccount', () => {
     it('should link a Hive account', async () => {
       const jwtToken = 'test_jwt_token';
       const body = { username: 'test-account' };
 
       return request(app.getHttpServer())
-        .post('/api/v1/hive/linkaccount')
+        .post('/v1/hive/linkaccount')
         .set('Authorization', `Bearer ${jwtToken}`)
         .send(body)
         .expect(201)
@@ -153,12 +153,12 @@ describe('ApiController', () => {
     });
   });
 
-  describe('/GET /api/v1/profile', () => {
+  describe('/GET /v1/profile', () => {
     it('should get the user profile', async () => {
       const jwtToken = 'test_jwt_token';
 
       return request(app.getHttpServer())
-        .get('/api/v1/profile')
+        .get('/v1/profile')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .then(response => {
@@ -172,7 +172,7 @@ describe('ApiController', () => {
     });
   });
 
-  describe('/GET /api/v1/hive/linked-account/list', () => {
+  describe('/GET /v1/hive/linked-account/list', () => {
     it('should list linked accounts', async () => {
       const jwtToken = 'test_jwt_token';
 
@@ -181,7 +181,7 @@ describe('ApiController', () => {
       await linkedAccountsRepository.verify(link._id);
 
       return request(app.getHttpServer())
-        .get('/api/v1/hive/linked-account/list')
+        .get('/v1/hive/linked-account/list')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .then(response => {

@@ -44,7 +44,7 @@ import { parseAndValidateRequest } from './auth.utils';
 import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
 
-@Controller('/api/v1/auth')
+@Controller('/v1/auth')
 export class AuthController {
   readonly #logger = new Logger(AuthController.name);
 

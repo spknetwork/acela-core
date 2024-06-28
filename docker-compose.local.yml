@@ -23,7 +23,7 @@ services:
       - mongo
   tusd:
     image: tusproject/tusd:v1.9
-    command: -s3-bucket mybucket -s3-endpoint http://minio:9000 -host=0.0.0.0 -port=1080 -behind-proxy -max-size 5000000000 -hooks-http http://acela-core:4569/api/v1/tus-callback
+    command: -host=0.0.0.0 -port=1080 -base-path /tusd/files/ -behind-proxy -max-size 5000000000 -hooks-http http://acela-core:4569/v1/upload/tus-callback
     volumes:
       - ./data/tusd-uploads:/data
     networks:
