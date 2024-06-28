@@ -151,7 +151,6 @@ export class UploadingController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @UseGuards(AuthGuard('jwt'))
   @Post('update_post')
   async postUpdate(@Body() reqBody: UpdateUploadDto) {
     try {
