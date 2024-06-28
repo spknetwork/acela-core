@@ -315,11 +315,11 @@ export class ApiController {
   @Post(`/hive/vote`)
   async votePost(@Body() data: VotePostDto, @Request() req: any) {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
-    const { author, permlink, weight } = data;
+    const { author, permlink, weight, votingAccount } = data;
 
     return await this.hiveService.vote({
       sub: parsedRequest.user.sub,
-      votingAccount: parsedRequest.user.username,
+      votingAccount,
       author,
       permlink,
       weight,

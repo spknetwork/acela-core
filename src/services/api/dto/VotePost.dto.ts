@@ -19,4 +19,10 @@ export class VotePostDto {
     default: 10000,
   })
   weight: number;
+
+  @IsNotEmpty()
+  @ApiProperty({
+    default: 'test',
+  })
+  votingAccount: string;
 }
