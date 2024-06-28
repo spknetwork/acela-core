@@ -176,7 +176,7 @@ export class HiveChainRepository {
       this.#logger.error(
         `Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`,
       );
-      throw new BadRequestException('Hive vote weight out of bounds. Must be 0 ± 10000');
+      throw new BadRequestException('Hive vote weight out of bounds. Must be between -10000 and 10000');
     }
     return this._hive.broadcast.vote(
       options,
