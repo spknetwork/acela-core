@@ -5,7 +5,6 @@ import {
   Post,
   UseGuards,
   Body,
-  BadRequestException,
   HttpException,
   HttpStatus,
   UseInterceptors,
@@ -14,7 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth/auth.service';
 import { v4 as uuid } from 'uuid';
-import { RequireHiveVerify, UserDetailsInterceptor } from './utils';
+import { UserDetailsInterceptor } from './utils';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -24,22 +23,24 @@ import {
 } from '@nestjs/swagger';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { UserRepository } from '../../repositories/user/user.repository';
-import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { LinkAccountPostDto } from './dto/LinkAccountPost.dto';
 import { VotePostResponseDto } from './dto/VotePostResponse.dto';
 import { VotePostDto } from './dto/VotePost.dto';
 import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
 import { parseAndValidateRequest } from '../auth/auth.utils';
+import { HiveService } from '../hive/hive.service';
+import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 
 @Controller('/v1')
 export class ApiController {
-  readonly #logger = new Logger();
+  readonly #logger: Logger = new Logger(ApiController.name);
 
   constructor(
     private readonly authService: AuthService,
     private readonly hiveAccountRepository: HiveAccountRepository,
     private readonly userRepository: UserRepository,
+    private readonly hiveService: HiveService,
     private readonly hiveChainRepository: HiveChainRepository,
     //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
     private readonly linkedAccountsRepository: LinkedAccountRepository,
@@ -293,6 +294,15 @@ export class ApiController {
     return { ok: true };
   }
 
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'JWT Authorization',
+    required: true,
+    schema: {
+      example:
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+    },
+  })
   @ApiOperation({
     summary: 'Votes on a piece of HIVE content using logged in account',
   })
@@ -301,31 +311,19 @@ export class ApiController {
     type: VotePostResponseDto,
   })
   @UseGuards(AuthGuard('jwt'))
-  @UseGuards(RequireHiveVerify)
+  @UseInterceptors(UserDetailsInterceptor)
   @Post(`/hive/vote`)
-  async votePost(@Body() data: VotePostDto) {
-    const { author, permlink } = data;
-    // const delegatedAuth = await this.delegatedAuthorityRepository.findOne({
-    //   to: 'threespeak.beta',
-    //   from:
-    // })
-    // TODO: get hive username from auth
-    const delegatedAuth = true;
-    const voter = 'vaultec';
-    if (delegatedAuth) {
-      try {
-        // console.log(out)
-        return this.hiveChainRepository.vote({ author, permlink, voter, weight: 500 });
-      } catch (ex) {
-        console.log(ex);
-        console.log(ex.message);
-        throw new BadRequestException(ex.message);
-      }
-      // await appContainer.self
-    } else {
-      throw new BadRequestException(`Missing posting autority on HIVE account 'vaultec'`, {
-        description: 'HIVE_MISSING_POSTING_AUTHORITY',
-      });
-    }
+  async votePost(@Body() data: VotePostDto, @Request() req: any) {
+    const parsedRequest = parseAndValidateRequest(req, this.#logger);
+    const { author, permlink, weight, votingAccount } = data;
+
+    return await this.hiveService.vote({
+      sub: parsedRequest.user.sub,
+      votingAccount,
+      author,
+      permlink,
+      weight,
+      network: parsedRequest.user.network,
+    });
   }
 }

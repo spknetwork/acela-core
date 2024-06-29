@@ -18,7 +18,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
-import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils';
+import { UserDetailsInterceptor } from '../api/utils';
 import { ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { UploadThumbnailUploadDto } from './dto/upload-thumbnail.dto';
 import { UpdateUploadDto } from './dto/update-upload.dto';
@@ -76,7 +76,7 @@ export class UploadingController {
 
   //Sequence matters
   @ApiOperation({ summary: 'Creates post metadata container' })
-  @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(UserDetailsInterceptor)
   @Get('create_upload')
   async createUpload(
@@ -88,7 +88,6 @@ export class UploadingController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const request = parseAndValidateRequest(req, this.#logger);
@@ -152,7 +151,6 @@ export class UploadingController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @UseGuards(AuthGuard('jwt'), RequireHiveVerify)
   @Post('update_post')
   async postUpdate(@Body() reqBody: UpdateUploadDto) {
     try {

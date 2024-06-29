@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import hiveJsPackage from '@hiveio/hive-js';
 import { AuthorPerm, OperationsArray } from './types';
 import {
@@ -172,11 +172,11 @@ export class HiveChainRepository {
   }
 
   async vote(options: { author: string; permlink: string; voter: string; weight: number }) {
-    if (options.weight < 0 || options.weight > 10_000) {
+    if (options.weight < -10_000 || options.weight > 10_000) {
       this.#logger.error(
         `Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`,
       );
-      return;
+      throw new BadRequestException('Hive vote weight out of bounds. Must be between -10000 and 10000');
     }
     return this._hive.broadcast.vote(
       options,

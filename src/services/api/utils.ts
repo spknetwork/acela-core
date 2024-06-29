@@ -10,21 +10,6 @@ import { Observable } from 'rxjs';
 import { User } from '../auth/auth.types';
 
 @Injectable()
-export class RequireHiveVerify implements CanActivate {
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
-    const args = context.getArgs();
-
-    const { body } = args[0];
-    // console.log('RequireHiveVerify guard', {
-    //     body,
-    //     user: args[0].user
-    // })
-
-    return true;
-  }
-}
-
-@Injectable()
 export class UserDetailsInterceptor implements NestInterceptor {
   constructor(private readonly jwtService: JwtService) {}
 

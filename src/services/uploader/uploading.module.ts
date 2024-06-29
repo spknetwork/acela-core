@@ -8,7 +8,7 @@ import { IpfsModule } from '../ipfs/ipfs.module';
 import { PublishingModule } from '../publishing/publishing.module';
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { JwtModule } from '@nestjs/jwt';
-import { RequireHiveVerify, UserDetailsInterceptor } from '../api/utils';
+import { UserDetailsInterceptor } from '../api/utils';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
@@ -28,7 +28,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
   ],
   controllers: [UploadingController],
-  providers: [UploadingService, UserDetailsInterceptor, RequireHiveVerify],
+  providers: [UploadingService, UserDetailsInterceptor],
   exports: [UploadingService],
 })
 export class UploadingModule {}
