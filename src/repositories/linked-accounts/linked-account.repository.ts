@@ -11,21 +11,13 @@ export class LinkedAccountRepository {
     private readonly linkedAccountModel: Model<LinkedAccount>,
   ) {}
 
-  async linkHiveAccount(user_id: string, account: string, challenge: string) {
+  async linkHiveAccount(user_id: string, account: string) {
     return await this.linkedAccountModel.create({
-      status: 'unverified',
       user_id,
       account,
+      status: 'verified',
       network: 'HIVE',
-      challenge,
-      linked_at: new Date(),
-      verified_at: null,
-      type: 'native',
-    });
-  }
-
-  async findOneByChallenge(query: { challenge: LinkedAccount['challenge'] }) {
-    return await this.linkedAccountModel.findOne(query);
+    } satisfies LinkedAccount);
   }
 
   async findOneByUserIdAndAccountName(query: {

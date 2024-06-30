@@ -11,16 +11,24 @@ import 'dotenv/config';
 import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { Network } from '../auth/auth.types';
 import { parseSub } from '../auth/auth.utils';
+import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
+import { LinkedAccount } from '../../repositories/linked-accounts/schemas/linked-account.schema';
 
 @Injectable()
 export class HiveService {
-  readonly #hiveRepository: HiveChainRepository;
+  readonly #hiveChainRepository: HiveChainRepository;
   readonly #hiveAccountRepository: HiveAccountRepository;
+  readonly #linkedAccountsRepository: LinkedAccountRepository;
   readonly #logger: LoggerService = new Logger(HiveService.name);
 
-  constructor(hiveAccountRepository: HiveAccountRepository, hiveRepository: HiveChainRepository) {
-    this.#hiveRepository = hiveRepository;
+  constructor(
+    hiveAccountRepository: HiveAccountRepository,
+    hiveChainRepository: HiveChainRepository,
+    linkedAccountRepository: LinkedAccountRepository,
+  ) {
+    this.#hiveChainRepository = hiveChainRepository;
     this.#hiveAccountRepository = hiveAccountRepository;
+    this.#linkedAccountsRepository = linkedAccountRepository;
   }
 
   async vote({
@@ -40,7 +48,7 @@ export class HiveService {
   }) {
     // TODO: investigate how this could be reused on other methods that access accounts onchain
     if (network === 'hive' && parseSub(sub).account === votingAccount) {
-      return this.#hiveRepository.vote({ author, permlink, voter: votingAccount, weight });
+      return this.#hiveChainRepository.vote({ author, permlink, voter: votingAccount, weight });
     }
 
     const delegatedAuth = await this.#hiveAccountRepository.findOneByOwnerIdAndHiveAccountName({
@@ -52,7 +60,7 @@ export class HiveService {
       throw new UnauthorizedException('You have not verified ownership of the target account');
     }
 
-    return this.#hiveRepository.vote({ author, permlink, voter: votingAccount, weight });
+    return this.#hiveChainRepository.vote({ author, permlink, voter: votingAccount, weight });
   }
 
   async requestHiveAccount(hiveUsername: string, sub: string) {
@@ -69,21 +77,20 @@ export class HiveService {
       );
     }
 
-    const accountCreation = await this.#createAccountWithAuthority(hiveUsername);
-
-    console.log(accountCreation);
+    const accountCreation = await this.#createAccountWithAuthority(hiveUsername, sub);
 
     await this.insertCreated(hiveUsername, sub);
 
     return accountCreation;
   }
 
-  async #createAccountWithAuthority(hiveUsername: string) {
+  async #createAccountWithAuthority(hiveUsername: string, sub: string) {
     if (!process.env.ACCOUNT_CREATOR) {
       throw new Error('Please set the ACCOUNT_CREATOR env var');
     }
     try {
-      return await this.#hiveRepository.createAccountWithAuthority(
+      await this.#linkedAccountsRepository.linkHiveAccount(sub, hiveUsername);
+      return await this.#hiveChainRepository.createAccountWithAuthority(
         hiveUsername,
         process.env.ACCOUNT_CREATOR,
       );
@@ -94,5 +101,24 @@ export class HiveService {
 
   async insertCreated(hiveUsername: string, sub: string) {
     await this.#hiveAccountRepository.insertCreated(hiveUsername, sub);
+  }
+
+  async linkHiveAccount(sub: string, hiveUsername: string, proof: string): Promise<LinkedAccount> {
+    const linkedAccount = await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
+      user_id: sub,
+      account: hiveUsername,
+    });
+    if (linkedAccount) {
+      throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST);
+    }
+    await this.#hiveChainRepository.verifyHiveMessage(
+      `${sub} is the owner of @${hiveUsername}`,
+      proof,
+      await this.#hiveChainRepository.getAccount(hiveUsername),
+    );
+    return (await this.#linkedAccountsRepository.linkHiveAccount(
+      sub,
+      hiveUsername,
+    )) satisfies LinkedAccount;
   }
 }

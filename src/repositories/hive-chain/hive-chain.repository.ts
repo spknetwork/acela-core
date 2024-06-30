@@ -235,16 +235,17 @@ export class HiveChainRepository {
   }
 
   verifyPostingAuth(account: ExtendedAccount): boolean {
-    let doWe = false;
-    if (Array.isArray(account.posting.account_auths)) {
-      account.posting.account_auths.forEach(function (item) {
-        if (item[0] === process.env.DELEGATED_ACCOUNT) {
-          doWe = true;
-        }
-      });
-      return doWe;
-    } else {
+    if (!Array.isArray(account.posting.account_auths)) {
       return false;
     }
+
+    for (const item of account.posting.account_auths) {
+      console.log(item, process.env.DELEGATED_ACCOUNT);
+      if (item[0] === process.env.DELEGATED_ACCOUNT) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
