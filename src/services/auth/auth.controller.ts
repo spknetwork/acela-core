@@ -1,4 +1,4 @@
-import { TransactionConfirmation, cryptoUtils } from '@hiveio/dhive';
+import { TransactionConfirmation } from '@hiveio/dhive';
 import {
   BadRequestException,
   Body,
@@ -13,6 +13,7 @@ import {
   Request,
   Response,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -43,6 +44,7 @@ import { WithAuthData } from './auth.interface';
 import { parseAndValidateRequest } from './auth.utils';
 import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
+import { UserDetailsInterceptor } from '../api/utils';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -399,6 +401,7 @@ export class AuthController {
     },
   })
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
   @Post('/request_hive_account')
   async requestHiveAccount(
     @Body() body: RequestHiveAccountDto,

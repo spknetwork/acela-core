@@ -159,7 +159,7 @@ describe('AuthController', () => {
   
     it('throws error when user has already created a Hive account', async () => {
 
-      await hiveService.requestHiveAccount('yeet', 'test_user_id')
+      await hiveService.requestHiveAccount('yeet', 'singleton/bob/did')
   
       // Make the request to the endpoint
       return request(app.getHttpServer())
@@ -292,8 +292,9 @@ describe('AuthController', () => {
         .expect(401)
         .then(response => {
           expect(response.body).toEqual({
-            errorType: "INVALID_SIGNATURE",
-            reason: "Invalid Signature",
+            error: "Unauthorized",
+            message: "The message did not match the signature",
+            statusCode: 401,
           })
         })
     })
