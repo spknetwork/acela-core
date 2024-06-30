@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth/auth.service';
-import { v4 as uuid } from 'uuid';
 import { UserDetailsInterceptor } from './utils';
 import {
   ApiBadRequestResponse,
@@ -106,6 +105,7 @@ export class ApiController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
   @Get('/profile')
   getProfile(@Request() req) {
     return req.user;
@@ -157,30 +157,13 @@ export class ApiController {
   @Post(`/hive/linkaccount`)
   async linkAccount(@Body() data: LinkAccountPostDto, @Request() req: unknown) {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
-    const linkedAccount = await this.linkedAccountsRepository.findOneByUserIdAndAccountName({
-      user_id: parsedRequest.user.sub,
-      account: data.username,
-    });
-    if (!linkedAccount) {
-      // TODO: and zero knowledge proof of hive account ownership
-      const challenge = uuid();
-      await this.linkedAccountsRepository.linkHiveAccount(
-        parsedRequest.user.sub,
-        data.username,
-        challenge,
-      );
+    console.log(data, parsedRequest);
 
-      return {
-        challenge,
-      };
-    }
-    if (linkedAccount.status === 'unverified') {
-      return {
-        challenge: linkedAccount.challenge,
-      };
-    } else {
-      throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST);
-    }
+    return await this.hiveService.linkHiveAccount(
+      parsedRequest.user.sub,
+      data.username,
+      data.proof,
+    );
   }
 
   @ApiHeader({
@@ -220,89 +203,6 @@ export class ApiController {
     return { accounts: accounts.map((account) => account.account) };
   }
 
-  @ApiHeader({
-    name: 'Authorization',
-    description: 'JWT Authorization',
-    required: true,
-    schema: {
-      example:
-        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
-    },
-  })
-  @ApiBody({
-    schema: {
-      properties: {
-        memo: {
-          type: 'string',
-        },
-      },
-    },
-  })
-  @ApiBadRequestResponse({
-    schema: {
-      properties: {
-        reason: {
-          type: 'string',
-          enum: ['Incorrect signing account', 'Incorrect signature'],
-        },
-      },
-    },
-  })
-  @UseGuards(AuthGuard('jwt'))
-  @Post(`/hive/verify_linked_account`)
-  async verifyLinkedAccount(@Body() data: { memo: string }, @Request() req: any) {
-    const { memo } = data;
-    console.log(memo);
-
-    const message = this.hiveChainRepository.decodeMessage(memo) as {
-      account: string;
-      authority: string;
-      message: string;
-    };
-    const pubKeys = await this.hiveChainRepository.getPublicKeys(memo);
-
-    const account = await this.hiveChainRepository.getAccount(message.account);
-
-    if (!account) {
-      throw new HttpException({ reason: 'Account not found' }, HttpStatus.BAD_REQUEST);
-    }
-    console.log(account[message.authority], pubKeys);
-
-    // Check if the signature is not valid
-    const signatureValid = account[message.authority].key_auths.some(
-      (key_auth) => key_auth[0] === pubKeys[0],
-    );
-    if (!signatureValid) {
-      throw new HttpException({ reason: 'Incorrect signature' }, HttpStatus.BAD_REQUEST);
-    }
-
-    const identityChallenge = await this.linkedAccountsRepository.findOneByChallenge({
-      challenge: message.message,
-    });
-
-    if (!identityChallenge) {
-      throw new HttpException({ reason: 'Challenge not found' }, HttpStatus.BAD_REQUEST);
-    }
-
-    console.log(signatureValid, account, message.message, identityChallenge);
-
-    if (identityChallenge.account !== account.name) {
-      throw new HttpException({ reason: 'Incorrect signing account' }, HttpStatus.BAD_REQUEST);
-    }
-
-    await this.linkedAccountsRepository.verify(identityChallenge._id);
-    return { ok: true };
-  }
-
-  @ApiHeader({
-    name: 'Authorization',
-    description: 'JWT Authorization',
-    required: true,
-    schema: {
-      example:
-        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
-    },
-  })
   @ApiOperation({
     summary: 'Votes on a piece of HIVE content using logged in account',
   })

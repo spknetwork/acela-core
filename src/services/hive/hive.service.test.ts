@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import { HiveModule } from './hive.module';
 import { HiveService } from './hive.service';
 import { MongooseModule } from '@nestjs/mongoose';
+import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -34,8 +35,16 @@ describe('AuthController', () => {
           dbName: 'threespeak',
           autoIndex: true,
         }),
+        MongooseModule.forRoot(uri, {
+          ssl: false,
+          authSource: 'threespeak',
+          readPreference: 'primary',
+          connectionName: 'acela-core',
+          dbName: 'acela-core',
+        }),
         HiveAccountModule,
         HiveChainModule,
+        LinkedAccountModule,
         HiveModule,
       ],
       controllers: [],

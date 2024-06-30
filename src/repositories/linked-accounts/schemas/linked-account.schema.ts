@@ -14,8 +14,8 @@ export class LinkedAccount {
   @Prop({ required: true })
   user_id: string;
 
-  @Prop({ required: true })
-  challenge: string;
+  @Prop({ required: true, enum: ['HIVE'] })
+  network: 'HIVE';
 }
 
 export const LinkedAccountSchema = SchemaFactory.createForClass(LinkedAccount);
