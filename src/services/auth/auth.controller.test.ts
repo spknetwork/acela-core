@@ -140,37 +140,43 @@ describe('AuthController', () => {
 
   describe('/POST /request_hive_account', () => {
     it('creates a Hive account successfully', async () => {
+
+      const hiveUsername = 'test_user_id'
   
       // Make the request to the endpoint
       return request(app.getHttpServer())
         .post('/v1/auth/request_hive_account')
-        .send({ username: 'test_user_id' })
+        .send({ username: hiveUsername})
         .set('Authorization', 'Bearer <your_mocked_jwt_token>')
         .expect(201)
-        .then(response => {
+        .then(async response => {
           expect(response.body).toEqual({
             block_num: 1,
             expired: false,
             id: "id",
             trx_num: 10,
           });
+          
+          expect(await hiveService.isHiveAccountLinked('singleton/bob/did', hiveUsername)).toBe(true)
         });
     });
   
     it('throws error when user has already created a Hive account', async () => {
 
-      await hiveService.requestHiveAccount('yeet', 'singleton/bob/did')
-  
+      const username= 'yeet';
+      await hiveService.requestHiveAccount('bob', 'singleton/bob/did');
       // Make the request to the endpoint
       return request(app.getHttpServer())
         .post('/v1/auth/request_hive_account')
-        .send({ username: 'yeet' })
+        .send({ username })
         .set('Authorization', 'Bearer <your_mocked_jwt_token>')
         .expect(400)
-        .then(response => {
+        .then(async response => {
           expect(response.body).toEqual({
             reason: "You have already created the maximum of 1 free Hive account",
           });
+          expect(await hiveService.isHiveAccountLinked('singleton/bob/did', 'bob')).toBe(true)
+          expect(await hiveService.isHiveAccountLinked('singleton/bob/did', username)).toBe(false)
         });
     });
   });

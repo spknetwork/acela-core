@@ -68,8 +68,6 @@ export class HiveService {
       user_id: sub,
     });
 
-    console.log(existingDbAcocunt);
-
     if (existingDbAcocunt) {
       throw new HttpException(
         { reason: 'You have already created the maximum of 1 free Hive account' },
@@ -107,6 +105,7 @@ export class HiveService {
     const linkedAccount = await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
       user_id: sub,
       account: hiveUsername,
+      network: 'HIVE',
     });
     if (linkedAccount) {
       throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST);
@@ -120,5 +119,13 @@ export class HiveService {
       sub,
       hiveUsername,
     )) satisfies LinkedAccount;
+  }
+
+  async isHiveAccountLinked(sub: string, accountName: string) {
+    return !!(await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
+      network: 'HIVE',
+      user_id: sub,
+      account: accountName,
+    }));
   }
 }

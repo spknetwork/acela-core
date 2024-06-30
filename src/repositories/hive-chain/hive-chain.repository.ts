@@ -165,7 +165,6 @@ export class HiveChainRepository {
 
     for (const auth of account.posting.key_auths) {
       const publicKey = PublicKey.fromString(auth[0].toString());
-      console.log(auth[1], account.posting.weight_threshold);
       if (auth[1] < account.posting.weight_threshold) continue;
 
       hasValidKey = true;
@@ -240,7 +239,6 @@ export class HiveChainRepository {
     }
 
     for (const item of account.posting.account_auths) {
-      console.log(item, process.env.DELEGATED_ACCOUNT);
       if (item[0] === process.env.DELEGATED_ACCOUNT) {
         return true;
       }

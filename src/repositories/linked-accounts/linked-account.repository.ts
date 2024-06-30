@@ -23,8 +23,12 @@ export class LinkedAccountRepository {
   async findOneByUserIdAndAccountName(query: {
     account: LinkedAccount['account'];
     user_id: LinkedAccount['user_id'];
+    network: LinkedAccount['network'];
   }) {
-    return await this.linkedAccountModel.findOne(query);
+    return await this.linkedAccountModel.findOne({
+      ...query,
+      status: 'verified',
+    } satisfies LinkedAccount);
   }
 
   async verify(_id: ObjectId) {
