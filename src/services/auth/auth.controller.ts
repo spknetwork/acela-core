@@ -95,21 +95,11 @@ export class AuthController {
       );
     }
 
-    const verifiedMessage = this.hiveRepository.verifyHiveMessage(
-      cryptoUtils.sha256(JSON.stringify(body.proof_payload)),
+    await this.hiveRepository.verifyHiveMessage(
+      JSON.stringify(body.proof_payload),
       body.proof,
       accountDetails,
     );
-
-    if (!verifiedMessage) {
-      throw new HttpException(
-        {
-          reason: 'Invalid Signature',
-          errorType: 'INVALID_SIGNATURE',
-        },
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
 
     const proofCreationTimestamp = new Date(body.proof_payload.ts);
 

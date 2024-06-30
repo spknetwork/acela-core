@@ -17,10 +17,8 @@ describe('HiveRepository', () => {
       const blueTeamPrivateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
       const blueTeamPublicKey = blueTeamPrivateKey.createPublic();
       const blueTeamPublicKeyString = blueTeamPublicKey.toString();
-  
       const message = JSON.stringify({ ts: Date.now() });
       const forgedSignature = redTeamPrivateKey.sign(crypto.createHash('sha256').update(message).digest());
-  
       const account: ExtendedAccount = {
         name: 'blueteam',
         memo_key: blueTeamPublicKeyString,
@@ -110,16 +108,15 @@ describe('HiveRepository', () => {
         lifetime_market_bandwidth: '',
         last_market_bandwidth_update: ''
       };
-  
-      // Act
-      const result = hiveRepository.verifyHiveMessage(
-        crypto.createHash('sha256').update('different message').digest(),
-        forgedSignature.toString(),
-        account
-      );
-  
-      // Assert
-      expect(result).toBe(false);
+    
+      // Act and Assert
+      await expect(async () => {
+        await hiveRepository.verifyHiveMessage(
+          'different message',
+          forgedSignature.toString(),
+          account
+        );
+      }).rejects.toThrow();
     });
 
     it('Should fail to verify an account if the signature height isn`t enough', async () => {
@@ -220,15 +217,12 @@ describe('HiveRepository', () => {
         last_market_bandwidth_update: ''
       };
   
-      // Act
-      const result = hiveRepository.verifyHiveMessage(
-        crypto.createHash('sha256').update(message).digest(),
+      // Assert
+      expect(async () => await hiveRepository.verifyHiveMessage(
+        message,
         signature.toString(),
         account
-      );
-  
-      // Assert
-      expect(result).toBe(false);
+      )).rejects.toThrow();
     });
   
     it('Should successfully verify a valid Hive message', async () => {
@@ -329,15 +323,12 @@ describe('HiveRepository', () => {
         last_market_bandwidth_update: ''
       };
   
-      // Act
-      const result = hiveRepository.verifyHiveMessage(
-        crypto.createHash('sha256').update(message).digest(),
+      // Assert
+      expect(async () => await hiveRepository.verifyHiveMessage(
+        message,
         signature.toString(),
         account
-      );
-  
-      // Assert
-      expect(result).toBe(true);
+      )).not.toThrow();
     });
   })
 

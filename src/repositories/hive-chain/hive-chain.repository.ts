@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import hiveJsPackage from '@hiveio/hive-js';
 import { AuthorPerm, OperationsArray } from './types';
 import {
@@ -8,6 +8,7 @@ import {
   PrivateKey,
   PublicKey,
   Signature,
+  cryptoUtils,
 } from '@hiveio/dhive';
 import crypto from 'crypto';
 import 'dotenv/config';
@@ -154,21 +155,32 @@ export class HiveChainRepository {
     );
   }
 
-  verifyHiveMessage(message: Buffer, signature: string, account: ExtendedAccount): boolean {
+  async verifyHiveMessage(
+    message: string,
+    signature: string,
+    account: ExtendedAccount,
+  ): Promise<void> {
+    const bufferMessage = cryptoUtils.sha256(message);
+    let hasValidKey = false;
+
     for (const auth of account.posting.key_auths) {
       const publicKey = PublicKey.fromString(auth[0].toString());
+      console.log(auth[1], account.posting.weight_threshold);
       if (auth[1] < account.posting.weight_threshold) continue;
-      try {
-        const signatureBuffer = Signature.fromBuffer(Buffer.from(signature, 'hex'));
-        const verified = publicKey.verify(message, signatureBuffer);
-        if (verified) {
-          return true;
-        }
-      } catch (e) {
-        this.#logger.debug(e);
+
+      hasValidKey = true;
+      const signatureBuffer = Signature.fromBuffer(Buffer.from(signature, 'hex'));
+      const verified = publicKey.verify(bufferMessage, signatureBuffer);
+      if (verified) {
+        return;
       }
     }
-    return false;
+
+    if (!hasValidKey) {
+      throw new UnauthorizedException('No valid keys found with sufficient weight');
+    }
+
+    throw new UnauthorizedException('The message did not match the signature');
   }
 
   async vote(options: { author: string; permlink: string; voter: string; weight: number }) {
@@ -176,7 +188,9 @@ export class HiveChainRepository {
       this.#logger.error(
         `Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`,
       );
-      throw new BadRequestException('Hive vote weight out of bounds. Must be between -10000 and 10000');
+      throw new BadRequestException(
+        'Hive vote weight out of bounds. Must be between -10000 and 10000',
+      );
     }
     return this._hive.broadcast.vote(
       options,
