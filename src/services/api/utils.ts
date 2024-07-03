@@ -39,12 +39,6 @@ export class UserDetailsInterceptor implements NestInterceptor {
 export class MockAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    request.user = {
-      id: 'test_user_id',
-      sub: 'test_user_id',
-      network: 'did',
-      username: 'test',
-    } satisfies User;
     return true;
   }
 }
