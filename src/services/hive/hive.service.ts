@@ -87,11 +87,12 @@ export class HiveService {
       throw new Error('Please set the ACCOUNT_CREATOR env var');
     }
     try {
-      await this.#linkedAccountsRepository.linkHiveAccount(sub, hiveUsername);
-      return await this.#hiveChainRepository.createAccountWithAuthority(
+      const accountWithAuthority = await this.#hiveChainRepository.createAccountWithAuthority(
         hiveUsername,
         process.env.ACCOUNT_CREATOR,
       );
+      await this.#linkedAccountsRepository.linkHiveAccount(sub, hiveUsername);
+      return accountWithAuthority;
     } catch (ex) {
       throw new HttpException({ reason: `On chain error - ${ex.message}` }, HttpStatus.BAD_REQUEST);
     }
