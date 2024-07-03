@@ -106,7 +106,6 @@ export class HiveService {
     const linkedAccount = await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
       user_id: sub,
       account: hiveUsername,
-      network: 'HIVE',
     });
     if (linkedAccount) {
       throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST);
@@ -124,7 +123,6 @@ export class HiveService {
 
   async isHiveAccountLinked(sub: string, accountName: string) {
     return !!(await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
-      network: 'HIVE',
       user_id: sub,
       account: accountName,
     }));
