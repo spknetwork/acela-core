@@ -88,6 +88,7 @@ export class UploadingController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const request = parseAndValidateRequest(req, this.#logger);
