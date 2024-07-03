@@ -20,11 +20,15 @@ import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.re
 import sharp from 'sharp';
 import { JwtModule } from '@nestjs/jwt';
 import crypto from 'crypto';
+import { MockHiveUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
+import { HiveModule } from '../hive/hive.module';
+import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 
 describe('UploadingController', () => {
   let app: INestApplication;
   let mongod: MongoMemoryServer;
   let uploadingService: UploadingService;
+  let linkedAccountsRepository: LinkedAccountRepository;
 
   beforeEach(async () => {
     mongod = await MongoMemoryServer.create();
@@ -52,6 +56,7 @@ describe('UploadingController', () => {
         }),
         VideoModule,
         HiveChainModule,
+        HiveModule,
         UploadModule,
         IpfsModule,
         PublishingModule,
@@ -77,9 +82,12 @@ describe('UploadingController', () => {
           return true;
         },
       })
+      .overrideInterceptor(UserDetailsInterceptor)
+      .useClass(MockHiveUserDetailsInterceptor)
       .compile();
 
     uploadingService = moduleRef.get<UploadingService>(UploadingService);
+    linkedAccountsRepository = moduleRef.get<LinkedAccountRepository>(LinkedAccountRepository);
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
@@ -137,4 +145,82 @@ describe('UploadingController', () => {
       expect(upload).toBeTruthy()
     });
   });
+
+  describe('Start encode', () => {
+    it('Should encode successfully', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'starkerz');
+
+      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz', id: 'test_id' });
+
+      process.env.DELEGATED_ACCOUNT = 'threespeak'
+
+      return request(app.getHttpServer())
+        .post('/v1/upload/start_encode')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ 
+          username: 'starkerz',
+          upload_id: upload.upload_id,
+          video_id: upload.video_id,
+          permlink: upload.permlink
+        })
+        .expect(201)
+        .then(response => {
+          expect(response.body).toEqual({});
+        });
+    })
+
+    it('Should fail if the upload details are falsified', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
+
+      process.env.DELEGATED_ACCOUNT = 'threespeak'
+
+      return request(app.getHttpServer())
+        .post('/v1/upload/start_encode')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ 
+          username: 'sisygoboom',
+          upload_id: 'random',
+          video_id: 'random',
+          permlink: 'random'
+        })
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual({
+            error: "Bad Request",
+            message: "No upload could be found matching that owner and permlink combination",
+            statusCode: 400,
+          });
+        });
+    })
+
+    it('Should fail if the account is not linked', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz', id: 'test_id' });
+
+      process.env.DELEGATED_ACCOUNT = 'threespeak'
+
+      return request(app.getHttpServer())
+        .post('/v1/upload/start_encode')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ 
+          username: 'ned',
+          upload_id: upload.upload_id,
+          video_id: upload.video_id,
+          permlink: upload.permlink
+        })
+        .expect(401)
+        .then(response => {
+          expect(response.body).toEqual({
+            error: "Unauthorized",
+            message: "Your account is not linked to the requested hive account",
+            statusCode: 401,
+          });
+        });
+    })
+  })
 });

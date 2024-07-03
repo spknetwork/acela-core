@@ -116,7 +116,7 @@ export class VideoRepository {
         publish_type: 'immediate',
         publish_date: null,
       },
-      created_by: user.id || user.sub,
+      created_by: user.sub,
       expires: moment().add('1', 'day').toDate(),
       upload_links: {},
       network: 'hive',

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
@@ -62,7 +62,7 @@ export class UploadingService {
     const upload = await this.uploadRepository.insertOne({
       video_id: video.video_id,
       expires: moment().add('1', 'day').toDate(),
-      created_by: user.id || user.sub,
+      created_by: user.sub,
       ipfs_status: 'pending',
       type: 'video',
       immediatePublish: false,
@@ -89,24 +89,35 @@ export class UploadingService {
     return this.videoRepository.findOneByVideoId(video_id);
   }
 
-  async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {
+  async startEncode(
+    upload_id: string,
+    video_id: string,
+    permlink: string,
+    owner: string,
+  ): Promise<void> {
     const uploadJob = await this.uploadRepository.findOne({
       upload_id: upload_id,
       video_id: video_id,
       type: 'video',
     });
-    if (uploadJob) {
-      if (uploadJob.immediatePublish) {
-        const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
-        await this.publishingService.publish(publishData);
-      }
-      await this.uploadRepository.setIpfsStatusToReady(video_id);
+    if (!uploadJob) {
+      throw new NotFoundException('The upload job could not be located');
     }
-    // return something that - yes video moved to 'ready'
+    if (uploadJob.immediatePublish) {
+      const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
+      await this.publishingService.publish(publishData);
+    }
+    await this.uploadRepository.setIpfsStatusToReady(video_id);
+    return;
   }
 
   async getVideoTitleLength(permlink: string, owner: string): Promise<number> {
     const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
+    if (!publishData) {
+      throw new BadRequestException(
+        'No upload could be found matching that owner and permlink combination',
+      );
+    }
     return publishData.title.length;
   }
 

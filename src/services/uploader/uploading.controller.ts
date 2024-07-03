@@ -15,6 +15,7 @@ import {
   Req,
   Headers,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -27,6 +28,7 @@ import { UploadingService } from './uploading.service';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { Upload } from './uploading.types';
 import { parseAndValidateRequest } from '../auth/auth.utils';
+import { HiveService } from '../hive/hive.service';
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -40,7 +42,8 @@ export class UploadingController {
 
   constructor(
     private readonly uploadingService: UploadingService,
-    private readonly hiveRepository: HiveChainRepository,
+    private readonly hiveChainRepository: HiveChainRepository,
+    private readonly hiveService: HiveService,
   ) {}
 
   @ApiConsumes('multipart/form-data', 'application/json')
@@ -92,24 +95,24 @@ export class UploadingController {
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const request = parseAndValidateRequest(req, this.#logger);
-    if (request.user.network !== 'hive') {
-      throw new HttpException(
-        'Must be signed in with a hive account to perform this operation',
-        HttpStatus.FORBIDDEN,
-      );
+    const hiveUsername: string = body.username;
+    if (
+      !(await this.hiveService.isHiveAccountLinked(request.user.sub, hiveUsername)) &&
+      !(request.user.username === hiveUsername && request.user.network)
+    ) {
+      throw new UnauthorizedException('Your account is not linked to the requested hive account');
     }
-    const username: string = request.user.username;
-    const accountDetails = await this.hiveRepository.getAccount(username);
+    const accountDetails = await this.hiveChainRepository.getAccount(hiveUsername);
     // Check 1: Do we have posting authority?
-    if (this.hiveRepository.verifyPostingAuth(accountDetails) === false) {
-      const reason = `Hive Account @${username} has not granted posting authority to @threespeak`;
+    if (this.hiveChainRepository.verifyPostingAuth(accountDetails) === false) {
+      const reason = `Hive Account @${hiveUsername} has not granted posting authority to @threespeak`;
       const errorType = 'MISSING_POSTING_AUTHORITY';
       throw new HttpException({ reason: reason, errorType: errorType }, HttpStatus.FORBIDDEN);
     }
     // Check 2: Is post title too big or too small?
     const videoTitleLength = await this.uploadingService.getVideoTitleLength(
       body.permlink,
-      username,
+      hiveUsername,
     );
     if (videoTitleLength === 0) {
       throw new HttpException(
@@ -124,8 +127,8 @@ export class UploadingController {
       );
     }
     // Check 3: Is this post already published?
-    const postExists = await this.hiveRepository.hivePostExists({
-      author: username,
+    const postExists = await this.hiveChainRepository.hivePostExists({
+      author: hiveUsername,
       permlink: body.permlink,
     });
     if (postExists) {
@@ -135,7 +138,7 @@ export class UploadingController {
       );
     }
     // TO-DO: Check 4: Does user have enough RC?
-    const hasEnoughRC = await this.hiveRepository.hasEnoughRC({ author: username });
+    const hasEnoughRC = await this.hiveChainRepository.hasEnoughRC({ author: hiveUsername });
     if (!hasEnoughRC) {
       throw new HttpException(
         { reason: 'User has RC below 6b', errorType: 'LOW_RC' },
@@ -147,7 +150,7 @@ export class UploadingController {
       body.upload_id,
       body.video_id,
       body.permlink,
-      username,
+      hiveUsername,
     );
   }
 

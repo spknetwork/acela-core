@@ -151,7 +151,6 @@ export class AuthController {
       await this.authService.getOrCreateUserByDid(body.did);
       return await this.authService.authenticateUser('singleton', body.did, 'did');
     } catch (e) {
-      console.log(e);
       this.#logger.error(e);
       throw new HttpException(
         {

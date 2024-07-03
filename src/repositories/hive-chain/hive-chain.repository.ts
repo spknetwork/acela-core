@@ -69,7 +69,6 @@ export class HiveChainRepository {
     try {
       const rc = (await this._hive.rc.findRCAccounts([author])) as any[];
       const rcInBillion = rc[0].rc_manabar.current_mana / 1_000_000_000;
-      console.log(`Resource Credits for ${author}:`, rcInBillion);
       return rcInBillion > 6;
     } catch (e) {
       this.#logger.error('Error checking Hive post existence:', e);
