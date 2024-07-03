@@ -137,7 +137,7 @@ export class UploadingController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    // TO-DO: Check 4: Does user have enough RC?
+    // Check 4: Does user have enough RC?
     const hasEnoughRC = await this.hiveChainRepository.hasEnoughRC({ author: hiveUsername });
     if (!hasEnoughRC) {
       throw new HttpException(
