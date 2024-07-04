@@ -98,7 +98,7 @@ export class UploadingController {
     const hiveUsername: string = body.username;
     if (
       !(await this.hiveService.isHiveAccountLinked(request.user.sub, hiveUsername)) &&
-      !(request.user.username === hiveUsername && request.user.network)
+      !(request.user.username === hiveUsername && request.user.network === 'hive')
     ) {
       throw new UnauthorizedException('Your account is not linked to the requested hive account');
     }
