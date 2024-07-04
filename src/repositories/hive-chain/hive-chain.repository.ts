@@ -8,11 +8,11 @@ import {
   PrivateKey,
   PublicKey,
   Signature,
+  TransactionConfirmation,
   cryptoUtils,
 } from '@hiveio/dhive';
 import crypto from 'crypto';
 import 'dotenv/config';
-import { exponentialBackoff } from '../../utils/exponentialBackoff';
 
 hiveJsPackage.api.setOptions({
   useAppbaseApi: true,
@@ -39,8 +39,8 @@ export class HiveChainRepository {
 
   constructor() {}
 
-  async broadcastOperations(operations: OperationsArray) {
-    const broadcast = async () => {
+  async broadcastOperations(operations: OperationsArray): Promise<any> {
+    const broadcast = async (): Promise<any> => {
       return await this._hiveJs.broadcast.sendAsync(
         {
           operations,
@@ -59,8 +59,8 @@ export class HiveChainRepository {
     }
   }
 
-  async hivePostExists({ author, permlink }: AuthorPerm) {
-    const fetchContent = async () => {
+  async hivePostExists({ author, permlink }: AuthorPerm): Promise<boolean> {
+    const fetchContent = async (): Promise<boolean> => {
       const content = await this._hiveJs.api.getContent(author, permlink);
       return typeof content === 'object' && !!content.body;
     };
@@ -74,7 +74,7 @@ export class HiveChainRepository {
   }
 
   async hasEnoughRC({ author }: { author: string }): Promise<boolean> {
-    const checkRC = async () => {
+    const checkRC = async (): Promise<boolean> => {
       const rc = (await this._hive.rc.findRCAccounts([author])) as any[];
       const rcInBillion = rc[0].rc_manabar.current_mana / 1_000_000_000;
       return rcInBillion > 6;
@@ -89,7 +89,7 @@ export class HiveChainRepository {
   }
 
   async getCommentCount({ author, permlink }: AuthorPerm): Promise<number | undefined> {
-    const fetchCommentCount = async () => {
+    const fetchCommentCount = async (): Promise<number | undefined> => {
       const res: { children: number } = await this._hive.database.call('get_content', [
         author,
         permlink,
@@ -108,8 +108,8 @@ export class HiveChainRepository {
     }
   }
 
-  async getAccount(author: string) {
-    const fetchAccount = async () => {
+  async getAccount(author: string): Promise<ExtendedAccount | null> {
+    const fetchAccount = async (): Promise<ExtendedAccount | null> => {
       const [hiveAccount] = await this._hive.database.getAccounts([author]);
       return hiveAccount;
     };
@@ -129,8 +129,8 @@ export class HiveChainRepository {
       posting_auths?: string[];
       active_auths?: string[];
     },
-  ) {
-    const createAccount = async () => {
+  ): Promise<any> {
+    const createAccount = async (): Promise<any> => {
       const owner = {
         weight_threshold: 1,
         account_auths: [[authorityAccountname, 1]],
@@ -220,7 +220,12 @@ export class HiveChainRepository {
     throw new UnauthorizedException('The message did not match the signature');
   }
 
-  async vote(options: { author: string; permlink: string; voter: string; weight: number }) {
+  async vote(options: {
+    author: string;
+    permlink: string;
+    voter: string;
+    weight: number;
+  }): Promise<any> {
     if (options.weight < -10_000 || options.weight > 10_000) {
       this.#logger.error(
         `Vote weight was out of bounds: ${options.weight}. Skipping ${options.author}/${options.permlink}`,
@@ -230,7 +235,7 @@ export class HiveChainRepository {
       );
     }
 
-    const castVote = async () => {
+    const castVote = async (): Promise<any> => {
       return this._hive.broadcast.vote(
         options,
         PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
@@ -245,8 +250,8 @@ export class HiveChainRepository {
     }
   }
 
-  async getActiveVotes({ author, permlink }: { author: string; permlink: string }) {
-    const fetchActiveVotes = async () => {
+  async getActiveVotes({ author, permlink }: { author: string; permlink: string }): Promise<any[]> {
+    const fetchActiveVotes = async (): Promise<any[]> => {
       return await this._hive.database.call('get_active_votes', [author, permlink]);
     };
 
@@ -258,12 +263,37 @@ export class HiveChainRepository {
     }
   }
 
+  decodeMessage(memo: string): any {
+    try {
+      const decoded: string = this._hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
+      const message: unknown = JSON.parse(decoded.substr(1));
+
+      return message;
+    } catch (e) {
+      this.#logger.error('Error decoding message:', e);
+      return null;
+    }
+  }
+
+  async getPublicKeys(memo: string): Promise<string[]> {
+    const fetchPublicKeys = async (): Promise<string[]> => {
+      return this._hiveJs.memo.getPubKeys(memo);
+    };
+
+    try {
+      return await exponentialBackoff(fetchPublicKeys);
+    } catch (e) {
+      this.#logger.error('Error getting public keys:', e);
+      return [];
+    }
+  }
+
   async comment(
     author: string,
     content: string,
     comment_options: { parent_author: string; parent_permlink: string },
-  ) {
-    const postComment = async () => {
+  ): Promise<TransactionConfirmation> {
+    const postComment = async (): Promise<TransactionConfirmation> => {
       return await this._hive.broadcast.comment(
         {
           parent_author: comment_options.parent_author || '',
@@ -284,19 +314,7 @@ export class HiveChainRepository {
       return await exponentialBackoff(postComment);
     } catch (e) {
       this.#logger.error('Error posting comment:', e);
-      return null;
-    }
-  }
-
-  decodeMessage(memo: string) {
-    try {
-      const decoded: string = this._hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
-      const message: unknown = JSON.parse(decoded.substr(1));
-
-      return message;
-    } catch (e) {
-      this.#logger.error('Error decoding message:', e);
-      return null;
+      throw new Error('Could not post comment');
     }
   }
 
