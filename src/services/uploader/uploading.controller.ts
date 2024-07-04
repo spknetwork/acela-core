@@ -49,9 +49,9 @@ export class UploadingController {
   @ApiConsumes('multipart/form-data', 'application/json')
   @Post('thumbnail')
   @UseGuards(AuthGuard('jwt'))
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file'), UserDetailsInterceptor)
   async uploadThumbnail(
-    @Req() req: { user: { sub: string; username: string } },
+    @Req() req: unknown,
     @Body() Body: UploadThumbnailUploadDto,
     @UploadedFile(
       new ParseFilePipe({
@@ -63,13 +63,9 @@ export class UploadingController {
     )
     file: any,
   ) {
-    // console.log(body)
+    const request = parseAndValidateRequest(req, this.#logger);
 
-    /**
-     * TODO: do a bit more verification of user authority
-     */
-
-    const cid = await this.uploadingService.uploadThumbnail(file, Body.video_id, req.user);
+    const cid = await this.uploadingService.uploadThumbnail(file, Body.video_id, request.user);
 
     return {
       status: 'ok',
@@ -98,7 +94,7 @@ export class UploadingController {
     const hiveUsername: string = body.username;
     if (
       !(await this.hiveService.isHiveAccountLinked(request.user.sub, hiveUsername)) &&
-      !(request.user.username === hiveUsername && request.user.network === 'hive')
+      !(request.user.username === hiveUsername && request.user.network)
     ) {
       throw new UnauthorizedException('Your account is not linked to the requested hive account');
     }
