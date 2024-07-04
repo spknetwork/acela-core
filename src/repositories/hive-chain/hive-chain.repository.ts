@@ -12,6 +12,7 @@ import {
 } from '@hiveio/dhive';
 import crypto from 'crypto';
 import 'dotenv/config';
+import { exponentialBackoff } from '../../utils/exponentialBackoff';
 
 hiveJsPackage.api.setOptions({
   useAppbaseApi: true,
@@ -39,57 +40,86 @@ export class HiveChainRepository {
   constructor() {}
 
   async broadcastOperations(operations: OperationsArray) {
-    return await this._hiveJs.broadcast
-      .sendAsync(
+    const broadcast = async () => {
+      return await this._hiveJs.broadcast.sendAsync(
         {
           operations,
         },
         {
           posting: process.env.DELEGATED_ACCOUNT_POSTING,
         },
-      )
-      .catch((e: any) => {
-        this.#logger.error(`Error publishing operations to chain!`, operations, e);
-        return e;
-      });
+      );
+    };
+
+    try {
+      return await exponentialBackoff(broadcast);
+    } catch (e) {
+      this.#logger.error(`Error publishing operations to chain!`, operations, e);
+      return e;
+    }
   }
 
   async hivePostExists({ author, permlink }: AuthorPerm) {
-    try {
+    const fetchContent = async () => {
       const content = await this._hiveJs.api.getContent(author, permlink);
-      // Check if the content is an object and has a body. This implicitly checks for non-empty strings.
       return typeof content === 'object' && !!content.body;
+    };
+
+    try {
+      return await exponentialBackoff(fetchContent);
     } catch (e) {
-      this.#logger.error('Error checking Hive post existence:', e);
+      this.#logger.error('Error checking Hive post existence after retries:', e);
       return false;
     }
   }
 
   async hasEnoughRC({ author }: { author: string }): Promise<boolean> {
-    try {
+    const checkRC = async () => {
       const rc = (await this._hive.rc.findRCAccounts([author])) as any[];
       const rcInBillion = rc[0].rc_manabar.current_mana / 1_000_000_000;
       return rcInBillion > 6;
+    };
+
+    try {
+      return await exponentialBackoff(checkRC);
     } catch (e) {
-      this.#logger.error('Error checking Hive post existence:', e);
+      this.#logger.error('Error checking RC:', e);
       return false;
     }
   }
 
   async getCommentCount({ author, permlink }: AuthorPerm): Promise<number | undefined> {
-    const res: { children: number } = await this._hive.database.call('get_content', [
-      author,
-      permlink,
-    ]);
-    if (!res || isNaN(res.children)) {
+    const fetchCommentCount = async () => {
+      const res: { children: number } = await this._hive.database.call('get_content', [
+        author,
+        permlink,
+      ]);
+      if (!res || isNaN(res.children)) {
+        return undefined;
+      }
+      return res.children;
+    };
+
+    try {
+      return await exponentialBackoff(fetchCommentCount);
+    } catch (e) {
+      this.#logger.error('Error getting comment count:', e);
       return undefined;
     }
-    return res.children;
   }
 
   async getAccount(author: string) {
-    const [hiveAccount] = await this._hive.database.getAccounts([author]);
-    return hiveAccount;
+    const fetchAccount = async () => {
+      const [hiveAccount] = await this._hive.database.getAccounts([author]);
+      return hiveAccount;
+    };
+
+    try {
+      return await exponentialBackoff(fetchAccount);
+    } catch (e) {
+      this.#logger.error('Error getting Hive account:', e);
+      return null;
+    }
   }
 
   async createAccountWithAuthority(
@@ -100,58 +130,67 @@ export class HiveChainRepository {
       active_auths?: string[];
     },
   ) {
-    const owner = {
-      weight_threshold: 1,
-      account_auths: [[authorityAccountname, 1]],
-      key_auths: [],
-    };
-    const active = {
-      weight_threshold: 1,
-      account_auths: [
-        [authorityAccountname, 1],
-        ...(options?.active_auths || []).map((e) => {
-          return [e, 1];
+    const createAccount = async () => {
+      const owner = {
+        weight_threshold: 1,
+        account_auths: [[authorityAccountname, 1]],
+        key_auths: [],
+      };
+      const active = {
+        weight_threshold: 1,
+        account_auths: [
+          [authorityAccountname, 1],
+          ...(options?.active_auths || []).map((e) => {
+            return [e, 1];
+          }),
+        ],
+        key_auths: [],
+      };
+      const posting = {
+        weight_threshold: 1,
+        account_auths: [
+          [authorityAccountname, 1],
+          ...(options?.posting_auths || []).map((e) => {
+            return [e, 1];
+          }),
+        ],
+        key_auths: [],
+      };
+      const memo_key = 'STM7C9FCSZ6ntNsrwkU5MCvAB7TV44bUF8J4pwWLWpGY5Z7Ba7Q6e';
+
+      const accountData = {
+        creator: authorityAccountname,
+        new_account_name: newAccountname,
+        owner,
+        active,
+        posting,
+        memo_key,
+        json_metadata: JSON.stringify({
+          // beneficiaries: [
+          //   {
+          //     name: 'spk.beneficiary',
+          //     weight: 500,
+          //     label: 'provider',
+          //   },
+          // ],
         }),
-      ],
-      key_auths: [],
-    };
-    const posting = {
-      weight_threshold: 1,
-      account_auths: [
-        [authorityAccountname, 1],
-        ...(options?.posting_auths || []).map((e) => {
-          return [e, 1];
-        }),
-      ],
-      key_auths: [],
-    };
-    const memo_key = 'STM7C9FCSZ6ntNsrwkU5MCvAB7TV44bUF8J4pwWLWpGY5Z7Ba7Q6e';
+        extensions: [],
+      };
 
-    const accountData = {
-      creator: authorityAccountname,
-      new_account_name: newAccountname,
-      owner,
-      active,
-      posting,
-      memo_key,
-      json_metadata: JSON.stringify({
-        // beneficiaries: [
-        //   {
-        //     name: 'spk.beneficiary',
-        //     weight: 500,
-        //     label: 'provider',
-        //   },
-        // ],
-      }),
-      extensions: [],
+      const operations: Operation[] = [['create_claimed_account', accountData]];
+
+      return await this._hive.broadcast.sendOperations(
+        operations,
+        PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE || ''), // check this
+      );
     };
 
-    const operations: Operation[] = [['create_claimed_account', accountData]];
-
-    return await this._hive.broadcast.sendOperations(
-      operations,
-      PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE || ''), // check this
-    );
+    try {
+      return await exponentialBackoff(createAccount);
+    } catch (e) {
+      this.#logger.error('Error creating Hive account with authority:', e);
+      return null;
+    }
   }
 
   async verifyHiveMessage(
@@ -190,25 +229,33 @@ export class HiveChainRepository {
         'Hive vote weight out of bounds. Must be between -10000 and 10000',
       );
     }
-    return this._hive.broadcast.vote(
-      options,
-      PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
-    );
+
+    const castVote = async () => {
+      return this._hive.broadcast.vote(
+        options,
+        PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
+      );
+    };
+
+    try {
+      return await exponentialBackoff(castVote);
+    } catch (e) {
+      this.#logger.error(`Error voting on ${options.author}/${options.permlink}:`, e);
+      throw new BadRequestException('Error voting on post');
+    }
   }
 
   async getActiveVotes({ author, permlink }: { author: string; permlink: string }) {
-    return await this._hive.database.call('get_active_votes', [author, permlink]);
-  }
+    const fetchActiveVotes = async () => {
+      return await this._hive.database.call('get_active_votes', [author, permlink]);
+    };
 
-  decodeMessage(memo: string) {
-    const decoded: string = this._hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
-    const message: unknown = JSON.parse(decoded.substr(1));
-
-    return message;
-  }
-
-  async getPublicKeys(memo: string): Promise<string[]> {
-    return this._hiveJs.memo.getPubKeys(memo);
+    try {
+      return await exponentialBackoff(fetchActiveVotes);
+    } catch (e) {
+      this.#logger.error('Error getting active votes:', e);
+      return [];
+    }
   }
 
   async comment(
@@ -216,20 +263,41 @@ export class HiveChainRepository {
     content: string,
     comment_options: { parent_author: string; parent_permlink: string },
   ) {
-    return await this._hive.broadcast.comment(
-      {
-        parent_author: comment_options.parent_author || '',
-        parent_permlink: comment_options.parent_permlink || '',
-        author,
-        permlink: crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
-        title: '',
-        body: content,
-        json_metadata: JSON.stringify({
-          app: 'threespeak.beta/0.1',
-        }),
-      },
-      PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
-    );
+    const postComment = async () => {
+      return await this._hive.broadcast.comment(
+        {
+          parent_author: comment_options.parent_author || '',
+          parent_permlink: comment_options.parent_permlink || '',
+          author,
+          permlink: crypto.randomBytes(8).toString('base64url').toLowerCase().replace('_', ''),
+          title: '',
+          body: content,
+          json_metadata: JSON.stringify({
+            app: 'threespeak.beta/0.1',
+          }),
+        },
+        PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
+      );
+    };
+
+    try {
+      return await exponentialBackoff(postComment);
+    } catch (e) {
+      this.#logger.error('Error posting comment:', e);
+      return null;
+    }
+  }
+
+  decodeMessage(memo: string) {
+    try {
+      const decoded: string = this._hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
+      const message: unknown = JSON.parse(decoded.substr(1));
+
+      return message;
+    } catch (e) {
+      this.#logger.error('Error decoding message:', e);
+      return null;
+    }
   }
 
   verifyPostingAuth(account: ExtendedAccount): boolean {
