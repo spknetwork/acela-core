@@ -23,10 +23,9 @@ export class StartEncodeDto {
   })
   permlink: string;
 
-  @IsNotEmpty()
   @ApiProperty({
     description: 'Linked hive username you want to post with',
     default: 'test',
   })
-  username: string;
+  username?: string;
 }

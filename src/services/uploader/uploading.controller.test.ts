@@ -147,10 +147,8 @@ describe('UploadingController', () => {
   });
 
   describe('Start encode', () => {
-    it('Should encode successfully', async () => {
+    it('Should encode successfully when logged in with a hive account', async () => {
       const jwtToken = 'test_jwt_token';
-
-      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'starkerz');
 
       const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz', id: 'test_id' });
 
@@ -159,8 +157,7 @@ describe('UploadingController', () => {
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
-        .send({ 
-          username: 'starkerz',
+        .send({
           upload_id: upload.upload_id,
           video_id: upload.video_id,
           permlink: upload.permlink
@@ -168,6 +165,56 @@ describe('UploadingController', () => {
         .expect(201)
         .then(response => {
           expect(response.body).toEqual({});
+        });
+    })
+
+    it('Should encode successfully when requesting use of a linked hive account', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
+
+      const upload = await uploadingService.createUpload({ sub: 'singleton/ned/hive', username: 'sisygoboom', id: 'test_id' });
+
+      process.env.DELEGATED_ACCOUNT = 'threespeak'
+
+      return request(app.getHttpServer())
+        .post('/v1/upload/start_encode')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ 
+          username: 'sisygoboom',
+          upload_id: upload.upload_id,
+          video_id: upload.video_id,
+          permlink: upload.permlink
+        })
+        .expect(201)
+        .then(response => {
+          expect(response.body).toEqual({});
+        });
+    })
+
+    it('Should fail when requesting use of an unlinked hive account', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', id: 'test_id' });
+
+      process.env.DELEGATED_ACCOUNT = 'threespeak'
+
+      return request(app.getHttpServer())
+        .post('/v1/upload/start_encode')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({ 
+          username: 'sisygoboom',
+          upload_id: upload.upload_id,
+          video_id: upload.video_id,
+          permlink: upload.permlink
+        })
+        .expect(401)
+        .then(response => {
+          expect(response.body).toEqual({
+            error: "Unauthorized",
+            message: "Your account is not linked to the requested hive account",
+            statusCode: 401,
+          });
         });
     })
 

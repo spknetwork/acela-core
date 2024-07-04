@@ -16,6 +16,7 @@ import {
   Headers,
   Logger,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -91,10 +92,16 @@ export class UploadingController {
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const request = parseAndValidateRequest(req, this.#logger);
-    const hiveUsername: string = body.username;
+    const hiveUsername =
+      body.username || (request.user.network === 'hive' ? request.user.username : undefined);
+    if (!hiveUsername) {
+      throw new BadRequestException(
+        'Must be signed in with a hive account or include a linked hive account in the request',
+      );
+    }
     if (
       !(await this.hiveService.isHiveAccountLinked(request.user.sub, hiveUsername)) &&
-      !(request.user.username === hiveUsername && request.user.network)
+      !(request.user.username === hiveUsername && request.user.network === 'hive')
     ) {
       throw new UnauthorizedException('Your account is not linked to the requested hive account');
     }
