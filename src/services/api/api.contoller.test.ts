@@ -23,6 +23,7 @@ import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module
 import { EmailModule } from '../email/email.module';
 import * as crypto from 'crypto';
 import { HiveModule } from '../hive/hive.module';
+import { PrivateKey } from '@hiveio/dhive';
 
 describe('ApiController', () => {
   let app: INestApplication;
@@ -138,7 +139,16 @@ describe('ApiController', () => {
   describe('/POST /v1/hive/linkaccount', () => {
     it('should link a Hive account', async () => {
       const jwtToken = 'test_jwt_token';
-      const body = { username: 'test-account' };
+
+      const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
+      const publicKey = privateKey.createPublic();
+      const publicKeyString = publicKey.toString();
+      const message = "singleton/bob/did is the owner of @starkerz";
+      const signature = privateKey.sign(crypto.createHash('sha256').update(message).digest());
+
+      const body = { username: 'starkerz', proof: signature.toString() };
+
+      process.env.TEST_PUBLIC_KEY = publicKeyString;
 
       return request(app.getHttpServer())
         .post('/v1/hive/linkaccount')
@@ -147,7 +157,12 @@ describe('ApiController', () => {
         .expect(201)
         .then(response => {
           expect(response.body).toEqual({
-            challenge: expect.any(String),
+            __v: 0,
+            _id: expect.any(String),
+            account: "starkerz",
+            network: "HIVE",
+            status: "verified",
+            user_id: "singleton/bob/did",
           });
         });
     });
@@ -165,8 +180,9 @@ describe('ApiController', () => {
           expect(response.body).toEqual({
             id: "test_user_id",
             network: "did",
-            sub: "test_user_id",
-            username: "test",
+            sub: "singleton/bob/did",
+            type: "singleton",
+            username: "test_user_id",
           });
         });
     });
@@ -177,7 +193,7 @@ describe('ApiController', () => {
       const jwtToken = 'test_jwt_token';
 
       // Mock linking and verifying an account
-      const link = await linkedAccountsRepository.linkHiveAccount('singleton/bob/did', 'test-account', 'challenge');
+      const link = await linkedAccountsRepository.linkHiveAccount('singleton/bob/did', 'test-account');
       await linkedAccountsRepository.verify(link._id);
 
       return request(app.getHttpServer())

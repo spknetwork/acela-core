@@ -1,4 +1,4 @@
-import { TransactionConfirmation, cryptoUtils } from '@hiveio/dhive';
+import { TransactionConfirmation } from '@hiveio/dhive';
 import {
   BadRequestException,
   Body,
@@ -13,6 +13,7 @@ import {
   Request,
   Response,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -43,6 +44,7 @@ import { WithAuthData } from './auth.interface';
 import { parseAndValidateRequest } from './auth.utils';
 import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
+import { UserDetailsInterceptor } from '../api/utils';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -95,21 +97,11 @@ export class AuthController {
       );
     }
 
-    const verifiedMessage = this.hiveRepository.verifyHiveMessage(
-      cryptoUtils.sha256(JSON.stringify(body.proof_payload)),
+    await this.hiveRepository.verifyHiveMessage(
+      JSON.stringify(body.proof_payload),
       body.proof,
       accountDetails,
     );
-
-    if (!verifiedMessage) {
-      throw new HttpException(
-        {
-          reason: 'Invalid Signature',
-          errorType: 'INVALID_SIGNATURE',
-        },
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
 
     const proofCreationTimestamp = new Date(body.proof_payload.ts);
 
@@ -409,6 +401,7 @@ export class AuthController {
     },
   })
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
   @Post('/request_hive_account')
   async requestHiveAccount(
     @Body() body: RequestHiveAccountDto,

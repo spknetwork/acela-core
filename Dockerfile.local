@@ -2,7 +2,7 @@ FROM node:18.14.2-alpine
 WORKDIR /usr/app
 COPY package*.json ./
 RUN apk add --no-cache git python3 make g++
-RUN npm install && npm install typescript -g
+RUN npm install
 COPY . .
 RUN npm run tsc:noemit
 CMD ["npm", "run", "dev"]
