@@ -65,6 +65,7 @@ export class VotingService {
     }
 
     const threespeak = await this.#hiveRepository.getAccount('threespeak');
+    if (!threespeak) throw new Error('Failed to fetch threespeaks account from hive');
     const vp = this.#calculateVotingMana(threespeak);
 
     const factor = ((vp - 80) * 5) / 100;
