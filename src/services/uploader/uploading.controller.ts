@@ -31,6 +31,7 @@ import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.re
 import { Upload } from './uploading.types';
 import { parseAndValidateRequest } from '../auth/auth.utils';
 import { HiveService } from '../hive/hive.service';
+import { CreateUploadDto } from './dto/create-upload.dto';
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -83,9 +84,18 @@ export class UploadingController {
   async createUpload(
     @Request()
     request: unknown,
+    @Body() body: CreateUploadDto,
   ) {
     const parsedRequest = parseAndValidateRequest(request, this.#logger);
-    return this.uploadingService.createUpload(parsedRequest.user);
+    const hiveUsername =
+      body.username || parsedRequest.user.network === 'hive'
+        ? parsedRequest.user.username
+        : undefined;
+    if (!hiveUsername) throw new BadRequestException('No username provided');
+    return this.uploadingService.createUpload({
+      sub: parsedRequest.user.sub,
+      username: body.username || parsedRequest.user.username,
+    });
   }
 
   @UseGuards(AuthGuard('jwt'))

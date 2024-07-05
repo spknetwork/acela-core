@@ -8,6 +8,7 @@ import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg';
 import { Upload } from './uploading.types';
 import { v4 as uuid } from 'uuid';
+import { HiveService } from '../hive/hive.service';
 
 @Injectable()
 export class UploadingService {
@@ -16,6 +17,7 @@ export class UploadingService {
     private readonly videoRepository: VideoRepository,
     private readonly ipfsService: IpfsService,
     private readonly publishingService: PublishingService,
+    private readonly hiveService: HiveService,
   ) {}
 
   async uploadThumbnail(
@@ -46,9 +48,15 @@ export class UploadingService {
     return cid;
   }
 
-  async createUpload(user: { sub: string; username: string; id?: string }) {
+  async createUpload({ sub, username }: { sub: string; username: string }) {
+    await this.hiveService.subAuthorizedToUseHiveAccount({
+      sub,
+      hiveAccount: username,
+    });
+
     const video = await this.videoRepository.createNewHiveVideoPost({
-      user,
+      sub,
+      username,
       title: ' ',
       description: ' ',
       tags: [],
@@ -62,7 +70,7 @@ export class UploadingService {
     const upload = await this.uploadRepository.insertOne({
       video_id: video.video_id,
       expires: moment().add('1', 'day').toDate(),
-      created_by: user.sub,
+      created_by: sub,
       ipfs_status: 'pending',
       type: 'video',
       immediatePublish: false,

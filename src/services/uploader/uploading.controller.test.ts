@@ -129,7 +129,8 @@ describe('UploadingController', () => {
 
   describe('createUpload', () => {
     it('should create an upload document', async () => {
-      const response = await uploadingService.createUpload({ sub: 'blah', username: 'foo', id: 'bar' })
+      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
+      const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom' })
       expect(response).toEqual({
         permlink: expect.any(String),
         upload_id: expect.any(String),
@@ -150,7 +151,7 @@ describe('UploadingController', () => {
     it('Should encode successfully when logged in with a hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz', id: 'test_id' });
+      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz' });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 
@@ -172,8 +173,9 @@ describe('UploadingController', () => {
       const jwtToken = 'test_jwt_token';
 
       await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
+      await linkedAccountsRepository.linkHiveAccount('singleton/ned/hive', 'sisygoboom');
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/ned/hive', username: 'sisygoboom', id: 'test_id' });
+      const upload = await uploadingService.createUpload({ sub: 'singleton/ned/hive', username: 'sisygoboom' });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 
@@ -195,7 +197,11 @@ describe('UploadingController', () => {
     it('Should fail when requesting use of an unlinked hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', id: 'test_id' });
+      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom')
+
+      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom' });
+
+      await linkedAccountsRepository.unlinkHiveAccount('singleton/starkerz/hive', 'sisygoboom')
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 
@@ -247,7 +253,7 @@ describe('UploadingController', () => {
     it('Should fail if the account is not linked', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz', id: 'test_id' });
+      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz' });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 

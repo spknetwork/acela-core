@@ -78,7 +78,8 @@ export class VideoRepository {
   }
 
   async createNewHiveVideoPost({
-    user,
+    sub,
+    username,
     title,
     description,
     tags,
@@ -86,11 +87,8 @@ export class VideoRepository {
     language,
     beneficiaries,
   }: {
-    user: {
-      sub: string;
-      username: string;
-      id?: string;
-    };
+    sub: string;
+    username: string;
     title: string;
     description: string;
     tags: string[];
@@ -99,7 +97,7 @@ export class VideoRepository {
     beneficiaries: string;
   }): Promise<Video> {
     return await this.videoModel.create({
-      owner: user.username,
+      owner: username,
       title: title,
       description,
       beneficiaries: beneficiaries,
@@ -116,7 +114,7 @@ export class VideoRepository {
         publish_type: 'immediate',
         publish_date: null,
       },
-      created_by: user.sub,
+      created_by: sub,
       expires: moment().add('1', 'day').toDate(),
       upload_links: {},
       network: 'hive',

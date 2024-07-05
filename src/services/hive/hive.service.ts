@@ -131,4 +131,25 @@ export class HiveService {
       account: accountName,
     }));
   }
+
+  async subAuthorizedToUseHiveAccount({
+    hiveAccount,
+    sub,
+  }: {
+    hiveAccount: string;
+    sub: string;
+  }): Promise<void> {
+    const user = parseSub(sub);
+    if (user.account !== hiveAccount || user.network !== 'hive') {
+      const hasLinkedAccount = await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
+        user_id: sub,
+        account: hiveAccount,
+      });
+      if (!hasLinkedAccount) {
+        throw new UnauthorizedException(
+          'you are not logged in or do not have a link to this hive account',
+        );
+      }
+    }
+  }
 }
