@@ -17,6 +17,7 @@ import {
   Logger,
   UnauthorizedException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -106,6 +107,7 @@ export class UploadingController {
       throw new UnauthorizedException('Your account is not linked to the requested hive account');
     }
     const accountDetails = await this.hiveChainRepository.getAccount(hiveUsername);
+    if (!accountDetails) throw new NotFoundException('Hive account could not be found');
     // Check 1: Do we have posting authority?
     if (this.hiveChainRepository.verifyPostingAuth(accountDetails) === false) {
       const reason = `Hive Account @${hiveUsername} has not granted posting authority to @threespeak`;

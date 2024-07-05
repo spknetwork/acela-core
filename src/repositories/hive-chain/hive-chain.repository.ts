@@ -13,6 +13,7 @@ import {
 } from '@hiveio/dhive';
 import crypto from 'crypto';
 import 'dotenv/config';
+import { exponentialBackoff } from '../../utils/exponentialBackoff';
 
 hiveJsPackage.api.setOptions({
   useAppbaseApi: true,

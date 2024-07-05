@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   LoggerService,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
@@ -110,10 +111,13 @@ export class HiveService {
     if (linkedAccount) {
       throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST);
     }
+    const hiveAccount = await this.#hiveChainRepository.getAccount(hiveUsername);
+    if (!hiveAccount)
+      throw new NotFoundException(`Requested hive account (${hiveAccount}) could not be found.`);
     await this.#hiveChainRepository.verifyHiveMessage(
       `${sub} is the owner of @${hiveUsername}`,
       proof,
-      await this.#hiveChainRepository.getAccount(hiveUsername),
+      hiveAccount,
     );
     return (await this.#linkedAccountsRepository.linkHiveAccount(
       sub,

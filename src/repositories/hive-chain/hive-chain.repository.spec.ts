@@ -338,12 +338,14 @@ describe('HiveRepository', () => {
     it('Returns true if threespeak has posting authority over the account', async () => {
       process.env.DELEGATED_ACCOUNT = 'threespeak';
       const account = await hiveRepository.getAccount('starkerz');
+      if (!account) throw new Error('account not found')
       expect(hiveRepository.verifyPostingAuth(account)).toBe(true);
     })
 
     it('Returns false if threespeak does not have posting authority over the account', async () => {
       process.env.DELEGATED_ACCOUNT = 'threespeak';
       const account = await hiveRepository.getAccount('ned');
+      if (!account) throw new Error('account not found')
       expect(hiveRepository.verifyPostingAuth(account)).toBe(false);
     })
   })
