@@ -1,4 +1,4 @@
-async function exponentialBackoff<T>(fn: () => Promise<T>, retries = 5, delay = 1000): Promise<T> {
+async function exponentialBackoff<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
