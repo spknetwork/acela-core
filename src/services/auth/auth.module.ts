@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
@@ -8,7 +8,6 @@ import { UserAccountModule } from '../../repositories/userAccount/user-account.m
 import { SessionModule } from '../../repositories/session/session.module';
 import { AuthController } from './auth.controller';
 import { EmailModule } from '../email/email.module';
-import { AuthMiddleware } from './auth.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HiveModule } from '../hive/hive.module';
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
@@ -44,8 +43,4 @@ import { HiveAccountModule } from '../../repositories/hive-account/hive-account.
   controllers: [AuthController],
   exports: [AuthService],
 })
-export class AuthModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthMiddleware).forRoutes('/v1/auth/login_singleton/did');
-  }
-}
+export class AuthModule {}

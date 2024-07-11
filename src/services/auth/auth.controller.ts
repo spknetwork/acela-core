@@ -44,7 +44,7 @@ import { WithAuthData } from './auth.interface';
 import { parseAndValidateRequest } from './auth.utils';
 import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
-import { UserDetailsInterceptor } from '../api/utils';
+import { AuthInterceptor, UserDetailsInterceptor } from '../api/utils';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -145,6 +145,7 @@ export class AuthController {
     description: 'Internal Server Error - unrelated to request body',
   })
   @HttpCode(200)
+  @UseInterceptors(AuthInterceptor)
   @Post('/login/singleton/did')
   async loginSingletonReturn(@Body() body: WithAuthData) {
     try {
