@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, HydratedDocument, Types } from 'mongoose';
 
-export type HiveAccountDocument = HydratedDocument<HiveAccount>;
+export type HiveAccountDocument = HydratedDocument<LegacyHiveAccount>;
 
 @Schema()
-export class HiveAccount extends Document {
+export class LegacyHiveAccount extends Document {
   @Prop({ type: String, required: true })
   account: string;
 
@@ -12,4 +12,4 @@ export class HiveAccount extends Document {
   user_id: Types.ObjectId;
 }
 
-export const HiveAccountSchema = SchemaFactory.createForClass(HiveAccount);
+export const LegacyHiveAccountSchema = SchemaFactory.createForClass(LegacyHiveAccount);

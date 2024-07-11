@@ -12,7 +12,6 @@ import { ApiModule } from './services/api/api.module';
 import { AuthModule } from './services/auth/auth.module';
 import { HiveChainModule } from './repositories/hive-chain/hive-chain.module';
 import { HiveAccountModule } from './repositories/hive-account/hive-account.module';
-import { LinkedAccountModule } from './repositories/linked-accounts/linked-account.module';
 import { SessionModule } from './repositories/session/session.module';
 import { UploadModule } from './repositories/upload/upload.module';
 import { UserAccountModule } from './repositories/userAccount/user-account.module';
@@ -64,7 +63,6 @@ const mongoUrl = process.env.CORE_MONGODB_URL || 'mongodb://mongo:27017';
     IpfsModule,
     UploadingModule,
     HiveAccountModule,
-    LinkedAccountModule,
     SessionModule,
     UploadModule,
     EmailModule,

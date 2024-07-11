@@ -9,6 +9,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { Upload } from './uploading.types';
 import { v4 as uuid } from 'uuid';
 import { HiveService } from '../hive/hive.service';
+import { User } from '../auth/auth.types';
 
 @Injectable()
 export class UploadingService {
@@ -20,11 +21,7 @@ export class UploadingService {
     private readonly hiveService: HiveService,
   ) {}
 
-  async uploadThumbnail(
-    file: any,
-    video_id: string,
-    user: { sub: string; username: string; id?: string },
-  ) {
+  async uploadThumbnail(file: any, video_id: string, user: User) {
     const id = uuid();
 
     const { cid }: { cid: string } = await this.ipfsService.addData(
@@ -48,10 +45,19 @@ export class UploadingService {
     return cid;
   }
 
-  async createUpload({ sub, username }: { sub: string; username: string }) {
-    await this.hiveService.subAuthorizedToUseHiveAccount({
+  async createUpload({
+    sub,
+    username,
+    user_id,
+  }: {
+    sub: string;
+    username: string;
+    user_id: string;
+  }) {
+    await this.hiveService.authorizedToUseHiveAccount({
       sub,
       hiveAccount: username,
+      user_id,
     });
 
     const video = await this.videoRepository.createNewHiveVideoPost({

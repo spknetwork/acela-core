@@ -8,10 +8,9 @@ export type AccountType = (typeof accountTypes)[number];
 
 const userSchema = z.object({
   sub: z.string(),
-  username: z.string(),
   network: z.enum(network),
   type: z.enum(accountTypes).optional(),
-  id: z.string().optional(),
+  user_id: z.string(),
 });
 
 export const interceptedRequestSchema = z.object({

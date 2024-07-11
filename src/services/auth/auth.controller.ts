@@ -33,18 +33,18 @@ import { HiveClient } from '../../utils/hiveClient';
 import { LoginDto } from '../api/dto/Login.dto';
 import { LoginErrorResponseDto } from '../api/dto/LoginErrorResponse.dto';
 import { LoginResponseDto } from '../api/dto/LoginResponse.dto';
-import { LoginSingletonHiveDto } from '../api/dto/LoginSingleton.dto';
+import { LoginSingletonDidDto, LoginSingletonHiveDto } from '../api/dto/LoginSingleton.dto';
 import { AuthService } from './auth.service';
-import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
-import { UserRepository } from '../../repositories/user/user.repository';
+import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
+import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { EmailService } from '../email/email.service';
-import bcrypt from 'bcryptjs';
-import { WithAuthData } from './auth.interface';
 import { parseAndValidateRequest } from './auth.utils';
 import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
 import { AuthInterceptor, UserDetailsInterceptor } from '../api/utils';
+import { randomUUID } from 'crypto';
+import { v4 as uuid } from 'uuid';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -52,8 +52,8 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
-    private readonly hiveAccountRepository: HiveAccountRepository,
-    private readonly userRepository: UserRepository,
+    private readonly hiveAccountRepository: LegacyHiveAccountRepository,
+    private readonly userRepository: LegacyUserRepository,
     private readonly hiveRepository: HiveChainRepository,
     private readonly hiveService: HiveService,
     //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
@@ -129,6 +129,8 @@ export class AuthController {
       );
     }
 
+    await this.authService.getOrCreateUserByHiveUsername(body.proof_payload.account);
+
     return await this.authService.authenticateUser('singleton', body.proof_payload.account, 'hive');
   }
 
@@ -147,10 +149,10 @@ export class AuthController {
   @HttpCode(200)
   @UseInterceptors(AuthInterceptor)
   @Post('/login/singleton/did')
-  async loginSingletonReturn(@Body() body: WithAuthData) {
+  async loginSingletonReturn(@Body() body: LoginSingletonDidDto) {
     try {
       await this.authService.getOrCreateUserByDid(body.did);
-      return await this.authService.authenticateUser('singleton', body.did, 'did');
+      return await this.authService.authenticateUserByDid(body.did);
     } catch (e) {
       this.#logger.error(e);
       throw new HttpException(
@@ -187,7 +189,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Post('/check')
   async checkAuth(@Request() req) {
-    console.log('user details check', req.user);
+    this.#logger.log('user details check', req.user);
     return {
       ok: true,
     };
@@ -259,10 +261,16 @@ export class AuthController {
         // )
         await this.hiveAccountRepository.createLite(username, body.secret);
 
+        const sub = this.authService.generateSub('lite', username, 'hive');
+
+        const user_id = randomUUID();
+
+        await this.userRepository.createNewSubUser({ sub, user_id });
+
         const jwt = this.authService.jwtSign({
-          sub: this.authService.generateSub('lite', username, 'hive'),
-          username,
+          sub,
           network: 'hive',
+          user_id,
         });
 
         return {
@@ -327,7 +335,6 @@ export class AuthController {
   @Post('/register')
   async register(@Request() req, @Body() body: { password: string; email: string }) {
     const { email, password } = body;
-    const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
 
     const existingRecord = await this.userRepository.findOneByEmail(email);
 
@@ -336,17 +343,16 @@ export class AuthController {
         { reason: 'Email Password account already created!' },
         HttpStatus.BAD_REQUEST,
       );
-    } else {
-      const { email_code } = await this.authService.createEmailAndPasswordUser(
-        email,
-        hashedPassword,
-      );
-
-      await this.emailService.sendRegistration(email, email_code);
-      return {
-        ok: true,
-      };
     }
+
+    const user_id = uuid();
+
+    const email_code = await this.authService.createEmailAndPasswordUser(email, password, user_id);
+
+    await this.emailService.sendRegistration(email, email_code);
+    return {
+      ok: true,
+    };
     // return this.authService.login(req.user);
   }
 
@@ -365,7 +371,7 @@ export class AuthController {
       throw new BadRequestException('Verification code is required');
     }
 
-    await this.userRepository.verifyEmail(verifyCode);
+    await this.authService.verifyEmail(verifyCode);
 
     return res.redirect('https://3speak.tv');
   }
@@ -408,7 +414,6 @@ export class AuthController {
     @Request() req,
   ): Promise<TransactionConfirmation> {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
-
-    return await this.hiveService.requestHiveAccount(body.username, parsedRequest.user.sub);
+    return await this.hiveService.requestHiveAccount(body.username, parsedRequest.user.user_id);
   }
 }

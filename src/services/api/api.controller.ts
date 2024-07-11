@@ -9,6 +9,7 @@ import {
   HttpStatus,
   UseInterceptors,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth/auth.service';
@@ -20,13 +21,10 @@ import {
   ApiOkResponse,
   ApiOperation,
 } from '@nestjs/swagger';
-import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
-import { UserRepository } from '../../repositories/user/user.repository';
+import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { LinkAccountPostDto } from './dto/LinkAccountPost.dto';
 import { VotePostResponseDto } from './dto/VotePostResponse.dto';
 import { VotePostDto } from './dto/VotePost.dto';
-import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
-import { EmailService } from '../email/email.service';
 import { parseAndValidateRequest } from '../auth/auth.utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
@@ -37,13 +35,9 @@ export class ApiController {
 
   constructor(
     private readonly authService: AuthService,
-    private readonly hiveAccountRepository: HiveAccountRepository,
-    private readonly userRepository: UserRepository,
+    private readonly userRepository: LegacyUserRepository,
     private readonly hiveService: HiveService,
     private readonly hiveChainRepository: HiveChainRepository,
-    //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
-    private readonly linkedAccountsRepository: LinkedAccountRepository,
-    private readonly emailService: EmailService,
   ) {}
 
   @ApiHeader({
@@ -98,7 +92,6 @@ export class ApiController {
     },
   ) {
     const { body, parent_author, parent_permlink, author } = reqBody;
-    // console.log(body)
 
     //TODO: Do validation of account ownership before doing operation
     return await this.hiveChainRepository.comment(author, body, { parent_author, parent_permlink });
@@ -158,11 +151,16 @@ export class ApiController {
   async linkAccount(@Body() data: LinkAccountPostDto, @Request() req: unknown) {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
 
-    return await this.hiveService.linkHiveAccount(
-      parsedRequest.user.sub,
-      data.username,
-      data.proof,
-    );
+    const user = await this.authService.getUserByUserId({ user_id: parsedRequest.user.user_id });
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    return await this.hiveService.linkHiveAccount({
+      proof: data.proof,
+      hiveUsername: data.username,
+      user_id: parsedRequest.user.user_id,
+      db_user_id: user._id,
+    });
   }
 
   @ApiHeader({
@@ -198,8 +196,11 @@ export class ApiController {
       );
     }
     // TODO: before going live, check that current linked accounts will still show since user.sub is a proprietary new format
-    const accounts = await this.linkedAccountsRepository.findAllByUserId(request.user.sub);
-    return { accounts: accounts.map((account) => account.account) };
+    const accounts = {
+      accounts: (await this.userRepository.getLegacyLinkedHiveAccounts(request.user.user_id))
+        .linked_hiveaccounts,
+    };
+    return accounts;
   }
 
   @ApiOperation({
@@ -216,6 +217,10 @@ export class ApiController {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
     const { author, permlink, weight, votingAccount } = data;
 
+    const user = await this.authService.getUserByUserId({ user_id: parsedRequest.user.user_id });
+
+    if (!user) throw new UnauthorizedException('User not found');
+
     return await this.hiveService.vote({
       sub: parsedRequest.user.sub,
       votingAccount,
@@ -223,6 +228,7 @@ export class ApiController {
       permlink,
       weight,
       network: parsedRequest.user.network,
+      user_id: user._id,
     });
   }
 }

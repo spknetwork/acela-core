@@ -52,9 +52,8 @@ export class MockDidUserDetailsInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     request.user = {
-      id: 'test_user_id',
+      user_id: 'test_user_id',
       sub: 'singleton/bob/did',
-      username: 'test_user_id',
       network: 'did',
       type: 'singleton',
     } satisfies User; // Mock user
@@ -67,9 +66,8 @@ export class MockHiveUserDetailsInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     request.user = {
-      id: 'test_user_id',
+      user_id: 'test_user_id',
       sub: 'singleton/starkerz/hive',
-      username: 'starkerz',
       network: 'hive',
       type: 'singleton',
     } satisfies User; // Mock user
@@ -115,8 +113,6 @@ export class AuthInterceptor implements NestInterceptor {
     }
 
     request.body = verificationResult.payload as any;
-
-    console.log(request.body);
 
     return next.handle();
   }
