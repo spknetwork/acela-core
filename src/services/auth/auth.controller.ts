@@ -349,9 +349,8 @@ export class AuthController {
     const email_code = await this.authService.createEmailAndPasswordUser(email, password, user_id);
 
     await this.emailService.sendRegistration(email, email_code);
-    return {
-      ok: true,
-    };
+
+    return await this.authService.login({ network: 'email', user_id });
   }
 
   @ApiParam({

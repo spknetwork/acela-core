@@ -203,7 +203,7 @@ describe('AuthController', () => {
         .send({ email, password })
         .expect(201);
 
-      expect(response.body).toEqual({ ok: true });
+      expect(response.body).toEqual({ access_token: expect.any(String) });
 
       const user = await userRepository.findOneByEmail(email);
       expect(user).toBeDefined();

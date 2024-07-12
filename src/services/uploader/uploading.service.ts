@@ -50,7 +50,7 @@ export class UploadingService {
     username,
     user_id,
   }: {
-    sub: string;
+    sub?: string;
     username: string;
     user_id: string;
   }) {

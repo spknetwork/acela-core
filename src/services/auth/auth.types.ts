@@ -7,7 +7,7 @@ export const accountTypes = ['singleton', 'lite'] as const;
 export type AccountType = (typeof accountTypes)[number];
 
 const userSchema = z.object({
-  sub: z.string(),
+  sub: z.string().optional(),
   network: z.enum(network),
   type: z.enum(accountTypes).optional(),
   user_id: z.string(),

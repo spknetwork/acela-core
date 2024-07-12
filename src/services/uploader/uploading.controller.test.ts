@@ -232,7 +232,7 @@ describe('UploadingController', () => {
         .then(response => {
           expect(response.body).toEqual({
             error: "Unauthorized",
-            message: "Your account is not linked to the requested hive account",
+            message: "Hive account is not linked",
             statusCode: 401,
           });
         });
@@ -287,7 +287,7 @@ describe('UploadingController', () => {
         .then(response => {
           expect(response.body).toEqual({
             error: "Unauthorized",
-            message: "Your account is not linked to the requested hive account",
+            message: "Hive account is not linked",
             statusCode: 401,
           });
         });

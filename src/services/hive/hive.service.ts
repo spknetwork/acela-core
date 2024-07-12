@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -10,7 +11,7 @@ import {
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import 'dotenv/config';
 import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
-import { Network } from '../auth/auth.types';
+import { UserRequest } from '../auth/auth.types';
 import { parseSub } from '../auth/auth.utils';
 import { ObjectId } from 'mongodb';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
@@ -34,37 +35,15 @@ export class HiveService {
 
   async vote({
     votingAccount,
-    user_id,
-    sub,
     author,
     permlink,
     weight,
-    network,
   }: {
     votingAccount: string;
-    user_id: ObjectId;
-    sub: string;
     author: string;
     permlink: string;
     weight: number;
-    network: Network;
   }) {
-    // TODO: investigate how this could be reused on other methods that access accounts onchain
-    const parsedSub = parseSub(sub);
-    if (parsedSub.network === 'hive' && parsedSub.account === votingAccount) {
-      return this.#hiveChainRepository.vote({ author, permlink, voter: votingAccount, weight });
-    }
-
-    const delegatedAuth =
-      await this.#legacyHiveAccountRepository.findOneByOwnerIdAndHiveAccountName({
-        account: votingAccount,
-        user_id,
-      });
-
-    if (!delegatedAuth) {
-      throw new UnauthorizedException('You have not verified ownership of the target account');
-    }
-
     return this.#hiveChainRepository.vote({ author, permlink, voter: votingAccount, weight });
   }
 
@@ -177,6 +156,26 @@ export class HiveService {
     }
     throw new UnauthorizedException(
       'you are not logged in or do not have a link to this hive account',
+    );
+  }
+
+  async parseHiveUsername(parsedRequest: UserRequest, username?: string): Promise<string> {
+    if (username) {
+      const dbUser = await this.#legacyUserRepository.findOneByUserId({
+        user_id: parsedRequest.user.user_id,
+      });
+      if (!dbUser) throw new UnauthorizedException('Account does not exist');
+
+      if (!(await this.isHiveAccountLinked({ account: username, user_id: dbUser._id }))) {
+        throw new UnauthorizedException('Hive account is not linked');
+      }
+      return username;
+    }
+    if (parsedRequest.user.sub && parsedRequest.user.network === 'hive') {
+      return parseSub(parsedRequest.user.sub).account;
+    }
+    throw new BadRequestException(
+      'You must either be logged in with a hive account or include a linked account in the request body.',
     );
   }
 }
