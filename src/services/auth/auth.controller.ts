@@ -344,16 +344,6 @@ export class AuthController {
   @Post('/register')
   async register(@Body() body: EmailRegisterDto) {
     const { email, password } = body;
-
-    const existingRecord = await this.userRepository.findOneByEmail(email);
-
-    if (existingRecord) {
-      throw new HttpException(
-        { reason: 'Email Password account already created!' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const user_id = uuid();
 
     const email_code = await this.authService.createEmailAndPasswordUser(email, password, user_id);

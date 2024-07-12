@@ -1,5 +1,11 @@
 import 'dotenv/config';
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { LegacyUserAccountRepository } from '../../repositories/userAccount/user-account.repository';
@@ -135,12 +141,28 @@ export class AuthService {
     password: string,
     user_id: string,
   ): Promise<string> {
-    await this.legacyUserRepository.createNewEmailUser({ email, user_id });
-    return await this.legacyUserAccountRepository.createNewEmailAndPasswordUser({
-      email,
-      password,
-      username: user_id,
-    });
+    try {
+      await this.legacyUserRepository.createNewEmailUser({ email, user_id });
+      return await this.legacyUserAccountRepository.createNewEmailAndPasswordUser({
+        email,
+        password,
+        username: user_id,
+      });
+    } catch (e) {
+      if (e.code == 11000) {
+        // Duplicate key error
+        throw new HttpException(
+          { reason: 'Email Password account already created!' },
+          HttpStatus.BAD_REQUEST,
+        );
+      } else {
+        console.log(e.code);
+        throw new HttpException(
+          { reason: 'Internal Server Error' },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    }
   }
 
   async createHiveUser({ user_id, hiveAccount }: { user_id: string; hiveAccount: string }) {

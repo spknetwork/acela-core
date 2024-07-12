@@ -10,13 +10,13 @@ export class LegacyUser {
   @Prop({ type: String, required: true })
   user_id!: string;
 
-  @Prop({ type: String, unique: true })
+  @Prop({ type: String, unique: true, sparse: true })
   sub?: string;
 
   @Prop({ type: Boolean, required: true, default: false })
   banned?: boolean;
 
-  @Prop({ type: String })
+  @Prop({ type: String, unique: true, sparse: true })
   email?: string;
 
   @Prop({ type: Types.ObjectId, ref: LegacyHiveAccount.name })
