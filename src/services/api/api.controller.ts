@@ -5,8 +5,6 @@ import {
   Post,
   UseGuards,
   Body,
-  HttpException,
-  HttpStatus,
   UseInterceptors,
   Logger,
   UnauthorizedException,
@@ -187,14 +185,6 @@ export class ApiController {
   @Get('/hive/linked-account/list')
   async listLinkedAccounts(@Request() req: unknown) {
     const request = parseAndValidateRequest(req, this.#logger);
-    if (!request.user.sub) {
-      throw new HttpException(
-        {
-          reason: 'Logged in with a lite account, full account needed to check linked accounts.',
-        },
-        HttpStatus.FORBIDDEN,
-      );
-    }
     // TODO: before going live, check that current linked accounts will still show since user.sub is a proprietary new format
     const accounts = {
       accounts: (await this.userRepository.getLegacyLinkedHiveAccounts(request.user.user_id))

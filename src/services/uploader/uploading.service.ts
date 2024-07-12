@@ -61,7 +61,7 @@ export class UploadingService {
     });
 
     const video = await this.videoRepository.createNewHiveVideoPost({
-      sub,
+      user_id,
       username,
       title: ' ',
       description: ' ',
@@ -76,7 +76,7 @@ export class UploadingService {
     const upload = await this.uploadRepository.insertOne({
       video_id: video.video_id,
       expires: moment().add('1', 'day').toDate(),
-      created_by: sub,
+      created_by: user_id,
       ipfs_status: 'pending',
       type: 'video',
       immediatePublish: false,
