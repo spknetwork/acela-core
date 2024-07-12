@@ -9,8 +9,6 @@ import { UploadingModule } from './uploading.module';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
 import { AuthGuard } from '@nestjs/passport';
 import { UploadModule } from '../../repositories/upload/upload.module';
 import { VideoModule } from '../../repositories/video/video.module';
