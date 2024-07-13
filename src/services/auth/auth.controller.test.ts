@@ -147,6 +147,78 @@ describe('AuthController', () => {
     });
   });
 
+  describe('/POST /login', () => {
+    it('Logs in successfully', async () => {
+
+      const email = 'test@test.com';
+      const password = 'testpass'
+
+      await authService.registerEmailAndPasswordUser(email, password)
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          username: email,
+          password: password
+        })
+        .expect(201)
+        .then(async response => {
+          expect(response.body).toEqual({
+            access_token: expect.any(String)
+          });
+        });
+    });
+
+    it('Throws unauthorized when the password is wrong', async () => {
+
+      const email = 'test@test.com';
+      const password = 'testpass'
+
+      await authService.registerEmailAndPasswordUser(email, password)
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          username: email,
+          password: password + 'im a hacker'
+        })
+        .expect(401)
+        .then(async response => {
+          expect(response.body).toEqual({
+            error: "Unauthorized",
+            message: "Email or password was incorrect",
+            statusCode: 401,
+          });
+        });
+    });
+
+    it('Throws when the email does not exist', async () => {
+
+      const email = 'test@test.com';
+      const password = 'testpass'
+
+      await authService.registerEmailAndPasswordUser(email, password)
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          username: 'different@email.com',
+          password: password
+        })
+        .expect(401)
+        .then(async response => {
+          expect(response.body).toEqual({
+            error: "Unauthorized",
+            message: "Email or password was incorrect",
+            statusCode: 401,
+          });
+        });
+    });
+  })
+
   describe('/POST /request_hive_account', () => {
     it('creates a Hive account successfully', async () => {
 

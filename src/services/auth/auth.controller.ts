@@ -66,9 +66,8 @@ export class AuthController {
     description: 'Login success',
     type: LoginResponseDto,
   })
-  async login(@Request() req, @Body() body: LoginDto) {
-    const request = parseAndValidateRequest(req, this.#logger);
-    return this.authService.login(request.user);
+  async login(@Body() body: LoginDto): Promise<LoginResponseDto> {
+    return await this.authService.login(body.username);
   }
 
   //@UseGuards(AuthGuard('local'))

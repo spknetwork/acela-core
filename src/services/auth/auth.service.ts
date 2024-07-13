@@ -74,10 +74,12 @@ export class AuthService {
     return !!(await this.legacyUserRepository.findOneBySub(this.generateDidSub(did)));
   }
 
-  async login(user: User) {
-    return {
-      access_token: this.jwtSign(user),
-    };
+  async login(email: string) {
+    const user = await this.legacyUserAccountRepository.findOneByEmail({ email });
+    if (!user) {
+      throw new InternalServerErrorException('User was validated but cannot be found');
+    }
+    return { access_token: this.jwtSign({ network: 'email', user_id: user.username }) };
   }
 
   async getUserAccountBySub(sub: string) {
