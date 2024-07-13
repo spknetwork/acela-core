@@ -243,7 +243,7 @@ export class AuthController {
   @Post('/lite/register-initial')
   async registerLite(@Body() body: { username: string; otp_code: string; secret: string }) {
     const { username, otp_code } = body;
-    const output = await HiveClient.database.getAccounts([username]);
+    const output = await this.hiveChainRepository.getAccount(username);
 
     if (output.length === 0) {
       // const secret = authenticator.generateSecret(32)
