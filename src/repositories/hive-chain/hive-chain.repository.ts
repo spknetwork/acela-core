@@ -251,6 +251,49 @@ export class HiveChainRepository {
     }
   }
 
+  async isFollowing({ follower, following }: { follower: string; following: string }) {
+    const status = await this._hive.call('follow_api', 'get_following', [
+      follower,
+      following,
+      'blog',
+      1,
+    ]);
+    if (status.length > 0 && status[0].following == following) {
+      return true;
+    }
+    return false;
+  }
+
+  async follow({
+    data,
+    isFollowing,
+  }: {
+    data: {
+      required_auths: string[];
+      required_posting_auths: string[];
+      id: string;
+      json: string;
+    };
+    isFollowing: boolean;
+  }): Promise<{
+    action: string;
+    result: TransactionConfirmation;
+  }> {
+    return await this._hive.broadcast
+      .json(data, PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING))
+      .then(
+        function (result) {
+          if (isFollowing) {
+            return { action: 'unfollowed', result };
+          }
+          return { action: 'followed', result };
+        },
+        function (error) {
+          throw new ServiceUnavailableException(error);
+        },
+      );
+  }
+
   async getActiveVotes({ author, permlink }: { author: string; permlink: string }): Promise<any[]> {
     const fetchActiveVotes = async (): Promise<any[]> => {
       return await this._hive.database.call('get_active_votes', [author, permlink]);
