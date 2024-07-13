@@ -16,6 +16,7 @@ import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { DID } from 'dids';
 import { ObjectId } from 'mongodb';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly sessionRepository: SessionRepository,
     private readonly legacyHiveAccountRepository: LegacyHiveAccountRepository,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   jwtSign(payload: User) {
@@ -136,7 +138,7 @@ export class AuthService {
     return await this.sessionRepository.findOneBySub(this.generateDidSub(did));
   }
 
-  async createEmailAndPasswordUser(
+  async #createEmailAndPasswordUser(
     email: string,
     password: string,
     user_id: string,
@@ -163,6 +165,16 @@ export class AuthService {
         );
       }
     }
+  }
+
+  async registerEmailAndPasswordUser(email: string, password: string) {
+    const user_id = uuid();
+
+    const email_code = await this.#createEmailAndPasswordUser(email, password, user_id);
+
+    await this.emailService.sendRegistration(email, email_code);
+
+    return { access_token: this.jwtSign({ network: 'email', user_id }) };
   }
 
   async createHiveUser({ user_id, hiveAccount }: { user_id: string; hiveAccount: string }) {
