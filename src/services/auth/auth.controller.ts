@@ -245,47 +245,7 @@ export class AuthController {
     const { username, otp_code } = body;
     const output = await this.hiveChainRepository.getAccount(username);
 
-    if (output.length === 0) {
-      // const secret = authenticator.generateSecret(32)
-
-      if (
-        authenticator.verify({
-          token: otp_code,
-          secret: body.secret,
-        })
-      ) {
-        // const accountCreation = await createAccountWithAuthority(
-        //   username,
-        //   process.env.ACCOUNT_CREATOR
-        // )
-        await this.hiveAccountRepository.createLite(username, body.secret);
-
-        const sub = this.authService.generateSub('lite', username, 'hive');
-
-        const user_id = randomUUID();
-
-        await this.userRepository.createNewSubUser({ sub, user_id });
-
-        const jwt = this.authService.jwtSign({
-          sub,
-          network: 'hive',
-          user_id,
-        });
-
-        return {
-          // id: accountCreation.id,
-          access_token: jwt,
-        };
-      } else {
-        throw new HttpException(
-          {
-            reason: 'Invalid OTP code',
-            errorType: 'INVALID_OTP',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    } else {
+    if (output)
       throw new HttpException(
         {
           reason: 'Hive account with the requested name already exists',
@@ -293,7 +253,44 @@ export class AuthController {
         },
         HttpStatus.BAD_REQUEST,
       );
-    }
+
+    // const secret = authenticator.generateSecret(32)
+
+    if (
+      !authenticator.verify({
+        token: otp_code,
+        secret: body.secret,
+      })
+    )
+      throw new HttpException(
+        {
+          reason: 'Invalid OTP code',
+          errorType: 'INVALID_OTP',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    // const accountCreation = await createAccountWithAuthority(
+    //   username,
+    //   process.env.ACCOUNT_CREATOR
+    // )
+    await this.hiveAccountRepository.createLite(username, body.secret);
+
+    const sub = this.authService.generateSub('lite', username, 'hive');
+
+    const user_id = randomUUID();
+
+    await this.userRepository.createNewSubUser({ sub, user_id });
+
+    const jwt = this.authService.jwtSign({
+      sub,
+      network: 'hive',
+      user_id,
+    });
+
+    return {
+      // id: accountCreation.id,
+      access_token: jwt,
+    };
   }
   // @Post('/lite/register-initial')
   // async registerLiteFinish(@Body() body) {
