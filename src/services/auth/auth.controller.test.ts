@@ -214,7 +214,7 @@ describe('AuthController', () => {
       const password = '!SUPER-SECRET_password!7';
       
       // Create a user with the same email
-      await authService.createEmailAndPasswordUser(email, password, randomUUID());
+      await authService.registerEmailAndPasswordUser(email, password);
 
       return request(app.getHttpServer())
         .post('/v1/auth/register')

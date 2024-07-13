@@ -44,7 +44,6 @@ import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
 import { AuthInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { randomUUID } from 'crypto';
-import { v4 as uuid } from 'uuid';
 import { EmailRegisterDto } from './dto/EmailRegister.dto';
 
 @Controller('/v1/auth')
@@ -340,17 +339,11 @@ export class AuthController {
   @ApiInternalServerErrorResponse({
     description: 'Internal Server Error - unrelated to request body',
   })
-  // @UseGuards(AuthGuard('local'))
   @Post('/register')
   async register(@Body() body: EmailRegisterDto) {
     const { email, password } = body;
-    const user_id = uuid();
 
-    const email_code = await this.authService.createEmailAndPasswordUser(email, password, user_id);
-
-    await this.emailService.sendRegistration(email, email_code);
-
-    return await this.authService.login({ network: 'email', user_id });
+    return await this.authService.registerEmailAndPasswordUser(email, password);
   }
 
   @ApiParam({
