@@ -16,7 +16,7 @@ import { HiveAccountModule } from '../../repositories/hive-account/hive-account.
 import { UserModule } from '../../repositories/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from '../auth/auth.module';
-import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
+import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import * as crypto from 'crypto';
@@ -92,7 +92,7 @@ describe('ApiController', () => {
       .overrideGuard(AuthGuard('jwt'))
       .useClass(MockAuthGuard)
       .overrideInterceptor(UserDetailsInterceptor)
-      .useClass(MockDidUserDetailsInterceptor)
+      .useClass(MockUserDetailsInterceptor)
       .compile();
 
     authService = moduleRef.get<AuthService>(AuthService);
