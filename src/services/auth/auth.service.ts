@@ -39,7 +39,7 @@ export class AuthService {
     if (!user.password) {
       throw new InternalServerErrorException('Email does not have associated password');
     }
-    if (await bcrypt.compare(user.password, pass)) {
+    if (await bcrypt.compare(pass, user.password)) {
       const { password, ...result } = user;
       return result;
     }
