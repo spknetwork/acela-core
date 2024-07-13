@@ -29,7 +29,6 @@ import {
 } from '@nestjs/swagger';
 import moment from 'moment';
 import { authenticator } from 'otplib';
-import { HiveClient } from '../../utils/hiveClient';
 import { LoginDto } from '../api/dto/Login.dto';
 import { LoginErrorResponseDto } from '../api/dto/LoginErrorResponse.dto';
 import { LoginResponseDto } from '../api/dto/LoginResponse.dto';
@@ -54,7 +53,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly hiveAccountRepository: LegacyHiveAccountRepository,
     private readonly userRepository: LegacyUserRepository,
-    private readonly hiveRepository: HiveChainRepository,
+    private readonly hiveChainRepository: HiveChainRepository,
     private readonly hiveService: HiveService,
     //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
     private readonly emailService: EmailService,
@@ -84,7 +83,7 @@ export class AuthController {
   })
   @Post('/login/singleton/hive')
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    const accountDetails = await this.hiveRepository.getAccount(body.proof_payload.account);
+    const accountDetails = await this.hiveChainRepository.getAccount(body.proof_payload.account);
 
     if (!accountDetails) {
       throw new HttpException(
@@ -96,7 +95,7 @@ export class AuthController {
       );
     }
 
-    await this.hiveRepository.verifyHiveMessage(
+    await this.hiveChainRepository.verifyHiveMessage(
       JSON.stringify(body.proof_payload),
       body.proof,
       accountDetails,
@@ -118,7 +117,7 @@ export class AuthController {
       );
     }
 
-    if (!this.hiveRepository.verifyPostingAuth(accountDetails)) {
+    if (!this.hiveChainRepository.verifyPostingAuth(accountDetails)) {
       throw new HttpException(
         {
           reason: `Hive Account @${body.proof_payload.account} has not granted posting authority to @threespeak`,
