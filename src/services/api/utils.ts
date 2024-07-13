@@ -48,29 +48,26 @@ export class MockAuthGuard implements CanActivate {
 }
 
 @Injectable()
-export class MockDidUserDetailsInterceptor {
+export class MockUserDetailsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    request.user = {
-      user_id: 'test_user_id',
-      sub: 'singleton/bob/did',
-      network: 'did',
-      type: 'singleton',
-    } satisfies User; // Mock user
-    return next.handle();
-  }
-}
+    const userType = request.headers['x-user-type']; // Custom header to determine user type
 
-@Injectable()
-export class MockHiveUserDetailsInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
-    request.user = {
-      user_id: 'test_user_id',
-      sub: 'singleton/starkerz/hive',
-      network: 'hive',
-      type: 'singleton',
-    } satisfies User; // Mock user
+    if (userType === 'hive') {
+      request.user = {
+        user_id: 'test_user_id',
+        sub: 'singleton/starkerz/hive',
+        network: 'hive',
+        type: 'singleton',
+      } satisfies User;
+    } else {
+      request.user = {
+        user_id: 'test_user_id',
+        sub: 'singleton/bob/did',
+        network: 'did',
+        type: 'singleton',
+      } satisfies User;
+    }
     return next.handle();
   }
 }

@@ -144,4 +144,44 @@ export class MockHiveRepository extends HiveChainRepository {
       ]);
     return hiveAccount;
   }
+
+  async isFollowing({
+    follower,
+    following,
+  }: {
+    follower: string;
+    following: string;
+  }): Promise<boolean> {
+    if (process.env.TEST_IS_FOLLOWING) {
+      return true;
+    }
+    return false;
+  }
+
+  async follow({
+    data,
+    isFollowing,
+  }: {
+    data: {
+      required_auths: string[];
+      required_posting_auths: string[];
+      id: string;
+      json: string;
+    };
+    isFollowing: boolean;
+  }): Promise<{
+    action: string;
+    result: TransactionConfirmation;
+  }> {
+    if (isFollowing)
+      return {
+        action: 'unfollowed',
+        result: { id: 'id', block_num: 1, trx_num: 1, expired: false },
+      };
+
+    return {
+      action: 'followed',
+      result: { id: 'id', block_num: 1, trx_num: 1, expired: false },
+    };
+  }
 }

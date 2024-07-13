@@ -15,6 +15,7 @@ import { UserRequest } from '../auth/auth.types';
 import { parseSub } from '../auth/auth.utils';
 import { ObjectId } from 'mongodb';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
+import { TransactionConfirmation } from '@hiveio/dhive';
 
 @Injectable()
 export class HiveService {
@@ -157,6 +158,30 @@ export class HiveService {
     throw new UnauthorizedException(
       'you are not logged in or do not have a link to this hive account',
     );
+  }
+
+  async follow({ follower, following }: { follower: string; following: string }): Promise<{
+    action: string;
+    result: TransactionConfirmation;
+  }> {
+    if (follower === following) throw new BadRequestException(`Can't follow yourself`);
+    const isFollowing = await this.#hiveChainRepository.isFollowing({ follower, following });
+    const json = JSON.stringify([
+      'follow',
+      {
+        follower: follower,
+        following: following,
+        what: [isFollowing ? '' : 'blog'],
+      },
+    ]);
+
+    const data = {
+      id: 'follow',
+      json: json,
+      required_auths: [],
+      required_posting_auths: [follower],
+    };
+    return await this.#hiveChainRepository.follow({ data, isFollowing });
   }
 
   async parseHiveUsername(parsedRequest: UserRequest, username?: string): Promise<string> {

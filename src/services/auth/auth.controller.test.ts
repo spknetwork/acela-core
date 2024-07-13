@@ -17,11 +17,10 @@ import { DID } from 'dids';
 import { Ed25519Provider } from 'key-did-provider-ed25519';
 import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
-import { TestingModule } from '@nestjs/testing';
-import crypto, { randomUUID } from 'crypto';
+import crypto from 'crypto';
 import { PrivateKey } from '@hiveio/dhive';
 import { AuthGuard } from '@nestjs/passport';
-import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
+import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveModule } from '../hive/hive.module';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
@@ -97,7 +96,7 @@ describe('AuthController', () => {
     }).overrideGuard(AuthGuard('jwt'))
       .useClass(MockAuthGuard)
       .overrideInterceptor(UserDetailsInterceptor)
-      .useClass(MockDidUserDetailsInterceptor)
+      .useClass(MockUserDetailsInterceptor)
       .compile();
     
     authService = moduleRef.get<AuthService>(AuthService);

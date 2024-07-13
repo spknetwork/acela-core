@@ -27,6 +27,8 @@ import { parseAndValidateRequest } from '../auth/auth.utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { UnlinkAccountPostDto } from './dto/UnlinkAccountPost.dto';
+import { FollowDto } from './dto/Follow.dto';
+import { FollowResponseDto } from './dto/FollowResponse.dto';
 
 @Controller('/v1')
 export class ApiController {
@@ -251,7 +253,7 @@ export class ApiController {
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(UserDetailsInterceptor)
   @Post(`/hive/vote`)
-  async votePost(@Body() data: VotePostDto, @Request() req: any) {
+  async votePost(@Body() data: VotePostDto, @Request() req: any): Promise<VotePostResponseDto> {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
     const votingAccount = await this.hiveService.parseHiveUsername(
       parsedRequest,
@@ -264,6 +266,26 @@ export class ApiController {
       author,
       permlink,
       weight,
+    });
+  }
+
+  @ApiOperation({
+    summary: 'Follows or unfollows a specified hive user',
+  })
+  @ApiOkResponse({
+    description: 'Successfully voted',
+    type: FollowResponseDto,
+  })
+  @UseInterceptors(UserDetailsInterceptor)
+  @Post(`/hive/follow`)
+  async follow(@Body() data: FollowDto, @Request() req: any): Promise<FollowResponseDto> {
+    const parsedRequest = parseAndValidateRequest(req, this.#logger);
+    const votingAccount = await this.hiveService.parseHiveUsername(parsedRequest, data.follower);
+    const { following } = data;
+
+    return await this.hiveService.follow({
+      follower: votingAccount,
+      following,
     });
   }
 }
