@@ -72,7 +72,7 @@ export class UploadRepository {
       ipfs_status: 'done',
       cid: cid,
       type: 'thumbnail',
-      created_by: user.id || user.sub,
+      created_by: user.sub,
     });
   }
 

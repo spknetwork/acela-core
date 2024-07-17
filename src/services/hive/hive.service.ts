@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   LoggerService,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
@@ -110,10 +111,13 @@ export class HiveService {
     if (linkedAccount) {
       throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST);
     }
+    const hiveAccount = await this.#hiveChainRepository.getAccount(hiveUsername);
+    if (!hiveAccount)
+      throw new NotFoundException(`Requested hive account (${hiveAccount}) could not be found.`);
     await this.#hiveChainRepository.verifyHiveMessage(
       `${sub} is the owner of @${hiveUsername}`,
       proof,
-      await this.#hiveChainRepository.getAccount(hiveUsername),
+      hiveAccount,
     );
     return (await this.#linkedAccountsRepository.linkHiveAccount(
       sub,
@@ -126,5 +130,26 @@ export class HiveService {
       user_id: sub,
       account: accountName,
     }));
+  }
+
+  async subAuthorizedToUseHiveAccount({
+    hiveAccount,
+    sub,
+  }: {
+    hiveAccount: string;
+    sub: string;
+  }): Promise<void> {
+    const user = parseSub(sub);
+    if (user.account !== hiveAccount || user.network !== 'hive') {
+      const hasLinkedAccount = await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
+        user_id: sub,
+        account: hiveAccount,
+      });
+      if (!hasLinkedAccount) {
+        throw new UnauthorizedException(
+          'you are not logged in or do not have a link to this hive account',
+        );
+      }
+    }
   }
 }

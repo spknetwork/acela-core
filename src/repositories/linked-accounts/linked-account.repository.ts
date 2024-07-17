@@ -20,6 +20,13 @@ export class LinkedAccountRepository {
     } satisfies LinkedAccount);
   }
 
+  async unlinkHiveAccount(user_id: string, account: string) {
+    return await this.linkedAccountModel.deleteOne({
+      user_id,
+      account,
+    } satisfies Partial<LinkedAccount>);
+  }
+
   async findOneByUserIdAndAccountName(query: {
     account: LinkedAccount['account'];
     user_id: LinkedAccount['user_id'];

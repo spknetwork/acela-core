@@ -24,7 +24,6 @@ export class UserDetailsInterceptor implements NestInterceptor {
         if (!decodedToken) {
           throw new Error('Invalid token');
         }
-        console.log(decodedToken);
         request.user = decodedToken;
       } catch (err) {
         throw new Error('Invalid token');
@@ -44,7 +43,7 @@ export class MockAuthGuard implements CanActivate {
 }
 
 @Injectable()
-export class MockUserDetailsInterceptor {
+export class MockDidUserDetailsInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     request.user = {
@@ -52,6 +51,21 @@ export class MockUserDetailsInterceptor {
       sub: 'singleton/bob/did',
       username: 'test_user_id',
       network: 'did',
+      type: 'singleton',
+    } satisfies User; // Mock user
+    return next.handle();
+  }
+}
+
+@Injectable()
+export class MockHiveUserDetailsInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const request = context.switchToHttp().getRequest();
+    request.user = {
+      id: 'test_user_id',
+      sub: 'singleton/starkerz/hive',
+      username: 'starkerz',
+      network: 'hive',
       type: 'singleton',
     } satisfies User; // Mock user
     return next.handle();

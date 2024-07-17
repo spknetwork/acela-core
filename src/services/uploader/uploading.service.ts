@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
@@ -8,6 +8,7 @@ import { IpfsService } from '../ipfs/ipfs.service';
 import ffmpeg from 'fluent-ffmpeg';
 import { Upload } from './uploading.types';
 import { v4 as uuid } from 'uuid';
+import { HiveService } from '../hive/hive.service';
 
 @Injectable()
 export class UploadingService {
@@ -16,6 +17,7 @@ export class UploadingService {
     private readonly videoRepository: VideoRepository,
     private readonly ipfsService: IpfsService,
     private readonly publishingService: PublishingService,
+    private readonly hiveService: HiveService,
   ) {}
 
   async uploadThumbnail(
@@ -46,9 +48,15 @@ export class UploadingService {
     return cid;
   }
 
-  async createUpload(user: { sub: string; username: string; id?: string }) {
+  async createUpload({ sub, username }: { sub: string; username: string }) {
+    await this.hiveService.subAuthorizedToUseHiveAccount({
+      sub,
+      hiveAccount: username,
+    });
+
     const video = await this.videoRepository.createNewHiveVideoPost({
-      user,
+      sub,
+      username,
       title: ' ',
       description: ' ',
       tags: [],
@@ -62,7 +70,7 @@ export class UploadingService {
     const upload = await this.uploadRepository.insertOne({
       video_id: video.video_id,
       expires: moment().add('1', 'day').toDate(),
-      created_by: user.id || user.sub,
+      created_by: sub,
       ipfs_status: 'pending',
       type: 'video',
       immediatePublish: false,
@@ -89,24 +97,35 @@ export class UploadingService {
     return this.videoRepository.findOneByVideoId(video_id);
   }
 
-  async startEncode(upload_id: string, video_id: string, permlink: string, owner: string) {
+  async startEncode(
+    upload_id: string,
+    video_id: string,
+    permlink: string,
+    owner: string,
+  ): Promise<void> {
     const uploadJob = await this.uploadRepository.findOne({
       upload_id: upload_id,
       video_id: video_id,
       type: 'video',
     });
-    if (uploadJob) {
-      if (uploadJob.immediatePublish) {
-        const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
-        await this.publishingService.publish(publishData);
-      }
-      await this.uploadRepository.setIpfsStatusToReady(video_id);
+    if (!uploadJob) {
+      throw new NotFoundException('The upload job could not be located');
     }
-    // return something that - yes video moved to 'ready'
+    if (uploadJob.immediatePublish) {
+      const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
+      await this.publishingService.publish(publishData);
+    }
+    await this.uploadRepository.setIpfsStatusToReady(video_id);
+    return;
   }
 
   async getVideoTitleLength(permlink: string, owner: string): Promise<number> {
     const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
+    if (!publishData) {
+      throw new BadRequestException(
+        'No upload could be found matching that owner and permlink combination',
+      );
+    }
     return publishData.title.length;
   }
 

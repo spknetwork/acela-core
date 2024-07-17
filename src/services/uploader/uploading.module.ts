@@ -10,12 +10,14 @@ import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module
 import { JwtModule } from '@nestjs/jwt';
 import { UserDetailsInterceptor } from '../api/utils';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HiveModule } from '../hive/hive.module';
 
 @Module({
   imports: [
     UploadModule,
     VideoModule,
     IpfsModule,
+    HiveModule,
     PublishingModule,
     HiveChainModule,
     JwtModule.registerAsync({

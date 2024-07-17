@@ -157,7 +157,6 @@ export class ApiController {
   @Post(`/hive/linkaccount`)
   async linkAccount(@Body() data: LinkAccountPostDto, @Request() req: unknown) {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
-    console.log(data, parsedRequest);
 
     return await this.hiveService.linkHiveAccount(
       parsedRequest.user.sub,
