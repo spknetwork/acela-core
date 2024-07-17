@@ -39,7 +39,7 @@ export class LegacyUserAccount {
   @Prop({ type: Boolean, default: false })
   passwordResetRequired?: boolean;
 
-  @Prop({ type: Date, required: true, default: new Date() })
+  @Prop({ type: Date, required: true, default: () => new Date() })
   updatedAt?: Date;
 
   @Prop({ type: String, default: () => uuid(), required: true, unique: true })
