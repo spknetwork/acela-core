@@ -19,7 +19,7 @@ import crypto from 'crypto';
 import { HiveModule } from '../hive/hive.module';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
 
-describe('AuthController', () => {
+describe('Auth Service', () => {
   let app: INestApplication
   let mongod: MongoMemoryServer;
   let authService: AuthService;
