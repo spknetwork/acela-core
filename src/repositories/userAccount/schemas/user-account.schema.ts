@@ -9,7 +9,7 @@ export class LegacyUserAccount {
   @Prop({ type: String, required: false })
   confirmationCode?: string;
 
-  @Prop({ type: Date, required: true, default: new Date() })
+  @Prop({ type: Date, required: true, default: () => new Date() })
   createdAt?: Date;
 
   @Prop({ type: String })
