@@ -154,7 +154,7 @@ describe('ApiController', () => {
         .post('/v1/hive/linkaccount')
         .set('Authorization', `Bearer ${jwtToken}`)
         .send(body)
-        //.expect(201)
+        .expect(201)
         .then(response => {
           expect(response.body).toEqual({
             __v: 0,
