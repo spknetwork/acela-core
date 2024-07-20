@@ -37,7 +37,7 @@ describe('UploadingController', () => {
 
     @Module({
       imports: [
-        ConfigModule,
+        ConfigModule.forRoot(),
         MongooseModule.forRoot(uri, {
           ssl: false,
           authSource: 'threespeak',

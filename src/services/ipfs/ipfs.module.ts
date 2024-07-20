@@ -11,7 +11,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       provide: IpfsService,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
-        MockFactory(IpfsService, MockIpfsService, configService, 'local'),
+        MockFactory(IpfsService, MockIpfsService, { configService, mockTilStage: 'local' }),
     },
   ],
   exports: [IpfsService],

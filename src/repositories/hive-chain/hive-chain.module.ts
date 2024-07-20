@@ -1,25 +1,38 @@
 import { Module } from '@nestjs/common';
-import { HiveChainRepository } from './hive-chain.repository';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MockHiveRepository } from './hive-chain.repository.mock';
+import { HiveChainRepository } from './hive-chain.repository';
+import { HiveChainConfigService } from './hive-chain.config.service';
 import { MockFactory } from '../../factories/mock.factory';
+import { MockHiveChainRepository } from './hive-chain.repository.mock';
+import { Client } from '@hiveio/dhive';
 
 @Module({
   imports: [ConfigModule],
-  controllers: [],
   providers: [
+    HiveChainConfigService,
+    {
+      provide: Client,
+      useFactory: (hiveChainConfigService: HiveChainConfigService) => {
+        return hiveChainConfigService.createHiveClient();
+      },
+      inject: [HiveChainConfigService],
+    },
     {
       provide: HiveChainRepository,
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) =>
-        MockFactory<HiveChainRepository, undefined>(
+      inject: [Client, ConfigService],
+      useFactory: (hiveClient: Client, configService: ConfigService) => {
+        return MockFactory<HiveChainRepository, Client>(
           HiveChainRepository,
-          MockHiveRepository,
-          configService,
-          'local',
-        ),
+          MockHiveChainRepository,
+          {
+            configService,
+            model: hiveClient,
+            mockTilStage: 'local',
+          },
+        );
+      },
     },
   ],
-  exports: [HiveChainRepository],
+  exports: [HiveChainRepository, Client],
 })
 export class HiveChainModule {}
