@@ -6,7 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Video.name, schema: VideoSchema }], 'threespeak'),
+    MongooseModule.forFeature([{ name: Video.name, schema: VideoSchema }], 'acela-core'),
     ConfigModule,
   ],
   controllers: [],

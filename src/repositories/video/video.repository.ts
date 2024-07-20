@@ -7,7 +7,7 @@ import moment from 'moment';
 
 @Injectable()
 export class VideoRepository {
-  constructor(@InjectModel(Video.name, 'threespeak') private videoModel: Model<Video>) {}
+  constructor(@InjectModel(Video.name, 'acela-core') private videoModel: Model<Video>) {}
 
   async getVideosToPublish(): Promise<Video[]> {
     return await this.videoModel
