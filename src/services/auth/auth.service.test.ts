@@ -92,7 +92,7 @@ describe('Auth Service', () => {
     await mongod.stop();
   });
 
-  describe('Auth service', () => {
+  describe('Account Creation', () => {
     it('creates a Did account successfully', async () => {
       await authService.createDidUser('1337', 'test_user_id')
       const exists = await authService.didUserExists('1337')
