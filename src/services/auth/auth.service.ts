@@ -69,10 +69,6 @@ export class AuthService {
     };
   }
 
-  async getUserAccountBySub(sub: string) {
-    return this.legacyUserAccountRepository.findOneByEmail;
-  }
-
   async getUserByUserId({ user_id }: { user_id: string }) {
     return this.legacyUserRepository.findOneByUserId({ user_id });
   }
