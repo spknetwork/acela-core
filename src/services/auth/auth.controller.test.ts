@@ -145,7 +145,7 @@ describe('AuthController', () => {
 
       const hiveUsername = 'jimbob'
 
-      const user = await authService.createDidUser('bob', 'test_user_id')
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id')
   
       // Make the request to the endpoint
       return request(app.getHttpServer())
@@ -168,7 +168,7 @@ describe('AuthController', () => {
     it('throws error when user has already created a Hive account', async () => {
 
       const username= 'yeet';
-      const user = await authService.createDidUser('asdasdassaddg', 'test_user_id')
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id')
       await hiveService.requestHiveAccount('bob', user.user_id);
       // Make the request to the endpoint
       return request(app.getHttpServer())

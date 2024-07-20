@@ -138,7 +138,7 @@ describe('UploadingController', () => {
 
   describe('createUpload', () => {
     it('should create an upload document', async () => {
-      const didUser = await authService.createDidUser('singleton/starkerz/hive', 'test_id')
+      const didUser = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_id')
       await authService.linkHiveAccount({ user_id: didUser._id, username: 'sisygoboom' });
       const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', user_id: didUser.user_id })
       expect(response).toEqual({
@@ -160,33 +160,59 @@ describe('UploadingController', () => {
   describe('Start encode', () => {
     it('Should encode successfully when logged in with a hive account', async () => {
       const jwtToken = 'test_jwt_token';
-
-      const starkerzUser = await authService.createDidUser('singleton/starkerz/hive', 'test_user_id');
-      //await authService.linkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' });
-
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz', user_id: starkerzUser.user_id });
-
-      process.env.DELEGATED_ACCOUNT = 'threespeak'
-
+    
+      const user = await authService.createDidUser(
+        'did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5',
+        'test_user_id'
+      );
+      await authService.linkHiveAccount({ user_id: user._id, username: 'sisygoboom' });
+      if (!user.sub) throw new Error('No sub on user');
+    
+      const upload = await uploadingService.createUpload({
+        sub: user.sub,
+        username: 'sisygoboom',
+        user_id: user.user_id
+      });
+    
+      const updateUploadDto = {
+        video_id: upload.video_id,
+        permlink: upload.permlink,
+        title: 'Test Video Title',
+        body: 'This video is a test video. Here we can put a description',
+        tags: ['threespeak', 'acela-core'],
+        community: 'hive-181335',
+        beneficiaries: '[]',
+        language: 'en',
+        originalFilename: 'test-video.mp4',
+        filename: 'e1e7903087f9c39ac1645d69f5bb96cd',
+        size: 32330,
+        duration: 98,
+      };
+    
+      await uploadingService.postUpdate(updateUploadDto);
+    
+      process.env.DELEGATED_ACCOUNT = 'threespeak';
+    
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
         .send({
           upload_id: upload.upload_id,
           video_id: upload.video_id,
-          permlink: upload.permlink
+          permlink: upload.permlink,
+          username: 'sisygoboom'
         })
         .expect(201)
         .then(response => {
           expect(response.body).toEqual({});
         });
-    })
+    });
 
     it('Should encode successfully when requesting use of a linked hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const starkerzUser = await authService.createDidUser('singleton/starkerz/hive', 'test_user_id');
-      const nedUser = await authService.createDidUser('singleton/ned/hive', 'different_test_id')
+      const starkerzUser = await authService.createHiveUser({ hiveAccount: 'starkerz', user_id: 'test_user_id_other' });
+      const nedUser = await authService.createHiveUser({ hiveAccount: 'ned', user_id: 'test_user_id' });
       await authService.linkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' });
       await authService.linkHiveAccount({ user_id: nedUser._id, username: 'sisygoboom' });
 
@@ -212,10 +238,10 @@ describe('UploadingController', () => {
     it('Should fail when requesting use of an unlinked hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const starkerzUser = await authService.createDidUser('singleton/starkerz/hive', 'test_user_id');
+      const starkerzUser = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id');
       await authService.linkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' });
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', user_id: starkerzUser.user_id });
+      const upload = await uploadingService.createUpload({ sub: 'singleton/did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5/dids', username: 'sisygoboom', user_id: starkerzUser.user_id });
 
       await authService.unlinkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' })
 
@@ -243,8 +269,9 @@ describe('UploadingController', () => {
     it('Should fail if the upload details are falsified', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const starkerzUser = await authService.createDidUser('singleton/starkerz/hive', 'test_user_id');
-      await authService.linkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' });
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id');
+      if (!user.sub) throw new Error('no sub')
+      await authService.linkHiveAccount({ user_id: user._id, username: 'sisygoboom' });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 
@@ -270,9 +297,10 @@ describe('UploadingController', () => {
     it('Should fail if the account is not linked', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const starkerzUser = await authService.createDidUser('singleton/starkerz/hive', 'test_user_id');
-
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz', user_id: starkerzUser.user_id });
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id');
+      if (!user.sub) throw new Error('no sub')
+      await authService.linkHiveAccount({ user_id: user._id, username: 'starkerz' })
+      const upload = await uploadingService.createUpload({ sub: user.sub, username: 'starkerz', user_id: user.user_id });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 

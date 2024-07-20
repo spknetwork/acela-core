@@ -94,8 +94,8 @@ describe('Auth Service', () => {
 
   describe('Account Creation', () => {
     it('creates a Did account successfully', async () => {
-      await authService.createDidUser('1337', 'test_user_id')
-      const exists = await authService.didUserExists('1337')
+      await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id')
+      const exists = await authService.didUserExists('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5')
       expect(exists).toBeTruthy()
     })
 

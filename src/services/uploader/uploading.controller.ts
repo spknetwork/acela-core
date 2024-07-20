@@ -128,15 +128,6 @@ export class UploadingController {
     ) {
       throw new UnauthorizedException('Your account is not linked to the requested hive account');
     }
-    const accountDetails = await this.hiveChainRepository.getAccount(hiveUsername);
-    if (!accountDetails) throw new NotFoundException('Hive account could not be found');
-
-    this.#logger.debug('Checking for authority', request, body);
-    if (this.hiveChainRepository.verifyPostingAuth(accountDetails) === false) {
-      const reason = `Hive Account @${hiveUsername} has not granted posting authority to @threespeak`;
-      const errorType = 'MISSING_POSTING_AUTHORITY';
-      throw new HttpException({ reason: reason, errorType: errorType }, HttpStatus.FORBIDDEN);
-    }
 
     this.#logger.debug('Checking video title length', request, body);
     const videoTitleLength = await this.uploadingService.getVideoTitleLength(
@@ -174,6 +165,9 @@ export class UploadingController {
         HttpStatus.BAD_REQUEST,
       );
     }
+    const accountDetails = await this.hiveChainRepository.getAccount(hiveUsername);
+    if (!accountDetails) throw new NotFoundException('Hive account could not be found');
+
     this.#logger.debug('All checks passed, starting encode', request, body);
     return await this.uploadingService.startEncode(
       body.upload_id,

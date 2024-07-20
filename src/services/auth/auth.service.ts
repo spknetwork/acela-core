@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { LegacyUserAccountRepository } from '../../repositories/userAccount/user-account.repository';
@@ -8,8 +8,9 @@ import { SessionRepository } from '../../repositories/session/session.repository
 import { AccountType, Network, User } from './auth.types';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
-import { DID } from 'dids';
 import { ObjectId } from 'mongodb';
+import { DID } from 'dids';
+import * as KeyDidResolver from 'key-did-resolver';
 
 @Injectable()
 export class AuthService {
@@ -168,6 +169,13 @@ export class AuthService {
   }
 
   async createDidUser(did: string, user_id: string) {
+    const verifier = new DID({ resolver: KeyDidResolver.getResolver() });
+    try {
+      await verifier.resolve(did);
+    } catch (error) {
+      console.error('Invalid signature', error);
+      throw new UnauthorizedException('Invalid signature');
+    }
     const sub = this.generateDidSub(did);
     const account = await this.legacyUserRepository.createNewSubUser({
       sub,

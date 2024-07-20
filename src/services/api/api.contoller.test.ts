@@ -137,7 +137,7 @@ describe('ApiController', () => {
       const jwtToken = 'test_jwt_token';
 
       const user_id = 'test_user_id'
-      const user = await authService.createDidUser('bob', user_id)
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', user_id)
       const hiveUsername = 'starkerz'
 
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
@@ -177,7 +177,7 @@ describe('ApiController', () => {
         .then(response => {
           expect(response.body).toEqual({
             network: "did",
-            sub: "singleton/bob/did",
+            sub: "singleton/did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5/did",
             type: "singleton",
             user_id: "test_user_id",
           });
@@ -190,7 +190,7 @@ describe('ApiController', () => {
       const jwtToken = 'test_jwt_token';
 
       // Mock linking and verifying an account
-      const user = await authService.createDidUser('bob', 'test_user_id')
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id')
       await authService.linkHiveAccount({ user_id: user._id, username: 'test-account' })
       await authService.linkHiveAccount({ user_id: user._id, username: 'joop' })
 

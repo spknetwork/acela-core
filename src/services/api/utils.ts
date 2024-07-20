@@ -53,7 +53,7 @@ export class MockDidUserDetailsInterceptor {
     const request = context.switchToHttp().getRequest();
     request.user = {
       user_id: 'test_user_id',
-      sub: 'singleton/bob/did',
+      sub: 'singleton/did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5/did',
       network: 'did',
       type: 'singleton',
     } satisfies User; // Mock user
