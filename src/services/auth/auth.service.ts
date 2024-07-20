@@ -111,7 +111,6 @@ export class AuthService {
   }
 
   async authenticateUserByDid(did: string) {
-    DID;
     return this.authenticateUser('singleton', did, 'did');
   }
 
