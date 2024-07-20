@@ -86,7 +86,11 @@ export class UploadingController {
     @Request()
     request: unknown,
     @Body() body: CreateUploadDto,
-  ) {
+  ): Promise<{
+    video_id: string;
+    upload_id: string;
+    permlink: string;
+  }> {
     const parsedRequest = parseAndValidateRequest(request, this.#logger);
     const hiveUsername = await this.hiveService.parseHiveUsername(parsedRequest, body.username);
 
@@ -166,19 +170,15 @@ export class UploadingController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
   @Post('update_post')
-  async postUpdate(@Body() reqBody: UpdateUploadDto) {
-    try {
-      await this.uploadingService.postUpdate(reqBody);
-    } catch (error) {
-      if (error.message === 'UnauthorizedAccessError') {
-        throw new HttpException(
-          { reason: 'You do not have access to edit the requested post' },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      // handle other errors or rethrow
-    }
+  async postUpdate(@Body() body: UpdateUploadDto, @Request() req) {
+    const parsedRequest = parseAndValidateRequest(req, this.#logger);
+    const username = await this.hiveService.parseHiveUsername(parsedRequest, body.owner);
+    await this.uploadingService.postUpdate(
+      { owner: username, permlink: body.permlink },
+      { ...body },
+    );
   }
 
   @Post('tus-callback')

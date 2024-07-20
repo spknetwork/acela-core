@@ -22,12 +22,14 @@ import { MockUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils
 import { HiveModule } from '../hive/hive.module';
 import { AuthService } from '../auth/auth.service';
 import { AuthModule } from '../auth/auth.module';
+import { VideoRepository } from '../../repositories/video/video.repository';
 
 describe('UploadingController', () => {
   let app: INestApplication;
   let mongod: MongoMemoryServer;
   let uploadingService: UploadingService;
   let authService: AuthService;
+  let videoRepository: VideoRepository;
 
   beforeEach(async () => {
     mongod = await MongoMemoryServer.create();
@@ -71,10 +73,10 @@ describe('UploadingController', () => {
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
           signOptions: { expiresIn: '30d' },
         }),
-        UploadingModule
+        UploadingModule,
       ],
       controllers: [UploadingController],
-      providers: [UploadingService, HiveChainRepository], // Ensure HiveRepository is provided if it's used in the service
+      providers: [UploadingService, HiveChainRepository],
     })
     class TestModule {}
 
@@ -95,14 +97,15 @@ describe('UploadingController', () => {
 
     uploadingService = moduleRef.get<UploadingService>(UploadingService);
     authService = moduleRef.get<AuthService>(AuthService);
+    videoRepository = moduleRef.get<VideoRepository>(VideoRepository);
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
   });
 
   afterEach(async () => {
-    await app.close();
     await mongod.stop();
+    await mongod.start();
   });
 
   describe('/POST upload/thumbnail', () => {
@@ -156,7 +159,27 @@ describe('UploadingController', () => {
     });
   });
 
-  describe('Start encode', () => {
+  describe('createUpload', () => {
+    it('should create an video document', async () => {
+      const didUser = await authService.createDidUser('singleton/starkerz/hive', 'test_id')
+      await authService.linkHiveAccount({ user_id: didUser._id, username: 'sisygoboom' });
+      const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', user_id: didUser.user_id })
+      expect(response).toEqual({
+        permlink: expect.any(String),
+        upload_id: expect.any(String),
+        video_id: expect.any(String)
+      })
+
+      const upload = await uploadingService.getUploadByUploadId(response.upload_id)
+
+      expect(upload).toBeTruthy()
+
+      const video = await uploadingService.getVideoByVideoId(response.video_id)
+
+      expect(upload).toBeTruthy()
+    });
+  });
+
     it('Should encode successfully when logged in with a hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
@@ -298,5 +321,110 @@ describe('UploadingController', () => {
           });
         });
     })
+
+    describe('/POST upload/update_post', () => {
+      it('should update the post successfully', async () => {
+        const jwtToken = 'test_jwt_token';
+        const didUser = await authService.createDidUser('singleton/starkerz/hive', 'test_user_id');
+        await authService.linkHiveAccount({ user_id: didUser._id, username: 'sisygoboom' });
+        const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', user_id: didUser.user_id });
+  
+        const updateData = {
+          video_id: upload.video_id,
+          title: 'Updated Title',
+          body: 'Updated Body',
+          owner: 'sisygoboom',
+          beneficiaries: [],
+          community: 'test-community',
+          duration: 120,
+          filename: 'updated-filename.mp4',
+          language: 'en',
+          originalFilename: 'original-filename.mp4',
+          permlink: upload.permlink,
+          size: 123456,
+          tags: ['test', 'update'],
+        };
+  
+        return request(app.getHttpServer())
+          .post('/v1/upload/update_post')
+          .set('Authorization', `Bearer ${jwtToken}`)
+          .set('x-user-type', 'hive')
+          .send(updateData)
+          .expect(201)
+          .then(async response => {
+            expect(response.body).toEqual({});
+            expect((await videoRepository.getVideoToPublish('sisygoboom', upload.permlink)).description).toEqual('Updated Body')
+          });
+      });
+  
+      it('should fail if the user does not have access to update the post', async () => {
+        const jwtToken = 'test_jwt_token';
+        const didUser = await authService.createDidUser('singleton/starkerz/hive', 'test_user_id');
+        await authService.linkHiveAccount({ user_id: didUser._id, username: 'sisygoboom' });
+        const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', user_id: didUser.user_id });
+  
+        const updateData = {
+          video_id: response.video_id,
+          title: 'Updated Title',
+          body: 'Updated Body',
+          owner: 'other-user', // A different user
+          beneficiaries: [],
+          community: 'test-community',
+          duration: 120,
+          filename: 'updated-filename.mp4',
+          language: 'en',
+          originalFilename: 'original-filename.mp4',
+          permlink: response.permlink,
+          size: 123456,
+          tags: ['test', 'update'],
+        };
+  
+        return request(app.getHttpServer())
+          .post('/v1/upload/update_post')
+          .set('Authorization', `Bearer ${jwtToken}`)
+          .set('x-user-type', 'hive')
+          .send(updateData)
+          .expect(401)
+          .then(response => {
+            expect(response.body).toEqual({
+              statusCode: 401,
+              message: 'Hive account is not linked',
+              error: 'Unauthorized',
+            });
+          });
+      });
+  
+      it('should fail if invalid data is provided', async () => {
+        const jwtToken = 'test_jwt_token';
+        const invalidUpdateData = {
+          video_id: '',
+          title: '',
+          body: '',
+          owner: '',
+          beneficiaries: [],
+          community: '',
+          duration: -10,
+          filename: '',
+          language: '',
+          originalFilename: '',
+          permlink: '',
+          size: -1,
+          tags: [],
+        };
+  
+        return request(app.getHttpServer())
+          .post('/v1/upload/update_post')
+          .set('Authorization', `Bearer ${jwtToken}`)
+          .set('x-user-type', 'hive')
+          .send(invalidUpdateData)
+          .expect(400)
+          .then(response => {
+            expect(response.body).toEqual({
+              statusCode: 400,
+              message: expect.any(Array), // Assuming class-validator returns an array of errors
+              error: 'Bad Request',
+            });
+          });
+      });
+    });
   })
-});
