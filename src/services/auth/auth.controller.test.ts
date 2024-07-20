@@ -123,17 +123,19 @@ describe('AuthController', () => {
 
       const jws = await did.createJWS(payload);
 
+      await authService.createDidUser(did.id, 'test_user_id')
+
       return request(app.getHttpServer())
         .post('/v1/auth/login/singleton/did')
         .send(jws)
         .set('Content-Type', 'application/json')
         .set('Accept', 'application/json')
         .expect(200)
-        .then(response => {
+        .then(async response => {
           expect(response.body).toHaveProperty('access_token');
           expect(typeof response.body.access_token).toBe('string');
-          expect(authService.didUserExists(did.id)).toBeTruthy();
-          expect(authService.getSessionByDid(did.id)).toBeTruthy();
+          expect(await authService.didUserExists(did.id)).toBeTruthy();
+          expect(await authService.getSessionByDid(did.id)).toBeTruthy();
         });
     });
   });
@@ -141,12 +143,14 @@ describe('AuthController', () => {
   describe('/POST /request_hive_account', () => {
     it('creates a Hive account successfully', async () => {
 
-      const hiveUsername = 'test_user_id'
+      const hiveUsername = 'jimbob'
+
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id')
   
       // Make the request to the endpoint
       return request(app.getHttpServer())
         .post('/v1/auth/request_hive_account')
-        .send({ username: hiveUsername})
+        .send({ username: hiveUsername })
         .set('Authorization', 'Bearer <your_mocked_jwt_token>')
         .expect(201)
         .then(async response => {
@@ -157,14 +161,15 @@ describe('AuthController', () => {
             trx_num: 10,
           });
           
-          expect(await hiveService.isHiveAccountLinked('singleton/bob/did', hiveUsername)).toBe(true)
+          expect(await hiveService.isHiveAccountLinked({ user_id: user._id, account: hiveUsername })).toBe(true)
         });
     });
   
     it('throws error when user has already created a Hive account', async () => {
 
       const username= 'yeet';
-      await hiveService.requestHiveAccount('bob', 'singleton/bob/did');
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id')
+      await hiveService.requestHiveAccount('bob', user.user_id);
       // Make the request to the endpoint
       return request(app.getHttpServer())
         .post('/v1/auth/request_hive_account')
@@ -173,10 +178,10 @@ describe('AuthController', () => {
         .expect(400)
         .then(async response => {
           expect(response.body).toEqual({
-            reason: "You have already created the maximum of 1 free Hive account",
+            reason: "You have already linked a hive account, so cannot claim a free one.",
           });
-          expect(await hiveService.isHiveAccountLinked('singleton/bob/did', 'bob')).toBe(true)
-          expect(await hiveService.isHiveAccountLinked('singleton/bob/did', username)).toBe(false)
+          expect(await hiveService.isHiveAccountLinked({ account: 'bob', user_id: user._id })).toBe(true)
+          expect(await hiveService.isHiveAccountLinked({ account: username, user_id: user._id })).toBe(false)
         });
     });
   });

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, QueryOptions, Types, UpdateQuery } from 'mongoose';
 import { Upload } from './schemas/upload.schema';
+import { User } from '../../services/auth/auth.types';
 
 @Injectable()
 export class UploadRepository {
@@ -57,11 +58,7 @@ export class UploadRepository {
     id: string,
     cid: string,
     video_id: string,
-    user: {
-      sub: string;
-      username: string;
-      id?: string;
-    },
+    user: User,
   ): Promise<Upload> {
     return await this.uploadModel.create({
       id,
@@ -72,7 +69,7 @@ export class UploadRepository {
       ipfs_status: 'done',
       cid: cid,
       type: 'thumbnail',
-      created_by: user.sub,
+      created_by: user.user_id,
     });
   }
 

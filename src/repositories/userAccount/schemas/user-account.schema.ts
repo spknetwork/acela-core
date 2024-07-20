@@ -2,54 +2,54 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
 import { v4 as uuid } from 'uuid';
 
-export type UserAccountDocument = mongoose.Document & UserAccount;
+export type LegacyUserDocument = mongoose.Document & LegacyUserAccount;
 
 @Schema()
-export class UserAccount {
+export class LegacyUserAccount {
   @Prop({ type: String, required: false })
-  confirmationCode: string;
+  confirmationCode?: string;
 
-  @Prop({ type: Date, required: true, default: Date.now })
-  createdAt: Date;
+  @Prop({ type: Date, required: true, default: () => new Date() })
+  createdAt?: Date;
 
-  @Prop({ type: String, unique: true })
-  email: string;
+  @Prop({ type: String })
+  email?: string;
 
   @Prop({ type: Boolean, required: true, default: false })
-  emailVerified: boolean;
+  emailVerified?: boolean;
 
   @Prop({ type: Boolean, required: true, default: true })
-  enabled: boolean;
+  enabled?: boolean;
 
   @Prop({ type: String, default: null })
-  hiveAccount: string;
+  hiveAccount: string | null;
 
   @Prop({ type: Boolean, default: false })
-  keysRequested: boolean;
+  keysRequested?: boolean;
 
   @Prop({ type: Boolean, default: false })
-  keysSent: boolean;
+  keysSent?: boolean;
 
   @Prop({ type: String, required: false })
-  password: string;
+  password?: string;
 
   @Prop({ type: String, default: 'FFFFFFFFFFFF' })
-  passwordResetCode: string;
+  passwordResetCode?: string;
 
   @Prop({ type: Boolean, default: false })
-  passwordResetRequired: boolean;
+  passwordResetRequired?: boolean;
 
-  @Prop({ type: Date, required: true, default: Date.now })
-  updatedAt: Date;
+  @Prop({ type: Date, required: true, default: () => new Date() })
+  updatedAt?: Date;
 
-  @Prop({ type: String, default: () => uuid(), required: true })
+  @Prop({ type: String, default: () => uuid(), required: true, unique: true })
   username: string;
 
   @Prop({ type: ['UNCONFIRMED', 'CONFIRMED'], default: 'UNCONFIRMED', required: true })
-  userStatus: string;
+  userStatus?: string;
 
   @Prop({ type: String })
-  did: string;
+  sub: string;
 }
 
-export const UserAccountSchema = SchemaFactory.createForClass(UserAccount);
+export const LegacyUserAccountSchema = SchemaFactory.createForClass(LegacyUserAccount);

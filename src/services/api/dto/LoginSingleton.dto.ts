@@ -55,15 +55,16 @@ export class LoginSingletonDidDto {
   @IsNotEmpty()
   @ApiProperty({
     description: 'Did of the account',
-    default: 'test-did',
+    type: 'string',
+    example:
+      'did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5',
   })
   did: string;
 
-  @IsNotEmpty()
   @ApiProperty({
-    description:
-      'Issued at (timestamp) - milliseconds denominated timestamp representing when the token was issued',
-    default: Date.now(),
+    description: 'Expiry time',
+    type: 'number',
+    example: Date.now(),
   })
   iat: number;
 }

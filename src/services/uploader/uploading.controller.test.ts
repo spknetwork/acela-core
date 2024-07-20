@@ -22,13 +22,14 @@ import { JwtModule } from '@nestjs/jwt';
 import crypto from 'crypto';
 import { MockHiveUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { HiveModule } from '../hive/hive.module';
-import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
+import { AuthService } from '../auth/auth.service';
+import { AuthModule } from '../auth/auth.module';
 
 describe('UploadingController', () => {
   let app: INestApplication;
   let mongod: MongoMemoryServer;
   let uploadingService: UploadingService;
-  let linkedAccountsRepository: LinkedAccountRepository;
+  let authService: AuthService;
 
   beforeEach(async () => {
     mongod = await MongoMemoryServer.create();
@@ -54,8 +55,16 @@ describe('UploadingController', () => {
           connectionName: 'acela-core',
           dbName: 'acela-core',
         }),
+        MongooseModule.forRoot(uri, {
+          ssl: false,
+          authSource: 'threespeak',
+          readPreference: 'primary',
+          connectionName: '3speakAuth',
+          dbName: '3speakAuth',
+        }),
         VideoModule,
         HiveChainModule,
+        AuthModule,
         HiveModule,
         UploadModule,
         IpfsModule,
@@ -87,7 +96,7 @@ describe('UploadingController', () => {
       .compile();
 
     uploadingService = moduleRef.get<UploadingService>(UploadingService);
-    linkedAccountsRepository = moduleRef.get<LinkedAccountRepository>(LinkedAccountRepository);
+    authService = moduleRef.get<AuthService>(AuthService);
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
@@ -129,8 +138,9 @@ describe('UploadingController', () => {
 
   describe('createUpload', () => {
     it('should create an upload document', async () => {
-      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
-      const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom' })
+      const didUser = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_id')
+      await authService.linkHiveAccount({ user_id: didUser._id, username: 'sisygoboom' });
+      const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom', user_id: didUser.user_id })
       expect(response).toEqual({
         permlink: expect.any(String),
         upload_id: expect.any(String),
@@ -150,32 +160,63 @@ describe('UploadingController', () => {
   describe('Start encode', () => {
     it('Should encode successfully when logged in with a hive account', async () => {
       const jwtToken = 'test_jwt_token';
-
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz' });
-
-      process.env.DELEGATED_ACCOUNT = 'threespeak'
-
+    
+      const user = await authService.createDidUser(
+        'did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5',
+        'test_user_id'
+      );
+      await authService.linkHiveAccount({ user_id: user._id, username: 'sisygoboom' });
+      if (!user.sub) throw new Error('No sub on user');
+    
+      const upload = await uploadingService.createUpload({
+        sub: user.sub,
+        username: 'sisygoboom',
+        user_id: user.user_id
+      });
+    
+      const updateUploadDto = {
+        video_id: upload.video_id,
+        permlink: upload.permlink,
+        title: 'Test Video Title',
+        body: 'This video is a test video. Here we can put a description',
+        tags: ['threespeak', 'acela-core'],
+        community: 'hive-181335',
+        beneficiaries: '[]',
+        language: 'en',
+        originalFilename: 'test-video.mp4',
+        filename: 'e1e7903087f9c39ac1645d69f5bb96cd',
+        size: 32330,
+        duration: 98,
+      };
+    
+      await uploadingService.postUpdate(updateUploadDto);
+    
+      process.env.DELEGATED_ACCOUNT = 'threespeak';
+    
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
         .send({
           upload_id: upload.upload_id,
           video_id: upload.video_id,
-          permlink: upload.permlink
+          permlink: upload.permlink,
+          username: 'sisygoboom'
         })
         .expect(201)
         .then(response => {
           expect(response.body).toEqual({});
         });
-    })
+    });
 
     it('Should encode successfully when requesting use of a linked hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
-      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
-      await linkedAccountsRepository.linkHiveAccount('singleton/ned/hive', 'sisygoboom');
+      const starkerzUser = await authService.createHiveUser({ hiveAccount: 'starkerz', user_id: 'test_user_id_other' });
+      const nedUser = await authService.createHiveUser({ hiveAccount: 'ned', user_id: 'test_user_id' });
+      await authService.linkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' });
+      await authService.linkHiveAccount({ user_id: nedUser._id, username: 'sisygoboom' });
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/ned/hive', username: 'sisygoboom' });
+      const upload = await uploadingService.createUpload({ sub: 'singleton/ned/hive', username: 'sisygoboom', user_id: nedUser.user_id });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 
@@ -197,11 +238,12 @@ describe('UploadingController', () => {
     it('Should fail when requesting use of an unlinked hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
-      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom')
+      const starkerzUser = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id');
+      await authService.linkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' });
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom' });
+      const upload = await uploadingService.createUpload({ sub: 'singleton/did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5/dids', username: 'sisygoboom', user_id: starkerzUser.user_id });
 
-      await linkedAccountsRepository.unlinkHiveAccount('singleton/starkerz/hive', 'sisygoboom')
+      await authService.unlinkHiveAccount({ user_id: starkerzUser._id, username: 'sisygoboom' })
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 
@@ -227,7 +269,9 @@ describe('UploadingController', () => {
     it('Should fail if the upload details are falsified', async () => {
       const jwtToken = 'test_jwt_token';
 
-      await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id');
+      if (!user.sub) throw new Error('no sub')
+      await authService.linkHiveAccount({ user_id: user._id, username: 'sisygoboom' });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 
@@ -240,12 +284,12 @@ describe('UploadingController', () => {
           video_id: 'random',
           permlink: 'random'
         })
-        .expect(400)
+        .expect(404)
         .then(response => {
           expect(response.body).toEqual({
-            error: "Bad Request",
+            error: "Not Found",
             message: "No upload could be found matching that owner and permlink combination",
-            statusCode: 400,
+            statusCode: 404,
           });
         });
     })
@@ -253,7 +297,10 @@ describe('UploadingController', () => {
     it('Should fail if the account is not linked', async () => {
       const jwtToken = 'test_jwt_token';
 
-      const upload = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'starkerz' });
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id');
+      if (!user.sub) throw new Error('no sub')
+      await authService.linkHiveAccount({ user_id: user._id, username: 'starkerz' })
+      const upload = await uploadingService.createUpload({ sub: user.sub, username: 'starkerz', user_id: user.user_id });
 
       process.env.DELEGATED_ACCOUNT = 'threespeak'
 

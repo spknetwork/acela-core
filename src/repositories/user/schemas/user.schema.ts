@@ -1,29 +1,29 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, HydratedDocument, Types } from 'mongoose';
-import { HiveAccount } from '../../hive-account/schemas/hive-account.schema';
-import { v4 as uuid } from 'uuid';
+import { HydratedDocument, Types } from 'mongoose';
+import { LegacyHiveAccount } from '../../hive-account/schemas/hive-account.schema';
 
-export type UserDocument = HydratedDocument<User>;
+export type LegacyUserDocument = HydratedDocument<LegacyUser>;
 
 @Schema()
-export class User extends Document {
-  @Prop({ type: String, unique: true, default: () => uuid() })
-  user_id: string;
+export class LegacyUser {
+  // same as userAccount.username
+  @Prop({ type: String, required: true })
+  user_id!: string;
+
+  @Prop({ type: String, unique: true })
+  sub?: string;
 
   @Prop({ type: Boolean, required: true, default: false })
-  banned: boolean;
+  banned?: boolean;
 
-  @Prop({ type: String, required: true, unique: true })
-  email: string;
+  @Prop({ type: String })
+  email?: string;
 
-  @Prop({ type: Types.ObjectId, ref: HiveAccount.name }) // Assuming 'Identity' is another schema
-  last_identity: Types.ObjectId;
-
-  @Prop()
-  display_name: string;
+  @Prop({ type: Types.ObjectId, ref: LegacyHiveAccount.name })
+  last_identity?: Types.ObjectId;
 
   @Prop()
-  self_deleted: boolean;
+  self_deleted?: boolean;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const LegacyUserSchema = SchemaFactory.createForClass(LegacyUser);

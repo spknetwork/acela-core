@@ -1,32 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { HiveAccount } from './schemas/hive-account.schema';
-import { ObjectId } from 'mongodb';
+import { LegacyHiveAccount } from './schemas/hive-account.schema';
 
 @Injectable()
-export class HiveAccountRepository {
-  readonly #logger = new Logger(HiveAccountRepository.name);
+export class LegacyHiveAccountRepository {
+  readonly #logger = new Logger(LegacyHiveAccountRepository.name);
 
   constructor(
-    @InjectModel(HiveAccount.name, 'threespeak') private hiveAccountModel: Model<HiveAccount>,
+    @InjectModel('hiveaccounts', 'threespeak') private hiveAccountModel: Model<LegacyHiveAccount>,
   ) {}
 
-  async findOneByOwnerIdAndHiveAccountName({
-    user_id,
-    account,
-  }: {
-    user_id: string | ObjectId;
-    account: string;
-  }): Promise<HiveAccount | null> {
-    const acelaUser = await this.hiveAccountModel.findOne({ user_id, account });
+  async findOneByOwnerIdAndHiveAccountName(
+    query: Pick<LegacyHiveAccount, 'user_id' | 'account'>,
+  ): Promise<LegacyHiveAccount | null> {
+    const acelaUser = await this.hiveAccountModel.findOne(query);
     this.#logger.log(acelaUser);
 
     return acelaUser;
   }
 
-  async findOneByOwnerId({ user_id }: { user_id: string | ObjectId }): Promise<HiveAccount | null> {
-    const acelaUser = await this.hiveAccountModel.findOne({ user_id });
+  async findOneByOwnerId(
+    query: Pick<LegacyHiveAccount, 'user_id'>,
+  ): Promise<LegacyHiveAccount | null> {
+    const acelaUser = await this.hiveAccountModel.findOne(query);
     this.#logger.log(acelaUser);
 
     return acelaUser;
@@ -45,10 +42,11 @@ export class HiveAccountRepository {
     });
   }
 
-  async insertCreated(username: string, created_by: string) {
-    return await this.hiveAccountModel.create({
-      account: username,
-      user_id: created_by,
-    });
+  async deleteOne(query: Pick<LegacyHiveAccount, 'user_id' | 'account'>) {
+    return this.hiveAccountModel.deleteOne(query);
+  }
+
+  async insertCreated(query: Pick<LegacyHiveAccount, 'user_id' | 'account'>) {
+    return await this.hiveAccountModel.create(query);
   }
 }

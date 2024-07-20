@@ -1,52 +1,68 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserAccount } from './schemas/user-account.schema';
-import { v4 as uuid } from 'uuid';
-import { CreateUserAccountDto } from './dto/user-account.dto';
+import { LegacyUserAccount } from './schemas/user-account.schema';
+import bcrypt from 'bcryptjs';
+
+interface CreateUserParams {
+  email: string;
+  password: string;
+  username: string;
+}
 
 @Injectable()
-export class UserAccountRepository {
-  readonly #logger = new Logger(UserAccountRepository.name);
+export class LegacyUserAccountRepository {
+  readonly #logger = new Logger(LegacyUserAccountRepository.name);
 
   constructor(
-    @InjectModel(UserAccount.name, '3speakAuth') private userAccountModel: Model<UserAccount>,
+    @InjectModel('useraccounts', '3speakAuth')
+    private legacyUserAccountModel: Model<LegacyUserAccount>,
   ) {}
 
-  async findOneByEmail(email: string): Promise<UserAccount | null> {
-    const query = { email };
-    const authUser = await this.userAccountModel.findOne(query);
+  async findOneByEmail(query: Pick<LegacyUserAccount, 'email'>): Promise<LegacyUserAccount | null> {
+    const authUser = await this.legacyUserAccountModel.findOne(query);
     this.#logger.log(authUser); // TODO: delete - not suitable for prod
 
     return authUser;
   }
 
-  async findOneByDid(did: string) {
-    const query = { did };
-    const authUser = await this.userAccountModel.findOne(query);
-    this.#logger.log(authUser); // TODO: delete - not suitable for prod
-
-    return authUser;
+  async verifyEmail(query: Pick<LegacyUserAccount, 'confirmationCode'>): Promise<boolean> {
+    const result = await this.legacyUserAccountModel.updateOne(query, {
+      $set: { emailVerified: true },
+    });
+    return result.modifiedCount > 0;
   }
 
-  async createNewEmailAndPasswordUser(
-    email: string,
-    hashedPassword: string,
-  ): Promise<CreateUserAccountDto> {
-    return this.userAccountModel.create({
-      email,
-      email_code: uuid(),
-      auth_methods: {
-        password: {
-          value: hashedPassword,
-        },
-      },
-    });
+  async createNewEmailAndPasswordUser(query: CreateUserParams): Promise<string> {
+    query.password = bcrypt.hashSync(query.password, bcrypt.genSaltSync(10));
+    const { confirmationCode } = await this.legacyUserAccountModel.create(query);
+
+    if (!confirmationCode)
+      throw new InternalServerErrorException(
+        'Please alert the team email code was missing after email account creation',
+      );
+
+    return confirmationCode;
   }
 
-  async createNewDidUser(did: string): Promise<CreateUserAccountDto> {
-    return this.userAccountModel.create({
-      did,
-    });
+  async createOne({
+    sub,
+    hiveAccount,
+    password,
+    email,
+    username,
+  }: {
+    sub: string;
+    hiveAccount: string | null;
+    password?: string;
+    email?: string;
+    username: string;
+  }) {
+    if ((email && !password) || (!email && password)) {
+      throw new Error('Both email and password must be provided or not provided at all.');
+    }
+
+    const userAccount = { sub, hiveAccount, password, email, username } satisfies LegacyUserAccount;
+    return (await this.legacyUserAccountModel.create(userAccount)).toObject();
   }
 }

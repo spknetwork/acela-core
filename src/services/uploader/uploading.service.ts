@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
@@ -9,6 +9,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import { Upload } from './uploading.types';
 import { v4 as uuid } from 'uuid';
 import { HiveService } from '../hive/hive.service';
+import { User } from '../auth/auth.types';
 
 @Injectable()
 export class UploadingService {
@@ -20,11 +21,7 @@ export class UploadingService {
     private readonly hiveService: HiveService,
   ) {}
 
-  async uploadThumbnail(
-    file: any,
-    video_id: string,
-    user: { sub: string; username: string; id?: string },
-  ) {
+  async uploadThumbnail(file: any, video_id: string, user: User) {
     const id = uuid();
 
     const { cid }: { cid: string } = await this.ipfsService.addData(
@@ -48,14 +45,23 @@ export class UploadingService {
     return cid;
   }
 
-  async createUpload({ sub, username }: { sub: string; username: string }) {
-    await this.hiveService.subAuthorizedToUseHiveAccount({
+  async createUpload({
+    sub,
+    username,
+    user_id,
+  }: {
+    sub: string;
+    username: string;
+    user_id: string;
+  }) {
+    await this.hiveService.authorizedToUseHiveAccount({
       sub,
       hiveAccount: username,
+      user_id,
     });
 
     const video = await this.videoRepository.createNewHiveVideoPost({
-      sub,
+      user_id,
       username,
       title: ' ',
       description: ' ',
@@ -70,7 +76,7 @@ export class UploadingService {
     const upload = await this.uploadRepository.insertOne({
       video_id: video.video_id,
       expires: moment().add('1', 'day').toDate(),
-      created_by: sub,
+      created_by: user_id,
       ipfs_status: 'pending',
       type: 'video',
       immediatePublish: false,
@@ -122,7 +128,7 @@ export class UploadingService {
   async getVideoTitleLength(permlink: string, owner: string): Promise<number> {
     const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
     if (!publishData) {
-      throw new BadRequestException(
+      throw new NotFoundException(
         'No upload could be found matching that owner and permlink combination',
       );
     }

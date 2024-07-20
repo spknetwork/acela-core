@@ -11,6 +11,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { UserDetailsInterceptor } from '../api/utils';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HiveModule } from '../hive/hive.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { HiveModule } from '../hive/hive.module';
     VideoModule,
     IpfsModule,
     HiveModule,
+    AuthModule,
     PublishingModule,
     HiveChainModule,
     JwtModule.registerAsync({

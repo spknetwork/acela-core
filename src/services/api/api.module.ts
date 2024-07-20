@@ -6,7 +6,6 @@ import { UserModule } from '../../repositories/user/user.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
-import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HiveModule } from '../hive/hive.module';
@@ -18,7 +17,6 @@ import { HiveModule } from '../hive/hive.module';
     HiveAccountModule,
     HiveChainModule,
     HiveModule,
-    LinkedAccountModule,
     EmailModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

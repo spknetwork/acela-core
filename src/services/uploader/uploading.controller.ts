@@ -29,9 +29,10 @@ import { StartEncodeDto } from './dto/start-encode.dto';
 import { UploadingService } from './uploading.service';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { Upload } from './uploading.types';
-import { parseAndValidateRequest } from '../auth/auth.utils';
+import { parseAndValidateRequest, parseSub } from '../auth/auth.utils';
 import { HiveService } from '../hive/hive.service';
 import { CreateUploadDto } from './dto/create-upload.dto';
+import { AuthService } from '../auth/auth.service';
 
 MulterModule.registerAsync({
   useFactory: () => ({
@@ -47,6 +48,7 @@ export class UploadingController {
     private readonly uploadingService: UploadingService,
     private readonly hiveChainRepository: HiveChainRepository,
     private readonly hiveService: HiveService,
+    private readonly authService: AuthService,
   ) {}
 
   @ApiConsumes('multipart/form-data', 'application/json')
@@ -87,14 +89,14 @@ export class UploadingController {
     @Body() body: CreateUploadDto,
   ) {
     const parsedRequest = parseAndValidateRequest(request, this.#logger);
+    const { account } = parseSub(parsedRequest.user.sub);
     const hiveUsername =
-      body.username || parsedRequest.user.network === 'hive'
-        ? parsedRequest.user.username
-        : undefined;
+      body.username || parsedRequest.user.network === 'hive' ? account : undefined;
     if (!hiveUsername) throw new BadRequestException('No username provided');
     return this.uploadingService.createUpload({
       sub: parsedRequest.user.sub,
-      username: body.username || parsedRequest.user.username,
+      username: hiveUsername,
+      user_id: parsedRequest.user.user_id,
     });
   }
 
@@ -103,28 +105,31 @@ export class UploadingController {
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const request = parseAndValidateRequest(req, this.#logger);
-    const hiveUsername =
-      body.username || (request.user.network === 'hive' ? request.user.username : undefined);
+    const { account } = parseSub(request.user.sub);
+    const hiveUsername = body.username || (request.user.network === 'hive' ? account : undefined);
     if (!hiveUsername) {
       throw new BadRequestException(
         'Must be signed in with a hive account or include a linked hive account in the request',
       );
     }
+
+    const user = await this.authService.getUserByUserId({ user_id: request.user.user_id });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
     if (
-      !(await this.hiveService.isHiveAccountLinked(request.user.sub, hiveUsername)) &&
-      !(request.user.username === hiveUsername && request.user.network === 'hive')
+      !(await this.hiveService.isHiveAccountLinked({
+        account: hiveUsername,
+        user_id: user._id,
+      })) &&
+      !(account === hiveUsername && request.user.network === 'hive')
     ) {
       throw new UnauthorizedException('Your account is not linked to the requested hive account');
     }
-    const accountDetails = await this.hiveChainRepository.getAccount(hiveUsername);
-    if (!accountDetails) throw new NotFoundException('Hive account could not be found');
-    // Check 1: Do we have posting authority?
-    if (this.hiveChainRepository.verifyPostingAuth(accountDetails) === false) {
-      const reason = `Hive Account @${hiveUsername} has not granted posting authority to @threespeak`;
-      const errorType = 'MISSING_POSTING_AUTHORITY';
-      throw new HttpException({ reason: reason, errorType: errorType }, HttpStatus.FORBIDDEN);
-    }
-    // Check 2: Is post title too big or too small?
+
+    this.#logger.debug('Checking video title length', request, body);
     const videoTitleLength = await this.uploadingService.getVideoTitleLength(
       body.permlink,
       hiveUsername,
@@ -141,7 +146,7 @@ export class UploadingController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    // Check 3: Is this post already published?
+    this.#logger.debug('Checking if post is already published', request, body);
     const postExists = await this.hiveChainRepository.hivePostExists({
       author: hiveUsername,
       permlink: body.permlink,
@@ -152,7 +157,7 @@ export class UploadingController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    // Check 4: Does user have enough RC?
+    this.#logger.debug('Checking if there are enough RCs', request, body);
     const hasEnoughRC = await this.hiveChainRepository.hasEnoughRC({ author: hiveUsername });
     if (!hasEnoughRC) {
       throw new HttpException(
@@ -160,7 +165,10 @@ export class UploadingController {
         HttpStatus.BAD_REQUEST,
       );
     }
-    // All check went well? let's encode & publish
+    const accountDetails = await this.hiveChainRepository.getAccount(hiveUsername);
+    if (!accountDetails) throw new NotFoundException('Hive account could not be found');
+
+    this.#logger.debug('All checks passed, starting encode', request, body);
     return await this.uploadingService.startEncode(
       body.upload_id,
       body.video_id,

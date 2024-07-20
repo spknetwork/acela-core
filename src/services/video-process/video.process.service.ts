@@ -35,7 +35,7 @@ export class VideoProcessService {
         `${this.#configService.get('ENCODER_API')}/api/v0/gateway/jobstatus/${upload.encode_id}`,
       );
 
-      console.log(data);
+      this.#logger.log(data);
       if (data.job.status === 'complete') {
         await this.#uploadRepository.setJobToDone(upload._id, data.job.result.cid);
       }
@@ -131,7 +131,7 @@ export class VideoProcessService {
     try {
       await this.initS3();
     } catch (ex) {
-      console.log(ex);
+      this.#logger.fatal(ex);
     }
   }
 }

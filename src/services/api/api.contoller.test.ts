@@ -8,14 +8,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiController } from './api.controller';
 import { ApiModule } from './api.module';
 import { AuthService } from '../auth/auth.service';
-import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
-import { UserRepository } from '../../repositories/user/user.repository';
+import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
+import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
-import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 import { EmailService } from '../email/email.service';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
 import { UserModule } from '../../repositories/user/user.module';
-import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from '../auth/auth.module';
 import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
@@ -24,15 +22,14 @@ import { EmailModule } from '../email/email.module';
 import * as crypto from 'crypto';
 import { HiveModule } from '../hive/hive.module';
 import { PrivateKey } from '@hiveio/dhive';
+import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
+import { SessionModule } from '../../repositories/session/session.module';
 
 describe('ApiController', () => {
   let app: INestApplication;
   let mongod: MongoMemoryServer;
   let authService: AuthService;
-  let hiveAccountRepository: HiveAccountRepository;
-  let userRepository: UserRepository;
   let hiveRepository: HiveChainRepository;
-  let linkedAccountsRepository: LinkedAccountRepository;
   let emailService: EmailService;
 
   beforeEach(async () => {
@@ -66,10 +63,12 @@ describe('ApiController', () => {
           connectionName: '3speakAuth',
           dbName: '3speakAuth',
         }),
+        AuthModule,
         HiveModule,
         UserModule,
-        AuthModule,
+        UserAccountModule,
         HiveAccountModule,
+        SessionModule,
         HiveChainModule,
         EmailModule,
         ApiModule,
@@ -77,10 +76,10 @@ describe('ApiController', () => {
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
           signOptions: { expiresIn: '30d' },
         }),
-        LinkedAccountModule
       ],
       controllers: [ApiController],
-      providers: [],
+      providers: [AuthService],
+      exports: [AuthService]
     })
     class TestModule {}
 
@@ -94,10 +93,7 @@ describe('ApiController', () => {
       .compile();
 
     authService = moduleRef.get<AuthService>(AuthService);
-    hiveAccountRepository = moduleRef.get<HiveAccountRepository>(HiveAccountRepository);
-    userRepository = moduleRef.get<UserRepository>(UserRepository);
     hiveRepository = moduleRef.get<HiveChainRepository>(HiveChainRepository);
-    linkedAccountsRepository = moduleRef.get<LinkedAccountRepository>(LinkedAccountRepository);
     emailService = moduleRef.get<EmailService>(EmailService);
 
     app = moduleRef.createNestApplication();
@@ -140,13 +136,17 @@ describe('ApiController', () => {
     it('should link a Hive account', async () => {
       const jwtToken = 'test_jwt_token';
 
+      const user_id = 'test_user_id'
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', user_id)
+      const hiveUsername = 'starkerz'
+
       const privateKey = PrivateKey.fromSeed(crypto.randomBytes(32).toString("hex"));
       const publicKey = privateKey.createPublic();
       const publicKeyString = publicKey.toString();
-      const message = "singleton/bob/did is the owner of @starkerz";
+      const message = `${user_id} is the owner of @${hiveUsername}`;
       const signature = privateKey.sign(crypto.createHash('sha256').update(message).digest());
 
-      const body = { username: 'starkerz', proof: signature.toString() };
+      const body = { username: hiveUsername, proof: signature.toString() };
 
       process.env.TEST_PUBLIC_KEY = publicKeyString;
 
@@ -159,10 +159,8 @@ describe('ApiController', () => {
           expect(response.body).toEqual({
             __v: 0,
             _id: expect.any(String),
-            account: "starkerz",
-            network: "HIVE",
-            status: "verified",
-            user_id: "singleton/bob/did",
+            account: hiveUsername,
+            user_id: user._id.toString(),
           });
         });
     });
@@ -178,11 +176,10 @@ describe('ApiController', () => {
         .expect(200)
         .then(response => {
           expect(response.body).toEqual({
-            id: "test_user_id",
             network: "did",
-            sub: "singleton/bob/did",
+            sub: "singleton/did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5/did",
             type: "singleton",
-            username: "test_user_id",
+            user_id: "test_user_id",
           });
         });
     });
@@ -193,8 +190,9 @@ describe('ApiController', () => {
       const jwtToken = 'test_jwt_token';
 
       // Mock linking and verifying an account
-      const link = await linkedAccountsRepository.linkHiveAccount('singleton/bob/did', 'test-account');
-      await linkedAccountsRepository.verify(link._id);
+      const user = await authService.createDidUser('did:key:z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5#z6MkjHhFz9hXYJKGrT5fShwJMzQpHGi63sS3wY3U1eH4n7i5', 'test_user_id')
+      await authService.linkHiveAccount({ user_id: user._id, username: 'test-account' })
+      await authService.linkHiveAccount({ user_id: user._id, username: 'joop' })
 
       return request(app.getHttpServer())
         .get('/v1/hive/linked-account/list')
@@ -203,7 +201,7 @@ describe('ApiController', () => {
         .then(response => {
           expect(response.body).toEqual(
             {
-              accounts: ['test-account'],
+              accounts: ['test-account', 'joop'],
             },
           );
         });

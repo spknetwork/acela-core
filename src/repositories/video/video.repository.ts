@@ -78,7 +78,7 @@ export class VideoRepository {
   }
 
   async createNewHiveVideoPost({
-    sub,
+    user_id,
     username,
     title,
     description,
@@ -87,7 +87,7 @@ export class VideoRepository {
     language,
     beneficiaries,
   }: {
-    sub: string;
+    user_id: string;
     username: string;
     title: string;
     description: string;
@@ -114,7 +114,7 @@ export class VideoRepository {
         publish_type: 'immediate',
         publish_date: null,
       },
-      created_by: sub,
+      created_by: user_id,
       expires: moment().add('1', 'day').toDate(),
       upload_links: {},
       network: 'hive',

@@ -9,31 +9,32 @@ import {
 } from '@nestjs/common';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import 'dotenv/config';
-import { HiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
+import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { Network } from '../auth/auth.types';
 import { parseSub } from '../auth/auth.utils';
-import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
-import { LinkedAccount } from '../../repositories/linked-accounts/schemas/linked-account.schema';
+import { ObjectId } from 'mongodb';
+import { LegacyUserRepository } from '../../repositories/user/user.repository';
 
 @Injectable()
 export class HiveService {
   readonly #hiveChainRepository: HiveChainRepository;
-  readonly #hiveAccountRepository: HiveAccountRepository;
-  readonly #linkedAccountsRepository: LinkedAccountRepository;
+  readonly #legacyHiveAccountRepository: LegacyHiveAccountRepository;
+  readonly #legacyUserRepository: LegacyUserRepository;
   readonly #logger: LoggerService = new Logger(HiveService.name);
 
   constructor(
-    hiveAccountRepository: HiveAccountRepository,
+    legacyHiveAccountRepository: LegacyHiveAccountRepository,
     hiveChainRepository: HiveChainRepository,
-    linkedAccountRepository: LinkedAccountRepository,
+    legacyUserRepository: LegacyUserRepository,
   ) {
     this.#hiveChainRepository = hiveChainRepository;
-    this.#hiveAccountRepository = hiveAccountRepository;
-    this.#linkedAccountsRepository = linkedAccountRepository;
+    this.#legacyHiveAccountRepository = legacyHiveAccountRepository;
+    this.#legacyUserRepository = legacyUserRepository;
   }
 
   async vote({
     votingAccount,
+    user_id,
     sub,
     author,
     permlink,
@@ -41,6 +42,7 @@ export class HiveService {
     network,
   }: {
     votingAccount: string;
+    user_id: ObjectId;
     sub: string;
     author: string;
     permlink: string;
@@ -48,14 +50,16 @@ export class HiveService {
     network: Network;
   }) {
     // TODO: investigate how this could be reused on other methods that access accounts onchain
-    if (network === 'hive' && parseSub(sub).account === votingAccount) {
+    const parsedSub = parseSub(sub);
+    if (parsedSub.network === 'hive' && parsedSub.account === votingAccount) {
       return this.#hiveChainRepository.vote({ author, permlink, voter: votingAccount, weight });
     }
 
-    const delegatedAuth = await this.#hiveAccountRepository.findOneByOwnerIdAndHiveAccountName({
-      account: votingAccount,
-      user_id: sub,
-    });
+    const delegatedAuth =
+      await this.#legacyHiveAccountRepository.findOneByOwnerIdAndHiveAccountName({
+        account: votingAccount,
+        user_id,
+      });
 
     if (!delegatedAuth) {
       throw new UnauthorizedException('You have not verified ownership of the target account');
@@ -64,26 +68,29 @@ export class HiveService {
     return this.#hiveChainRepository.vote({ author, permlink, voter: votingAccount, weight });
   }
 
-  async requestHiveAccount(hiveUsername: string, sub: string) {
-    const existingDbAcocunt = await this.#hiveAccountRepository.findOneByOwnerId({
-      user_id: sub,
-    });
+  async requestHiveAccount(hiveUsername: string, user_id: string) {
+    const linkedAccounts = await this.#legacyUserRepository.getLegacyLinkedHiveAccounts(user_id);
 
-    if (existingDbAcocunt) {
+    if (!linkedAccounts) {
+      throw new NotFoundException("Account couldn't be found");
+    }
+
+    if (linkedAccounts.linked_hiveaccounts.length) {
       throw new HttpException(
-        { reason: 'You have already created the maximum of 1 free Hive account' },
+        { reason: 'You have already linked a hive account, so cannot claim a free one.' },
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    const accountCreation = await this.#createAccountWithAuthority(hiveUsername, sub);
-
-    await this.insertCreated(hiveUsername, sub);
+    const accountCreation = await this.#createAccountWithAuthority(
+      hiveUsername,
+      linkedAccounts._id,
+    );
 
     return accountCreation;
   }
 
-  async #createAccountWithAuthority(hiveUsername: string, sub: string) {
+  async #createAccountWithAuthority(hiveUsername: string, user_id: ObjectId) {
     if (!process.env.ACCOUNT_CREATOR) {
       throw new Error('Please set the ACCOUNT_CREATOR env var');
     }
@@ -92,22 +99,33 @@ export class HiveService {
         hiveUsername,
         process.env.ACCOUNT_CREATOR,
       );
-      await this.#linkedAccountsRepository.linkHiveAccount(sub, hiveUsername);
+      await this.#legacyHiveAccountRepository.insertCreated({ account: hiveUsername, user_id });
       return accountWithAuthority;
     } catch (ex) {
       throw new HttpException({ reason: `On chain error - ${ex.message}` }, HttpStatus.BAD_REQUEST);
     }
   }
 
-  async insertCreated(hiveUsername: string, sub: string) {
-    await this.#hiveAccountRepository.insertCreated(hiveUsername, sub);
+  async insertCreated(hiveUsername: string, user_id: ObjectId) {
+    await this.#legacyHiveAccountRepository.insertCreated({ account: hiveUsername, user_id });
   }
 
-  async linkHiveAccount(sub: string, hiveUsername: string, proof: string): Promise<LinkedAccount> {
-    const linkedAccount = await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
-      user_id: sub,
-      account: hiveUsername,
-    });
+  async linkHiveAccount({
+    db_user_id,
+    user_id,
+    hiveUsername,
+    proof,
+  }: {
+    db_user_id: ObjectId;
+    user_id: string;
+    hiveUsername: string;
+    proof: string;
+  }) {
+    const linkedAccount =
+      await this.#legacyHiveAccountRepository.findOneByOwnerIdAndHiveAccountName({
+        user_id: db_user_id,
+        account: hiveUsername,
+      });
     if (linkedAccount) {
       throw new HttpException({ reason: 'Hive account already linked' }, HttpStatus.BAD_REQUEST);
     }
@@ -115,41 +133,50 @@ export class HiveService {
     if (!hiveAccount)
       throw new NotFoundException(`Requested hive account (${hiveAccount}) could not be found.`);
     await this.#hiveChainRepository.verifyHiveMessage(
-      `${sub} is the owner of @${hiveUsername}`,
+      `${user_id} is the owner of @${hiveUsername}`,
       proof,
       hiveAccount,
     );
-    return (await this.#linkedAccountsRepository.linkHiveAccount(
-      sub,
-      hiveUsername,
-    )) satisfies LinkedAccount;
+    return await this.#legacyHiveAccountRepository.insertCreated({
+      account: hiveUsername,
+      user_id: db_user_id,
+    });
   }
 
-  async isHiveAccountLinked(sub: string, accountName: string) {
-    return !!(await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
-      user_id: sub,
-      account: accountName,
+  async isHiveAccountLinked({ user_id, account }: { user_id: ObjectId; account: string }) {
+    return !!(await this.#legacyHiveAccountRepository.findOneByOwnerIdAndHiveAccountName({
+      user_id,
+      account,
     }));
   }
 
-  async subAuthorizedToUseHiveAccount({
+  async authorizedToUseHiveAccount({
     hiveAccount,
+    user_id,
     sub,
   }: {
     hiveAccount: string;
-    sub: string;
+    user_id: string;
+    sub?: string;
   }): Promise<void> {
-    const user = parseSub(sub);
-    if (user.account !== hiveAccount || user.network !== 'hive') {
-      const hasLinkedAccount = await this.#linkedAccountsRepository.findOneByUserIdAndAccountName({
-        user_id: sub,
-        account: hiveAccount,
-      });
-      if (!hasLinkedAccount) {
-        throw new UnauthorizedException(
-          'you are not logged in or do not have a link to this hive account',
-        );
+    const dbUser = await this.#legacyUserRepository.findOneByUserId({ user_id });
+    if (!dbUser) throw new UnauthorizedException('User does not exist');
+    if (sub) {
+      const user = parseSub(sub);
+      if (user.account === hiveAccount || user.network === 'hive') {
+        return;
       }
     }
+    const hasLinkedAccount =
+      await this.#legacyHiveAccountRepository.findOneByOwnerIdAndHiveAccountName({
+        user_id: dbUser._id,
+        account: hiveAccount,
+      });
+    if (hasLinkedAccount) {
+      return;
+    }
+    throw new UnauthorizedException(
+      'you are not logged in or do not have a link to this hive account',
+    );
   }
 }
