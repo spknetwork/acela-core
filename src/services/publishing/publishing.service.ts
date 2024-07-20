@@ -10,7 +10,6 @@ import {
   OperationsArray,
 } from '../../repositories/hive-chain/types';
 import { VideoRepository } from '../../repositories/video/video.repository';
-import { CreatorRepository } from '../../repositories/creator/creator.repository';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import 'dotenv/config';
 import { Video } from '../../repositories/video/schemas/video.schema';
@@ -35,18 +34,26 @@ const videoPostTemplate = `<center>
 export class PublishingService {
   readonly #logger: Logger;
   readonly #videoRepository: VideoRepository;
-  readonly #creatorRepository: CreatorRepository;
   readonly #hiveRepository: HiveChainRepository;
 
-  constructor(
-    videoRepository: VideoRepository,
-    creatorRepository: CreatorRepository,
-    hiveRepository: HiveChainRepository,
-  ) {
+  constructor(videoRepository: VideoRepository, hiveRepository: HiveChainRepository) {
     this.#videoRepository = videoRepository;
-    this.#creatorRepository = creatorRepository;
     this.#hiveRepository = hiveRepository;
     this.#logger = new Logger(PublishingService.name);
+  }
+
+  async errorVideoReattemptPublish() {
+    const videosToPublish = await this.#videoRepository.getErrorVideosToPublish();
+    for (const video of videosToPublish) {
+      await this.publish(video);
+    }
+  }
+
+  async scheduledVideoPublish() {
+    const videosToPublish = await this.#videoRepository.getVideosToPublish();
+    for (const video of videosToPublish) {
+      await this.publish(video);
+    }
   }
 
   async normalVideoPublish() {
@@ -61,7 +68,11 @@ export class PublishingService {
       if (
         await this.#hiveRepository.hivePostExists({ author: video.owner, permlink: video.permlink })
       ) {
-        await this.#videoRepository.setPostedToChain(video.owner, video.ipfs);
+        await this.#videoRepository.setPostedToChain({
+          owner: video.owner,
+          permlink: video.permlink,
+          ipfs: video.ipfs,
+        });
         this.#logger.warn(`## SKIPPED ${video.owner}/${video.permlink} ALREADY PUBLISHED!`);
         return;
       }
@@ -78,10 +89,9 @@ export class PublishingService {
         permlink: video.permlink,
         title: video.title,
         description: video.description,
-        community: video.hive,
+        community: video.community,
         size: video.size,
         filename: video.filename,
-        firstUpload: video.firstUpload,
         fromMobile: video.fromMobile || false,
         beneficiaries: video.beneficiaries,
         declineRewards: video.declineRewards,
@@ -89,9 +99,13 @@ export class PublishingService {
       });
 
       if (publish && publish.id) {
-        await this.#videoRepository.setPostedToChain(video.owner, video.hive);
+        await this.#videoRepository.setPostedToChain({
+          owner: video.owner,
+          permlink: video.permlink,
+          ipfs: video.ipfs,
+        });
 
-        await this.#creatorRepository.setUserToVisible(video.owner);
+        //await this.#creatorRepository.setUserToVisible(video.owner);
 
         this.#logger.log(
           '## Published:',
@@ -120,7 +134,10 @@ export class PublishingService {
           paidForbidden ||
           commentBeneficiaries;
 
-        await this.#videoRepository.updateVideoFailureStatus(video.owner, { lowRc, publishFailed });
+        await this.#videoRepository.updateVideoFailureStatus(
+          { owner: video.owner, permlink: video.permlink },
+          { lowRc, publishFailed },
+        );
 
         this.#logger.warn(
           '## ERROR, failed to publish:',
@@ -220,7 +237,6 @@ export class PublishingService {
           filesize: detail.size,
           file: detail.filename,
           lang: detail.language,
-          firstUpload: detail.firstUpload,
           ipfs: detail.ipfs ? detail.ipfs + '/default.m3u8' : null,
           ipfsThumbnail: detail.ipfs ? detail.ipfs + '/thumbnail.png' : null,
           video_v2: detail.video_v2,
@@ -287,9 +303,7 @@ export class PublishingService {
     }
 
     // Process video beneficiaries
-    const videoBenefs: PostBeneficiary[] = detail.beneficiaries
-      ? JSON.parse(detail.beneficiaries)
-      : [];
+    const videoBenefs: PostBeneficiary[] = detail.beneficiaries || [];
     if (detail.fromMobile) {
       const sagarExists = videoBenefs.some(
         (ben) =>

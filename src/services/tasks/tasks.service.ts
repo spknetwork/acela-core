@@ -25,9 +25,16 @@ export class TasksService {
   }
 
   @Cron(CronExpression.EVERY_10_MINUTES, { name: 'Publish mongo videos to hive chain' })
-  async publishVideosToHive() {
-    await this.#lockService.executeWithLock('publishVideosToHive', async () => {
-      await this.#publishingService.normalVideoPublish();
+  async publishErrorVideosToHive() {
+    await this.#lockService.executeWithLock('Publish error videos to hive', async () => {
+      await this.#publishingService.errorVideoReattemptPublish();
+    });
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES, { name: 'Publish scheduled' })
+  async publishScheduledVideos() {
+    await this.#lockService.executeWithLock('publishScheduledVideosToHive', async () => {
+      await this.#publishingService.errorVideoReattemptPublish();
     });
   }
 

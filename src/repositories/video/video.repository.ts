@@ -1,4 +1,4 @@
-import { Model } from 'mongoose';
+import { FilterQuery, Model } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Video } from './schemas/video.schema';
@@ -12,45 +12,77 @@ export class VideoRepository {
   async getVideosToPublish(): Promise<Video[]> {
     return await this.videoModel
       .find({
-        status: 'published',
         publishFailed: { $ne: true },
         lowRc: { $ne: true },
         owner: { $ne: 'guest-account' },
         $or: [{ steemPosted: { $exists: false } }, { steemPosted: false }],
         title: { $ne: null },
+        network: 'hive',
+      })
+      .sort('-created');
+  }
+
+  async getScheduledVideosToPublish() {
+    const query: FilterQuery<Video> = {
+      publish_date: { $lt: new Date(), $ne: null, $exists: true },
+      title: { $ne: null },
+      network: 'hive',
+      owner: { $ne: 'guest-account' },
+      needsHiveUpdate: true,
+      $or: [{ steemPosted: { $exists: false } }, { steemPosted: false }],
+      publishFailed: { $ne: true },
+      lowRc: { $ne: true },
+    };
+    return await this.videoModel.find(query).sort('-created');
+  }
+
+  async getErrorVideosToPublish(): Promise<Video[]> {
+    return await this.videoModel
+      .find({
+        $or: [{ lowRc: true }, { publishFailed: true }],
+        owner: { $ne: 'guest-account' },
+        $and: [
+          { $or: [{ steemPosted: { $exists: false } }, { steemPosted: false }] },
+          { title: { $ne: null } },
+        ],
+        network: 'hive',
       })
       .sort('-created');
   }
 
   async findOneByVideoId(video_id: string) {
-    return this.videoModel.findOne({ video_id }).lean();
+    const query = { video_id } satisfies Pick<Video, 'video_id'>;
+    return this.videoModel.findOne(query).lean();
   }
 
   async getVideoToPublish(owner: string, permlink: string): Promise<Video> {
-    const results = await this.videoModel
-      .find({
-        owner: owner,
-        permlink: permlink,
-      })
-      .sort('-created')
-      .limit(1);
+    const query = {
+      owner,
+      permlink,
+    } satisfies Pick<Video, 'owner' | 'permlink'>;
+    const results = await this.videoModel.find(query).sort('-created').limit(1);
     return results[0];
   }
 
   async updateVideoFailureStatus(
-    owner: Video['owner'],
-    failureStatuses: { lowRc: Video['lowRc']; publishFailed: Video['publishFailed'] },
+    authorPerm: Pick<Video, 'owner' | 'permlink'>,
+    failureStatuses: Pick<Video, 'lowRc' | 'publishFailed'>,
   ): Promise<UpdateResult> {
-    return await this.videoModel.updateOne({ owner }, { $set: failureStatuses }).exec();
+    return await this.videoModel.updateOne(authorPerm, { $set: { ...failureStatuses } }).exec();
   }
 
-  async setPostedToChain(owner: Video['owner'], ipfs?: Video['ipfs']): Promise<UpdateResult> {
-    return await this.videoModel
-      .updateOne({ owner }, { $set: { steemPosted: true, lowRc: false, needsHiveUpdate: !!ipfs } })
-      .exec();
+  async setPostedToChain({
+    owner,
+    permlink,
+    ipfs,
+  }: Pick<Video, 'ipfs' | 'owner' | 'permlink'>): Promise<UpdateResult> {
+    const updateQuery: FilterQuery<Video> = {
+      $set: { steemPosted: true, lowRc: false, needsHiveUpdate: !!ipfs },
+    };
+    return await this.videoModel.updateOne({ owner, permlink }, updateQuery).exec();
   }
 
-  async setThumbnail(video_id: string, thumbnail: string) {
+  async setThumbnail(video_id: Video['video_id'], thumbnail: Video['thumbnail']) {
     return await this.videoModel.findOneAndUpdate(
       {
         id: video_id,
@@ -68,36 +100,37 @@ export class VideoRepository {
     startPeriod: Date,
     endPeriod: Date,
   ) {
-    return await this.videoModel.find({
-      status: 'published',
+    const query: FilterQuery<Video> = {
       steemPosted: true,
       owner: { $nin: bannedCreatorsList },
       created: { $gte: startPeriod.toISOString(), $lte: endPeriod.toISOString() },
       upvoteEligible: { $ne: false },
-    });
+    };
+    return await this.videoModel.find(query);
   }
 
   async createNewHiveVideoPost({
-    user_id,
-    username,
+    created_by,
+    owner,
     title,
     description,
     tags,
     community,
     language,
     beneficiaries,
-  }: {
-    user_id: string;
-    username: string;
-    title: string;
-    description: string;
-    tags: string[];
-    community: string;
-    language: string;
-    beneficiaries: string;
-  }): Promise<Video> {
+  }: Pick<
+    Video,
+    | 'created_by'
+    | 'owner'
+    | 'title'
+    | 'description'
+    | 'tags'
+    | 'community'
+    | 'language'
+    | 'beneficiaries'
+  >): Promise<Video> {
     return await this.videoModel.create({
-      owner: username,
+      owner,
       title: title,
       description,
       beneficiaries: beneficiaries,
@@ -110,80 +143,71 @@ export class VideoRepository {
       video_details: {
         duration: 0,
       },
-      posting_options: {
-        publish_type: 'immediate',
-        publish_date: null,
-      },
-      created_by: user_id,
+      created_by,
       expires: moment().add('1', 'day').toDate(),
-      upload_links: {},
+      //upload_links: {},
       network: 'hive',
       __flags: [],
       __v: '0.1',
     });
   }
 
-  async updateHiveVideoPost({
-    video_id,
-    title,
-    description,
-    tags,
-    community,
-    language,
-    videoUploadLink,
-    beneficiaries,
-    permlink,
-    originalFilename,
-    filename,
-    size,
-    duration,
-  }: {
-    video_id: string;
-    title: string;
-    description: string;
-    tags: string[];
-    community: string;
-    language: string;
-    videoUploadLink: string;
-    beneficiaries: string;
-    permlink: string;
-    originalFilename: string;
-    filename: string;
-    size: number;
-    duration: number;
-  }): Promise<Video | null> {
+  async updateHiveVideoPost(
+    filter: { video_id: string } | { owner: string; permlink: string },
+    {
+      title,
+      description,
+      tags,
+      community,
+      language = 'en',
+      beneficiaries,
+      originalFilename,
+      filename,
+      size,
+      duration,
+      publish_date,
+    }: Partial<
+      Pick<
+        Video,
+        | 'title'
+        | 'description'
+        | 'tags'
+        | 'community'
+        | 'language'
+        | 'beneficiaries'
+        | 'originalFilename'
+        | 'filename'
+        | 'size'
+        | 'duration'
+        | 'publish_date'
+      >
+    >,
+  ): Promise<Video | null> {
+    const videoUpdate: Partial<Video> = {
+      title,
+      description,
+      beneficiaries,
+      originalFilename,
+      filename,
+      size,
+      tags: tags || [],
+      community,
+      language,
+      publish_date,
+      duration,
+      network: 'hive',
+      needsHiveUpdate: filename ? filename?.endsWith('.mp4') || filename?.endsWith('.m3u8') : true,
+    };
+
+    // Remove undefined values from videoUpdate
+    Object.keys(videoUpdate).forEach(
+      (key) => videoUpdate[key] === undefined && delete videoUpdate[key],
+    );
+
     return await this.videoModel.findOneAndUpdate(
-      {
-        video_id: video_id,
-        permlink: permlink,
-      },
-      {
-        $set: {
-          title: title,
-          description,
-          beneficiaries: beneficiaries,
-          originalFilename: originalFilename,
-          filename: filename,
-          size: size,
-          tags: tags || [],
-          community,
-          language: language || 'en',
-          video_details: {
-            duration: duration,
-          },
-          posting_options: {
-            publish_type: 'immediate',
-            publish_date: null,
-          },
-          expires: moment().add('1', 'day').toDate(),
-          upload_links: {
-            video: videoUploadLink,
-          },
-          network: 'hive',
-          __flags: [],
-          __v: '0.1',
-        },
-      },
+      filter,
+      { $set: videoUpdate },
+      { returnDocument: 'after' },
     );
   }
 }
