@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
@@ -128,7 +128,7 @@ export class UploadingService {
   async getVideoTitleLength(permlink: string, owner: string): Promise<number> {
     const publishData = await this.videoRepository.getVideoToPublish(owner, permlink);
     if (!publishData) {
-      throw new BadRequestException(
+      throw new NotFoundException(
         'No upload could be found matching that owner and permlink combination',
       );
     }

@@ -284,12 +284,12 @@ describe('UploadingController', () => {
           video_id: 'random',
           permlink: 'random'
         })
-        .expect(400)
+        .expect(404)
         .then(response => {
           expect(response.body).toEqual({
-            error: "Bad Request",
+            error: "Not Found",
             message: "No upload could be found matching that owner and permlink combination",
-            statusCode: 400,
+            statusCode: 404,
           });
         });
     })
