@@ -104,14 +104,14 @@ export class HiveChainRepository {
     }
   }
 
-  async getCommentCount({ author, permlink }: AuthorPerm): Promise<number | undefined> {
+  async getCommentCount({ author, permlink }: AuthorPerm, defaultCount = 0): Promise<number> {
     const fetchCommentCount = async (): Promise<number | undefined> => {
       const res: { children: number } = await this._hive.database.call('get_content', [
         author,
         permlink,
       ]);
       if (!res || isNaN(res.children)) {
-        return undefined;
+        return defaultCount;
       }
       return res.children;
     };
@@ -120,7 +120,7 @@ export class HiveChainRepository {
       return exponentialBackoff(fetchCommentCount);
     } catch (e) {
       this.#logger.error('Error getting comment count:', e);
-      return undefined;
+      return defaultCount;
     }
   }
 

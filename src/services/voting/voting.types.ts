@@ -1,6 +1,6 @@
 export interface VideoMap {
   [key: string]: {
-    views: number;
+    comments: number;
     share: number;
     reduced?: boolean;
     videos: {
