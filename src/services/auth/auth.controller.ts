@@ -28,8 +28,6 @@ import {
   ApiMovedPermanentlyResponse,
 } from '@nestjs/swagger';
 import moment from 'moment';
-import { authenticator } from 'otplib';
-import { HiveClient } from '../../utils/hiveClient';
 import { LoginDto } from '../api/dto/Login.dto';
 import { LoginErrorResponseDto } from '../api/dto/LoginErrorResponse.dto';
 import { LoginResponseDto } from '../api/dto/LoginResponse.dto';
@@ -43,7 +41,6 @@ import { parseAndValidateRequest } from './auth.utils';
 import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
 import { AuthInterceptor, UserDetailsInterceptor } from '../api/utils';
-import { randomUUID } from 'crypto';
 import { v4 as uuid } from 'uuid';
 
 @Controller('/v1/auth')
@@ -243,58 +240,59 @@ export class AuthController {
   })
   @Post('/lite/register-initial')
   async registerLite(@Body() body: { username: string; otp_code: string; secret: string }) {
-    const { username, otp_code } = body;
-    const output = await HiveClient.database.getAccounts([username]);
+    throw new HttpException('Not Implemented', HttpStatus.NOT_IMPLEMENTED);
+    // const { username, otp_code } = body;
+    // const output = await HiveClient.database.getAccounts([username]);
 
-    if (output.length === 0) {
-      // const secret = authenticator.generateSecret(32)
+    // if (output.length === 0) {
+    //   // const secret = authenticator.generateSecret(32)
 
-      if (
-        authenticator.verify({
-          token: otp_code,
-          secret: body.secret,
-        })
-      ) {
-        // const accountCreation = await createAccountWithAuthority(
-        //   username,
-        //   process.env.ACCOUNT_CREATOR
-        // )
-        await this.hiveAccountRepository.createLite(username, body.secret);
+    //   if (
+    //     authenticator.verify({
+    //       token: otp_code,
+    //       secret: body.secret,
+    //     })
+    //   ) {
+    //     // const accountCreation = await createAccountWithAuthority(
+    //     //   username,
+    //     //   process.env.ACCOUNT_CREATOR
+    //     // )
+    //     await this.hiveAccountRepository.createLite(username, body.secret);
 
-        const sub = this.authService.generateSub('lite', username, 'hive');
+    //     const sub = this.authService.generateSub('lite', username, 'hive');
 
-        const user_id = randomUUID();
+    //     const user_id = randomUUID();
 
-        await this.userRepository.createNewSubUser({ sub, user_id });
+    //     await this.userRepository.createNewSubUser({ sub, user_id });
 
-        const jwt = this.authService.jwtSign({
-          sub,
-          network: 'hive',
-          user_id,
-        });
+    //     const jwt = this.authService.jwtSign({
+    //       sub,
+    //       network: 'hive',
+    //       user_id,
+    //     });
 
-        return {
-          // id: accountCreation.id,
-          access_token: jwt,
-        };
-      } else {
-        throw new HttpException(
-          {
-            reason: 'Invalid OTP code',
-            errorType: 'INVALID_OTP',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    } else {
-      throw new HttpException(
-        {
-          reason: 'Hive account with the requested name already exists',
-          errorType: 'HIVE_ACCOUNT_EXISTS',
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    //     return {
+    //       // id: accountCreation.id,
+    //       access_token: jwt,
+    //     };
+    //   } else {
+    //     throw new HttpException(
+    //       {
+    //         reason: 'Invalid OTP code',
+    //         errorType: 'INVALID_OTP',
+    //       },
+    //       HttpStatus.BAD_REQUEST,
+    //     );
+    //   }
+    // } else {
+    //   throw new HttpException(
+    //     {
+    //       reason: 'Hive account with the requested name already exists',
+    //       errorType: 'HIVE_ACCOUNT_EXISTS',
+    //     },
+    //     HttpStatus.BAD_REQUEST,
+    //   );
+    // }
   }
   // @Post('/lite/register-initial')
   // async registerLiteFinish(@Body() body) {
