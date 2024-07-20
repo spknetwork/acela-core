@@ -4,7 +4,7 @@ import { CreatorRepository } from '../../repositories/creator/creator.repository
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import moment from 'moment';
 import { ExtendedAccount, VoteOperation } from '@hiveio/dhive';
-import { VideoMap } from './types';
+import { VideoMap } from './voting.types';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -42,26 +42,27 @@ export class VotingService {
 
     if (!videos.length) return;
 
-    let totalViews = 0;
+    let totalComments = 0;
     const videoMap: VideoMap = videos.reduce((acc, vid) => {
       if (!acc[vid.owner]) {
-        acc[vid.owner] = { views: 0, share: 0, videos: {} };
+        acc[vid.owner] = { comments: 0, share: 0, videos: {} };
       }
       return acc;
     }, {});
 
     for (const video of videos) {
       const owner = video.owner;
-      let views = video.views;
       const perm = video.permlink;
       const reduced = video.reducedUpvote;
-      views = await this.#getRelativeViews(owner, perm, views, reduced);
       this.#logger.log(video.created);
-      this.#logger.log(owner, views);
-      totalViews += views;
-      videoMap[owner].views += views;
+      const comments = await this.#getRelativeComments({
+        author: video.owner,
+        permlink: video.permlink,
+      });
+      totalComments += comments;
+      videoMap[owner].comments += comments;
       videoMap[owner].reduced = reduced;
-      videoMap[owner].videos[perm] = views;
+      videoMap[owner].videos[perm] = comments;
     }
 
     const threespeak = await this.#hiveRepository.getAccount('threespeak');
@@ -72,7 +73,12 @@ export class VotingService {
 
     if (factor <= 0) return;
 
-    const operations = await this.#constructOperations(videoMap, totalViews, factor, hoursBetween);
+    const operations = await this.#constructOperations(
+      videoMap,
+      totalComments,
+      factor,
+      hoursBetween,
+    );
 
     this.#logger.log(operations);
 
@@ -87,7 +93,7 @@ export class VotingService {
 
   async #constructOperations(
     videoMap: VideoMap,
-    totalViews: number,
+    totalComments: number,
     factor: number,
     hoursBetween: number,
   ): Promise<VoteOperation[1][]> {
@@ -98,7 +104,7 @@ export class VotingService {
       //share is the weight of the upvotes being given out relative to views, hours between cycles and
       //how much voting power the account has left in it
       contentCreator.share = Math.round(
-        (contentCreator.views / totalViews) * 10000 * factor * (hoursBetween / 2),
+        (contentCreator.comments / totalComments) * 10000 * factor * (hoursBetween / 2),
       );
       if (contentCreator.share > 10000) {
         contentCreator.share = 10000;
@@ -129,32 +135,15 @@ export class VotingService {
     return operations;
   }
 
-  async #getRelativeViews(author: string, permlink: string, views: number, reduced: boolean) {
-    // get post data from
-    let commentCount;
-
-    try {
-      commentCount = await this.#hiveRepository.getCommentCount({ author, permlink });
-    } catch (e) {
-      commentCount = 6;
-    }
-
-    //let res = await hiveClient.database.call('get_content', [owner, permlink])
-    if (!commentCount) {
-      commentCount = 6;
-    }
-    if (reduced) {
-      views *= 0.3;
-    }
+  async #getRelativeComments({ author, permlink }: { author: string; permlink: string }) {
+    const commentCount = await this.#hiveRepository.getCommentCount({ author, permlink }, 6);
     // if more than or equal to 5 comments, post gets full payout
-    if (views < 5) {
-      return 0;
-    } else if (commentCount >= 5) {
-      return views;
+    if (commentCount >= 5) {
+      return 5;
     } else if (commentCount <= 2) {
       return 0;
     } // less than 5 comments means views are essentially halved for this video
-    return views / 2;
+    return Math.max(commentCount / 2);
   }
 
   #calculateVotingMana(account: ExtendedAccount): number {

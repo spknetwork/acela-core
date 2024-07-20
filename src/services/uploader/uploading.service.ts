@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
@@ -61,14 +66,14 @@ export class UploadingService {
     });
 
     const video = await this.videoRepository.createNewHiveVideoPost({
-      user_id,
-      username,
+      created_by: user_id,
+      owner: username,
       title: ' ',
       description: ' ',
       tags: [],
       community: '',
       language: 'en',
-      beneficiaries: '[]',
+      beneficiaries: [],
     });
 
     if (!video.video_id) throw new Error('No video id!');
@@ -135,22 +140,30 @@ export class UploadingService {
     return publishData.title.length;
   }
 
-  async postUpdate(details: UpdateUploadDto) {
-    await this.videoRepository.updateHiveVideoPost({
-      video_id: details.video_id,
-      description: details.body,
+  async postUpdate(
+    filter: { video_id: string } | { owner: string; permlink: string },
+    details: Partial<UpdateUploadDto>,
+  ) {
+    const needsHiveUpdate =
+      (!details.publish_date || new Date(details.publish_date) < new Date()) &&
+      (details.filename?.endsWith('.mp4') || details.filename?.endsWith('.m3u8'));
+    const video = await this.videoRepository.updateHiveVideoPost(filter, {
+      description: details.body || undefined,
       beneficiaries: details.beneficiaries,
       community: details.community,
       duration: details.duration,
       filename: details.filename,
       language: details.language,
       originalFilename: details.originalFilename,
-      permlink: details.permlink,
       size: details.size,
       tags: details.tags,
       title: details.title,
-      videoUploadLink: details.video_id,
+      // TODO: when urls are know add this
+      //upload_links: { details.video_id },
+      publish_date: details.publish_date ? new Date(details.publish_date) : undefined,
     });
+    if (!video) throw new InternalServerErrorException('Video not updated.');
+    if (needsHiveUpdate) await this.publishingService.publish(video);
   }
 
   async handleTusdCallback(uploadMetaData: Upload) {

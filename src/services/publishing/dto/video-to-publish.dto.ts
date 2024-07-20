@@ -1,3 +1,4 @@
+import { BeneficiarySchema } from '../../../repositories/video/schemas/video.schema';
 import { createProjectionFromDto } from '../../../utils/createProjectionFromDto';
 
 export class VideoToPublishDto {
@@ -14,11 +15,10 @@ export class VideoToPublishDto {
   readonly size: number;
   readonly filename: string;
   readonly language?: string;
-  readonly firstUpload: boolean;
   readonly ipfs?: string;
   readonly category?: string;
   readonly fromMobile: boolean;
-  readonly beneficiaries: string;
+  readonly beneficiaries: BeneficiarySchema[];
   readonly declineRewards: boolean;
   readonly rewardPowerup: boolean;
   readonly postToHiveBlog?: boolean;

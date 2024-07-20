@@ -2,12 +2,17 @@
 import { HiveChainRepository } from './hive-chain.repository';
 import { ExtendedAccount, PrivateKey } from '@hiveio/dhive';
 import * as crypto from "crypto";
+import { HiveChainConfigService } from './hive-chain.config.service';
+import { ConfigService } from '@nestjs/config';
+import { MockHiveChainRepository } from './hive-chain.repository.mock';
 
 describe('HiveRepository', () => {
   let hiveRepository: HiveChainRepository;
 
-  beforeEach(() => {
-    hiveRepository = new HiveChainRepository();
+  beforeAll(() => {
+    const configService = new ConfigService();
+    const client = new HiveChainConfigService(configService);
+    hiveRepository = new MockHiveChainRepository(client.createHiveClient());
   });
 
   describe('verifyHiveMessage', () => {

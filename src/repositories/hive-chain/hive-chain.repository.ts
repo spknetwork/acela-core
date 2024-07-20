@@ -6,7 +6,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import hiveJsPackage from '@hiveio/hive-js';
-import { AuthorPerm, OperationsArray } from './types';
 import {
   Client,
   ExtendedAccount,
@@ -19,7 +18,7 @@ import {
 } from '@hiveio/dhive';
 import crypto from 'crypto';
 import 'dotenv/config';
-import { exponentialBackoff } from '../../utils/exponentialBackoff';
+import { AuthorPerm, OperationsArray } from './types';
 
 hiveJsPackage.api.setOptions({
   useAppbaseApi: true,
@@ -31,32 +30,14 @@ hiveJsPackage.config.set('rebranded_api', 'true');
 @Injectable()
 export class HiveChainRepository {
   readonly #logger: Logger = new Logger(HiveChainRepository.name);
-  readonly _hiveJs;
   readonly _hive: Client;
 
-  constructor() {
-    this._hiveJs = hiveJsPackage;
-    this._hiveJs.api.setOptions({
-      useAppbaseApi: true,
-      rebranded_api: true,
-      url: `https://hive-api.web3telekom.xyz`,
-    });
-    this._hiveJs.config.set('rebranded_api', 'true');
-
-    this._hive = new Client([
-      ...(process.env.HIVE_HOST?.split(',') || []),
-      'https://anyx.io',
-      'https://hived.privex.io',
-      'https://rpc.ausbit.dev',
-      'https://techcoderx.com',
-      'https://api.openhive.network',
-      'https://api.hive.blog',
-      'https://api.c0ff33a.uk',
-    ]);
+  constructor(hiveClient: Client) {
+    this._hive = hiveClient;
   }
 
   async broadcastOperations(operations: OperationsArray): Promise<any> {
-    const broadcast = async (): Promise<any> => {
+    try {
       return await hiveJsPackage.broadcast.sendAsync(
         {
           operations,
@@ -65,73 +46,59 @@ export class HiveChainRepository {
           posting: process.env.DELEGATED_ACCOUNT_POSTING,
         },
       );
-    };
-
-    try {
-      return exponentialBackoff(broadcast);
     } catch (e) {
       this.#logger.error(`Error publishing operations to chain!`, operations, e);
       return e;
     }
   }
 
-  async hivePostExists({ author, permlink }: AuthorPerm): Promise<boolean> {
-    const fetchContent = async (): Promise<boolean> => {
-      const content = await hiveJsPackage.api.getContent(author, permlink);
-      return typeof content === 'object' && !!content.body;
-    };
-
+  async hivePostExists({
+    author,
+    permlink,
+  }: {
+    author: string;
+    permlink: string;
+  }): Promise<boolean> {
     try {
-      return exponentialBackoff(fetchContent);
+      const content = await this._hive.database.call('get_content', [author, permlink]);
+      return typeof content === 'object' && !!content.body;
     } catch (e) {
-      this.#logger.error('Error checking Hive post existence after retries:', e);
+      this.#logger.error('Error checking Hive post existence:', e);
       return false;
     }
   }
 
   async hasEnoughRC({ author }: { author: string }): Promise<boolean> {
-    const checkRC = async (): Promise<boolean> => {
+    try {
       const rc = await this._hive.rc.findRCAccounts([author]);
       const rcInBillion = Number(rc[0].rc_manabar.current_mana) / 1_000_000_000;
       return rcInBillion > 6;
-    };
-
-    try {
-      return exponentialBackoff(checkRC);
     } catch (e) {
       this.#logger.error('Error checking RC:', e);
       return false;
     }
   }
 
-  async getCommentCount({ author, permlink }: AuthorPerm): Promise<number | undefined> {
-    const fetchCommentCount = async (): Promise<number | undefined> => {
+  async getCommentCount({ author, permlink }: AuthorPerm, defaultCount = 0): Promise<number> {
+    try {
       const res: { children: number } = await this._hive.database.call('get_content', [
         author,
         permlink,
       ]);
       if (!res || isNaN(res.children)) {
-        return undefined;
+        return defaultCount;
       }
       return res.children;
-    };
-
-    try {
-      return exponentialBackoff(fetchCommentCount);
     } catch (e) {
       this.#logger.error('Error getting comment count:', e);
-      return undefined;
+      return defaultCount;
     }
   }
 
   async getAccount(author: string): Promise<ExtendedAccount | null> {
-    const fetchAccount = async (): Promise<ExtendedAccount | null> => {
+    try {
       const [hiveAccount] = await this._hive.database.getAccounts([author]);
       return hiveAccount;
-    };
-
-    try {
-      return exponentialBackoff(fetchAccount);
     } catch (e) {
       this.#logger.error('Error getting Hive account:', e);
       return null;
@@ -146,7 +113,7 @@ export class HiveChainRepository {
       active_auths?: string[];
     },
   ): Promise<any> {
-    const createAccount = async (): Promise<any> => {
+    try {
       const owner = {
         weight_threshold: 1,
         account_auths: [[authorityAccountname, 1]],
@@ -197,12 +164,8 @@ export class HiveChainRepository {
 
       return await this._hive.broadcast.sendOperations(
         operations,
-        PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE || ''), // check this
+        PrivateKey.fromString(process.env.ACCOUNT_CREATOR_ACTIVE || ''),
       );
-    };
-
-    try {
-      return exponentialBackoff(createAccount);
     } catch (e) {
       this.#logger.error('Error creating Hive account with authority:', e);
       return null;
@@ -251,15 +214,11 @@ export class HiveChainRepository {
       );
     }
 
-    const castVote = async (): Promise<any> => {
+    try {
       return this._hive.broadcast.vote(
         options,
         PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
       );
-    };
-
-    try {
-      return exponentialBackoff(castVote);
     } catch (e) {
       this.#logger.error(`Error voting on ${options.author}/${options.permlink}:`, e);
       throw new BadRequestException('Error voting on post');
@@ -267,16 +226,18 @@ export class HiveChainRepository {
   }
 
   async isFollowing({ follower, following }: { follower: string; following: string }) {
-    const status = await this._hive.call('follow_api', 'get_following', [
-      follower,
-      following,
-      'blog',
-      1,
-    ]);
-    if (status.length > 0 && status[0].following == following) {
-      return true;
+    try {
+      const status = await this._hive.call('follow_api', 'get_following', [
+        follower,
+        following,
+        'blog',
+        1,
+      ]);
+      return status.length > 0 && status[0].following === following;
+    } catch (e) {
+      this.#logger.error(`Error checking if ${follower} is following ${following}:`, e);
+      return false;
     }
-    return false;
   }
 
   async follow({
@@ -294,28 +255,21 @@ export class HiveChainRepository {
     action: string;
     result: TransactionConfirmation;
   }> {
-    return await this._hive.broadcast
-      .json(data, PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING))
-      .then(
-        function (result) {
-          if (isFollowing) {
-            return { action: 'unfollowed', result };
-          }
-          return { action: 'followed', result };
-        },
-        function (error) {
-          throw new ServiceUnavailableException(error);
-        },
+    try {
+      const result = await this._hive.broadcast.json(
+        data,
+        PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING),
       );
+      return { action: isFollowing ? 'unfollowed' : 'followed', result };
+    } catch (e) {
+      this.#logger.error(`Error ${isFollowing ? 'unfollowing' : 'following'}:`, e);
+      throw new ServiceUnavailableException(e);
+    }
   }
 
   async getActiveVotes({ author, permlink }: { author: string; permlink: string }): Promise<any[]> {
-    const fetchActiveVotes = async (): Promise<any[]> => {
-      return await this._hive.database.call('get_active_votes', [author, permlink]);
-    };
-
     try {
-      return exponentialBackoff(fetchActiveVotes);
+      return await this._hive.database.call('get_active_votes', [author, permlink]);
     } catch (e) {
       this.#logger.error('Error getting active votes:', e);
       return [];
@@ -338,12 +292,8 @@ export class HiveChainRepository {
   }
 
   async getPublicKeys(memo: string): Promise<string[]> {
-    const fetchPublicKeys = async (): Promise<string[]> => {
-      return hiveJsPackage.memo.getPubKeys(memo);
-    };
-
     try {
-      return await exponentialBackoff(fetchPublicKeys);
+      return await hiveJsPackage.memo.getPubKeys(memo);
     } catch (e) {
       this.#logger.error('Error getting public keys:', e);
       return [];
@@ -355,7 +305,7 @@ export class HiveChainRepository {
     content: string,
     comment_options: { parent_author: string; parent_permlink: string },
   ): Promise<TransactionConfirmation> {
-    const postComment = async (): Promise<TransactionConfirmation> => {
+    try {
       return await this._hive.broadcast.comment(
         {
           parent_author: comment_options.parent_author || '',
@@ -370,13 +320,9 @@ export class HiveChainRepository {
         },
         PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING || ''),
       );
-    };
-
-    try {
-      return await exponentialBackoff(postComment);
     } catch (e) {
       this.#logger.error('Error posting comment:', e);
-      throw new Error('Could not post comment');
+      throw new Error('Could not post comment ' + e);
     }
   }
 
@@ -385,12 +331,6 @@ export class HiveChainRepository {
       return false;
     }
 
-    for (const item of account.posting.account_auths) {
-      if (item[0] === process.env.DELEGATED_ACCOUNT) {
-        return true;
-      }
-    }
-
-    return false;
+    return account.posting.account_auths.some((item) => item[0] === process.env.DELEGATED_ACCOUNT);
   }
 }

@@ -82,10 +82,6 @@ export class AuthService {
     return { access_token: this.jwtSign({ network: 'email', user_id: user.username }) };
   }
 
-  async getUserAccountBySub(sub: string) {
-    return this.legacyUserAccountRepository.findOneByEmail;
-  }
-
   async getUserByUserId({ user_id }: { user_id: string }) {
     return this.legacyUserRepository.findOneByUserId({ user_id });
   }

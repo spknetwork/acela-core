@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HiveChainRepository } from './hive-chain.repository';
 import { OperationsArray } from './types';
-import { Operation, TransactionConfirmation } from '@hiveio/dhive';
+import { Client, Operation, TransactionConfirmation } from '@hiveio/dhive';
 
 @Injectable()
-export class MockHiveRepository extends HiveChainRepository {
-  readonly #logger: Logger = new Logger(MockHiveRepository.name);
+export class MockHiveChainRepository extends HiveChainRepository {
+  readonly #logger: Logger = new Logger(MockHiveChainRepository.name);
 
-  constructor() {
-    super();
+  constructor(hiveClient: Client) {
+    super(hiveClient);
   }
 
   async broadcastOperations(operations: OperationsArray) {
