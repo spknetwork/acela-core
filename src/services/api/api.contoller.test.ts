@@ -24,6 +24,7 @@ import { HiveModule } from '../hive/hive.module';
 import { PrivateKey } from '@hiveio/dhive';
 import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
 import { SessionModule } from '../../repositories/session/session.module';
+import { HiveService } from '../hive/hive.service';
 
 describe('ApiController', () => {
   let app: INestApplication;
@@ -31,6 +32,8 @@ describe('ApiController', () => {
   let authService: AuthService;
   let hiveRepository: HiveChainRepository;
   let emailService: EmailService;
+  let hiveService: HiveService;
+  let hiveAccountRepository: LegacyHiveAccountRepository;
 
   beforeEach(async () => {
     mongod = await MongoMemoryServer.create();
@@ -93,6 +96,8 @@ describe('ApiController', () => {
       .compile();
 
     authService = moduleRef.get<AuthService>(AuthService);
+    hiveService = moduleRef.get<HiveService>(HiveService);
+    hiveAccountRepository = moduleRef.get<LegacyHiveAccountRepository>(LegacyHiveAccountRepository);
     hiveRepository = moduleRef.get<HiveChainRepository>(HiveChainRepository);
     emailService = moduleRef.get<EmailService>(EmailService);
 
@@ -162,6 +167,28 @@ describe('ApiController', () => {
             account: hiveUsername,
             user_id: user._id.toString(),
           });
+        });
+    });
+  });
+
+  describe('/POST /v1/hive/unlinkaccount', () => {
+    it('should link a Hive account', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      const user_id = 'test_user_id'
+      const user = await authService.createDidUser('bob', user_id)
+      const hiveUsername = 'starkerz'
+      await hiveAccountRepository.insertCreated({ user_id: user._id, account: hiveUsername })
+
+      const body = { username: hiveUsername };
+
+      return request(app.getHttpServer())
+        .post('/v1/hive/unlinkaccount')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send(body)
+        .expect(201)
+        .then(async response => {
+          expect(await hiveService.isHiveAccountLinked({user_id: user._id, account: hiveUsername})).toBeFalsy()
         });
     });
   });

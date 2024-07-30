@@ -26,6 +26,7 @@ import { VotePostDto } from './dto/VotePost.dto';
 import { parseAndValidateRequest } from '../auth/auth.utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
+import { UnlinkAccountPostDto } from './dto/UnlinkAccountPost.dto';
 
 @Controller('/v1')
 export class ApiController {
@@ -158,6 +159,53 @@ export class ApiController {
       hiveUsername: data.username,
       user_id: parsedRequest.user.user_id,
       db_user_id: user._id,
+    });
+  }
+
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'JWT Authorization',
+    required: true,
+    schema: {
+      example:
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+      // default: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    },
+  })
+  @ApiBody({
+    schema: {
+      properties: {
+        username: {
+          type: 'string',
+          default: 'test-account',
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    schema: {
+      properties: {
+        reason: {
+          type: 'string',
+          enum: ['User not found'],
+          default: 'User not found',
+        },
+      },
+    },
+  })
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(UserDetailsInterceptor)
+  @Post(`/hive/unlinkaccount`)
+  async unlinkAccount(@Body() data: UnlinkAccountPostDto, @Request() req: unknown) {
+    const parsedRequest = parseAndValidateRequest(req, this.#logger);
+
+    const user = await this.authService.getUserByUserId({ user_id: parsedRequest.user.user_id });
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    return await this.authService.unlinkHiveAccount({
+      username: data.username,
+      user_id: user._id,
     });
   }
 
