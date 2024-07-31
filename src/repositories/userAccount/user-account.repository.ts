@@ -19,8 +19,10 @@ export class LegacyUserAccountRepository {
     private legacyUserAccountModel: Model<LegacyUserAccount>,
   ) {}
 
-  async findOneByEmail(query: Pick<LegacyUserAccount, 'email'>): Promise<LegacyUserAccount | null> {
-    const authUser = await this.legacyUserAccountModel.findOne(query);
+  async findOneVerifiedByEmail(
+    query: Pick<LegacyUserAccount, 'email'>,
+  ): Promise<LegacyUserAccount | null> {
+    const authUser = await this.legacyUserAccountModel.findOne({ ...query, emailVerified: true });
     this.#logger.log(authUser); // TODO: delete - not suitable for prod
 
     return authUser;

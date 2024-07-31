@@ -34,9 +34,11 @@ export class AuthService {
   }
 
   async validateUser(email: string, pass: string) {
-    const user = await this.legacyUserAccountRepository.findOneByEmail({ email });
+    const user = await this.legacyUserAccountRepository.findOneVerifiedByEmail({ email });
     if (!user || !user.password) {
-      throw new UnauthorizedException('Email or password was incorrect');
+      throw new UnauthorizedException(
+        'Email or password was incorrect or email has not been verified',
+      );
     }
     if (!user.password) {
       throw new InternalServerErrorException('Email does not have associated password');
@@ -45,7 +47,9 @@ export class AuthService {
       const { password, ...result } = user;
       return result;
     }
-    throw new UnauthorizedException('Email or password was incorrect');
+    throw new UnauthorizedException(
+      'Email or password was incorrect or email has not been verified',
+    );
   }
 
   async getOrCreateUserByDid(did: string): Promise<{ sub?: string; user_id: string }> {
@@ -80,10 +84,6 @@ export class AuthService {
       throw new InternalServerErrorException('User was validated but cannot be found');
     }
     return { access_token: this.jwtSign({ network: 'email', user_id: user.username }) };
-  }
-
-  async getUserAccountBySub(sub: string) {
-    return this.legacyUserAccountRepository.findOneByEmail;
   }
 
   async getUserByUserId({ user_id }: { user_id: string }) {

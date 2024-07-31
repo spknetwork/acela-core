@@ -365,6 +365,8 @@ export class AuthController {
     return res.redirect('https://3speak.tv');
   }
 
+  // todo: send new verification code
+
   @ApiHeader({
     name: 'Authorization',
     description: 'JWT Authorization',
