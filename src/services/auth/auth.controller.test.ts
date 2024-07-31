@@ -17,8 +17,7 @@ import { DID } from 'dids';
 import { Ed25519Provider } from 'key-did-provider-ed25519';
 import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
-import { TestingModule } from '@nestjs/testing';
-import crypto, { randomUUID } from 'crypto';
+import crypto from 'crypto';
 import { PrivateKey } from '@hiveio/dhive';
 import { AuthGuard } from '@nestjs/passport';
 import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
@@ -27,19 +26,22 @@ import { HiveModule } from '../hive/hive.module';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { EmailService } from '../email/email.service';
 import { LegacyUserAccountRepository } from '../../repositories/userAccount/user-account.repository';
+import * as jest from 'jest-mock'; // Import Jest mock
 
 describe('AuthController', () => {
-  let app: INestApplication
-  const seedBuf = new Uint8Array(32)
-  seedBuf.fill(27)
-  const key = new Ed25519Provider(seedBuf)
-  const did = new DID({ provider: key, resolver: KeyResolver.getResolver() })
+  let app: INestApplication;
+  const seedBuf = new Uint8Array(32);
+  seedBuf.fill(27);
+  const key = new Ed25519Provider(seedBuf);
+  const did = new DID({ provider: key, resolver: KeyResolver.getResolver() });
   let mongod: MongoMemoryServer;
   let authService: AuthService;
   let hiveService: HiveService;
   let userRepository: LegacyUserRepository;
   let emailService: EmailService;
   let userAccountRepository: LegacyUserAccountRepository;
+
+  let verificationCode: string;
 
   beforeEach(async () => {
     mongod = await MongoMemoryServer.create();
@@ -106,6 +108,12 @@ describe('AuthController', () => {
     userAccountRepository = moduleRef.get<LegacyUserAccountRepository>(LegacyUserAccountRepository);
     emailService = moduleRef.get<EmailService>(EmailService);
 
+    // Mocking the EmailService to capture the verification code
+    jest.spyOn(emailService, 'sendRegistration').mockImplementation(async (email, code) => {
+      verificationCode = code; // Store the verification code
+      return;
+    });
+
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
@@ -146,6 +154,105 @@ describe('AuthController', () => {
         });
     });
   });
+
+  describe('/POST /login', () => {
+    it('Logs in successfully', async () => {
+
+      const email = 'test@test.com';
+      const password = 'testpass'
+
+      await authService.registerEmailAndPasswordUser(email, password);
+      await authService.verifyEmail(verificationCode); // Use the captured verification code
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          username: email,
+          password: password
+        })
+        .expect(201)
+        .then(async response => {
+          expect(response.body).toEqual({
+            access_token: expect.any(String)
+          });
+        });
+    });
+
+    it('Throws unauthorized when the password is wrong', async () => {
+
+      const email = 'test@test.com';
+      const password = 'testpass'
+
+      await authService.registerEmailAndPasswordUser(email, password);
+      await authService.verifyEmail(verificationCode);
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          username: email,
+          password: password + 'im a hacker'
+        })
+        .expect(401)
+        .then(async response => {
+          expect(response.body).toEqual({
+            error: "Unauthorized",
+            message: "Email or password was incorrect or email has not been verified",
+            statusCode: 401,
+          });
+        });
+    });
+
+    it('Throws when the email does not exist', async () => {
+
+      const email = 'test@test.com';
+      const password = 'testpass'
+
+      await authService.registerEmailAndPasswordUser(email, password);
+      await authService.verifyEmail(verificationCode);
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          username: 'different@email.com',
+          password: password
+        })
+        .expect(401)
+        .then(async response => {
+          expect(response.body).toEqual({
+            error: "Unauthorized",
+            message: "Email or password was incorrect or email has not been verified",
+            statusCode: 401,
+          });
+        });
+    });
+
+    it('Throws when the user has not verified their email', async () => {
+
+      const email = 'test@test.com';
+      const password = 'testpass'
+
+      await authService.registerEmailAndPasswordUser(email, password);
+  
+      // Make the request to the endpoint
+      return request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          username: email,
+          password: password
+        })
+        .expect(401)
+        .then(async response => {
+          expect(response.body).toEqual({
+            error: "Unauthorized",
+            message: "Email or password was incorrect or email has not been verified",
+            statusCode: 401,
+          });
+        });
+    });
+  })
 
   describe('/POST /request_hive_account', () => {
     it('creates a Hive account successfully', async () => {

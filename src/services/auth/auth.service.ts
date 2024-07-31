@@ -43,7 +43,7 @@ export class AuthService {
     if (!user.password) {
       throw new InternalServerErrorException('Email does not have associated password');
     }
-    if (await bcrypt.compare(user.password, pass)) {
+    if (await bcrypt.compare(pass, user.password)) {
       const { password, ...result } = user;
       return result;
     }
@@ -78,10 +78,14 @@ export class AuthService {
     return !!(await this.legacyUserRepository.findOneBySub(this.generateDidSub(did)));
   }
 
-  async login(user: User) {
-    return {
-      access_token: this.jwtSign(user),
-    };
+  async login(email: string) {
+    const user = await this.legacyUserAccountRepository.findOneVerifiedByEmail({ email });
+    if (!user) {
+      throw new InternalServerErrorException(
+        'User was validated but cannot be found or has not verified their email',
+      );
+    }
+    return { access_token: this.jwtSign({ network: 'email', user_id: user.username }) };
   }
 
   async getUserByUserId({ user_id }: { user_id: string }) {
