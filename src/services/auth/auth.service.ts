@@ -79,9 +79,11 @@ export class AuthService {
   }
 
   async login(email: string) {
-    const user = await this.legacyUserAccountRepository.findOneByEmail({ email });
+    const user = await this.legacyUserAccountRepository.findOneVerifiedByEmail({ email });
     if (!user) {
-      throw new InternalServerErrorException('User was validated but cannot be found');
+      throw new InternalServerErrorException(
+        'User was validated but cannot be found or has not verified their email',
+      );
     }
     return { access_token: this.jwtSign({ network: 'email', user_id: user.username }) };
   }
