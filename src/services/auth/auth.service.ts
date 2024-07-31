@@ -1,5 +1,11 @@
 import 'dotenv/config';
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { LegacyUserAccountRepository } from '../../repositories/userAccount/user-account.repository';
@@ -10,6 +16,7 @@ import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
 import { DID } from 'dids';
 import { ObjectId } from 'mongodb';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +26,7 @@ export class AuthService {
     private readonly sessionRepository: SessionRepository,
     private readonly legacyHiveAccountRepository: LegacyHiveAccountRepository,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   jwtSign(payload: User) {
@@ -26,9 +34,11 @@ export class AuthService {
   }
 
   async validateUser(email: string, pass: string) {
-    const user = await this.legacyUserAccountRepository.findOneByEmail({ email });
+    const user = await this.legacyUserAccountRepository.findOneVerifiedByEmail({ email });
     if (!user || !user.password) {
-      throw new UnauthorizedException('Email or password was incorrect');
+      throw new UnauthorizedException(
+        'Email or password was incorrect or email has not been verified',
+      );
     }
     if (!user.password) {
       throw new InternalServerErrorException('Email does not have associated password');
@@ -37,7 +47,9 @@ export class AuthService {
       const { password, ...result } = user;
       return result;
     }
-    throw new UnauthorizedException('Email or password was incorrect');
+    throw new UnauthorizedException(
+      'Email or password was incorrect or email has not been verified',
+    );
   }
 
   async getOrCreateUserByDid(did: string): Promise<{ sub?: string; user_id: string }> {
@@ -70,10 +82,6 @@ export class AuthService {
     return {
       access_token: this.jwtSign(user),
     };
-  }
-
-  async getUserAccountBySub(sub: string) {
-    return this.legacyUserAccountRepository.findOneByEmail;
   }
 
   async getUserByUserId({ user_id }: { user_id: string }) {
@@ -130,17 +138,43 @@ export class AuthService {
     return await this.sessionRepository.findOneBySub(this.generateDidSub(did));
   }
 
-  async createEmailAndPasswordUser(
+  async #createEmailAndPasswordUser(
     email: string,
     password: string,
     user_id: string,
   ): Promise<string> {
-    await this.legacyUserRepository.createNewEmailUser({ email, user_id });
-    return await this.legacyUserAccountRepository.createNewEmailAndPasswordUser({
-      email,
-      password,
-      username: user_id,
-    });
+    try {
+      await this.legacyUserRepository.createNewEmailUser({ email, user_id });
+      return await this.legacyUserAccountRepository.createNewEmailAndPasswordUser({
+        email,
+        password,
+        username: user_id,
+      });
+    } catch (e) {
+      if (e.code == 11000) {
+        // Duplicate key error
+        throw new HttpException(
+          { reason: 'Email Password account already created!' },
+          HttpStatus.BAD_REQUEST,
+        );
+      } else {
+        console.log(e.code);
+        throw new HttpException(
+          { reason: 'Internal Server Error' },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    }
+  }
+
+  async registerEmailAndPasswordUser(email: string, password: string) {
+    const user_id = uuid();
+
+    const email_code = await this.#createEmailAndPasswordUser(email, password, user_id);
+
+    await this.emailService.sendRegistration(email, email_code);
+
+    return { access_token: this.jwtSign({ network: 'email', user_id }) };
   }
 
   async createHiveUser({ user_id, hiveAccount }: { user_id: string; hiveAccount: string }) {

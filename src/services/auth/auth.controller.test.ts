@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { UserAccountModule } from '../../repositories/userAccount/user-account.module';
 import { SessionModule } from '../../repositories/session/session.module';
 import { AuthController } from './auth.controller';
@@ -19,12 +18,15 @@ import { Ed25519Provider } from 'key-did-provider-ed25519';
 import { INestApplication, Module, ValidationPipe } from '@nestjs/common';
 import * as KeyResolver from 'key-did-resolver';
 import { TestingModule } from '@nestjs/testing';
-import crypto from 'crypto';
+import crypto, { randomUUID } from 'crypto';
 import { PrivateKey } from '@hiveio/dhive';
 import { AuthGuard } from '@nestjs/passport';
 import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveModule } from '../hive/hive.module';
+import { LegacyUserRepository } from '../../repositories/user/user.repository';
+import { EmailService } from '../email/email.service';
+import { LegacyUserAccountRepository } from '../../repositories/userAccount/user-account.repository';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -35,11 +37,13 @@ describe('AuthController', () => {
   let mongod: MongoMemoryServer;
   let authService: AuthService;
   let hiveService: HiveService;
-
+  let userRepository: LegacyUserRepository;
+  let emailService: EmailService;
+  let userAccountRepository: LegacyUserAccountRepository;
 
   beforeEach(async () => {
-    mongod = await MongoMemoryServer.create()
-    const uri: string = mongod.getUri()
+    mongod = await MongoMemoryServer.create();
+    const uri: string = mongod.getUri();
 
     process.env.JWT_PRIVATE_KEY = crypto.randomBytes(64).toString('hex');
     process.env.DELEGATED_ACCOUNT = 'threespeak';
@@ -88,21 +92,24 @@ describe('AuthController', () => {
     })
     class TestModule {}
 
-    let moduleRef: TestingModule;
-
-    moduleRef = await Test.createTestingModule({
+    let moduleRef = await Test.createTestingModule({
       imports: [TestModule],
     }).overrideGuard(AuthGuard('jwt'))
       .useClass(MockAuthGuard)
       .overrideInterceptor(UserDetailsInterceptor)
       .useClass(MockDidUserDetailsInterceptor)
       .compile();
+    
     authService = moduleRef.get<AuthService>(AuthService);
     hiveService = moduleRef.get<HiveService>(HiveService);
+    userRepository = moduleRef.get<LegacyUserRepository>(LegacyUserRepository);
+    userAccountRepository = moduleRef.get<LegacyUserAccountRepository>(LegacyUserAccountRepository);
+    emailService = moduleRef.get<EmailService>(EmailService);
+
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
-    await app.init()
-  })
+    await app.init();
+  });
 
   afterEach(async () => {
     await app.close();
@@ -183,7 +190,78 @@ describe('AuthController', () => {
           expect(await hiveService.isHiveAccountLinked({ account: 'bob', user_id: user._id })).toBe(true)
           expect(await hiveService.isHiveAccountLinked({ account: username, user_id: user._id })).toBe(false)
         });
+      });
+  });
+
+  describe('/POST register', () => {
+    it('registers a new user successfully with valid email', async () => {
+      const email = 'test@invalid.example.org';
+      const password = '!SUPER-SECRET_password!7';
+
+      const response = await request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, password })
+        .expect(201);
+
+      expect(response.body).toEqual({ access_token: expect.any(String) });
+
+      const user = await userRepository.findOneByEmail(email);
+      expect(user).toBeDefined();
     });
+
+    it('throws error when email is already registered', async () => {
+      const email = 'test@invalid.example.org';
+      const password = '!SUPER-SECRET_password!7';
+      
+      // Create a user with the same email
+      await authService.registerEmailAndPasswordUser(email, password);
+
+      return request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, password })
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual({ reason: 'Email Password account already created!' });
+        });
+    });
+
+    it('throws error when email is invalid', async () => {
+      const email = 'tesnvalid.example.org';
+      const password = '!SUPER-SECRET_password!7';
+
+      return request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, password })
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual({
+            error: "Bad Request",
+            message: [
+              "Email must be a valid email address",
+              "email must be an email",
+            ],
+            statusCode: 400
+          });
+        });
+    });
+
+    it('throws error when password is not strong enough', async () => {
+      const email = 'test@invalid.example.org';
+      const password = '!SUPER-SECRET_password!';
+
+      return request(app.getHttpServer())
+        .post('/v1/auth/register')
+        .send({ email, password })
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual({
+            error: "Bad Request",
+            message: [
+              "password is not strong enough",
+            ],
+            statusCode: 400
+          });
+        });
   });
   
 
@@ -308,6 +386,7 @@ describe('AuthController', () => {
             statusCode: 401,
           })
         })
+      })
     })
   })
 });

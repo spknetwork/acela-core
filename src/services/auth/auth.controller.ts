@@ -44,7 +44,7 @@ import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
 import { AuthInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { randomUUID } from 'crypto';
-import { v4 as uuid } from 'uuid';
+import { EmailRegisterDto } from './dto/EmailRegister.dto';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -308,18 +308,7 @@ export class AuthController {
     summary: 'Registers an account using email/password login',
   })
   @ApiBody({
-    schema: {
-      properties: {
-        password: {
-          type: 'string',
-          default: '!SUPER-SECRET_PASSWORD!',
-        },
-        email: {
-          type: 'string',
-          default: 'test@invalid.example.org',
-        },
-      },
-    },
+    type: EmailRegisterDto,
   })
   @ApiOkResponse({
     schema: {
@@ -331,29 +320,30 @@ export class AuthController {
       },
     },
   })
-  // @UseGuards(AuthGuard('local'))
+  @ApiBadRequestResponse({
+    description: 'Invalid options or email already registered',
+    schema: {
+      type: 'object',
+      properties: {
+        reason: {
+          type: 'string',
+          default: 'Invalid email or password',
+        },
+        errorType: {
+          type: 'string',
+          default: 'VALIDATION_ERROR',
+        },
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal Server Error - unrelated to request body',
+  })
   @Post('/register')
-  async register(@Request() req, @Body() body: { password: string; email: string }) {
+  async register(@Body() body: EmailRegisterDto) {
     const { email, password } = body;
 
-    const existingRecord = await this.userRepository.findOneByEmail(email);
-
-    if (existingRecord) {
-      throw new HttpException(
-        { reason: 'Email Password account already created!' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const user_id = uuid();
-
-    const email_code = await this.authService.createEmailAndPasswordUser(email, password, user_id);
-
-    await this.emailService.sendRegistration(email, email_code);
-    return {
-      ok: true,
-    };
-    // return this.authService.login(req.user);
+    return await this.authService.registerEmailAndPasswordUser(email, password);
   }
 
   @ApiParam({
@@ -375,6 +365,8 @@ export class AuthController {
 
     return res.redirect('https://3speak.tv');
   }
+
+  // todo: send new verification code
 
   @ApiHeader({
     name: 'Authorization',

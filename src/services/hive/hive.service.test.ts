@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { INestApplication, Module, UnauthorizedException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, INestApplication, Module, UnauthorizedException, ValidationPipe } from '@nestjs/common';
 import { TestingModule } from '@nestjs/testing';
 import crypto from 'crypto';
 import { HiveModule } from './hive.module';
@@ -12,6 +12,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from '../../repositories/user/user.module';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
 import { LegacyHiveAccountRepository } from '../../repositories/hive-account/hive-account.repository';
+import { UserRequest } from '../auth/auth.types';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -97,12 +98,55 @@ describe('AuthController', () => {
     })
   })
 
+  describe('parseHiveUsername', () => {
+    it('returns the username if hive user is logged in and account is linked', async () => {
+      const sub = 'singleton/sisygoboom/hive';
+      const user = await legacyUserRepository.createNewSubUser({ sub, user_id: 'test_user_id' });
+      await legacyHiveAccountRepository.insertCreated({ account: 'sisygoboom', user_id: user._id });
+
+      const parsedRequest: UserRequest = { user: { user_id: 'test_user_id', sub, network: 'did' } };
+      const response = await hiveService.parseHiveUsername(parsedRequest, 'sisygoboom');
+
+      expect(response).toBe('sisygoboom');
+    });
+
+    it('throws UnauthorizedException if hive account is not linked', async () => {
+      const sub = 'singleton/username1/hive';
+      const user = await legacyUserRepository.createNewSubUser({ sub, user_id: 'test_user_id' });
+      await legacyHiveAccountRepository.insertCreated({ account: 'username1', user_id: user._id });
+
+      const parsedRequest: UserRequest = { user: { user_id: 'test_user_id', sub, network: 'did' } };
+
+      await expect(hiveService.parseHiveUsername(parsedRequest, 'username2')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('returns the username if hive user is logged in and attempts to use a linked account', async () => {
+      const sub = 'singleton/ned/hive';
+      const user = await legacyUserRepository.createNewSubUser({ sub, user_id: 'test_user_id' });
+      await legacyHiveAccountRepository.insertCreated({ account: 'username1', user_id: user._id });
+
+      const parsedRequest: UserRequest = { user: { user_id: 'test_user_id', sub, network: 'hive' } };
+      const response = await hiveService.parseHiveUsername(parsedRequest, 'username1');
+
+      expect(response).toBe('username1');
+    });
+
+    it('throws BadRequestException if no hive account in request or logged in', async () => {
+      const sub = null;
+      const user = await legacyUserRepository.createNewSubUser({ user_id: 'test_user_id' });
+
+      const parsedRequest: UserRequest = { user: { user_id: 'test_user_id', network: 'did' } };
+
+      await expect(hiveService.parseHiveUsername(parsedRequest)).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('Vote on a hive post', () => {
     it('Votes on a post when a hive user is logged in and the vote is authorised', async () => {
       const sub = 'singleton/sisygoboom/hive';
       const user = await legacyUserRepository.createNewSubUser({ sub, user_id: 'test_user_id' })
       await legacyHiveAccountRepository.insertCreated({ account: 'sisygoboom', user_id: user!._id })
-      const response = await hiveService.vote({ votingAccount: 'sisygoboom', sub, user_id: user!._id, network: 'hive', author: 'ned', permlink: 'sa', weight: 10000 })
+      const response = await hiveService.vote({ votingAccount: 'sisygoboom', author: 'ned', permlink: 'sa', weight: 10000 })
       
       expect(response).toEqual({
         block_num: 123456,
@@ -112,20 +156,11 @@ describe('AuthController', () => {
       })
     });
 
-    it('Fails when attempting to vote from a different hive account which has not been linked', async () => {
-      const sub = 'singleton/username1/hive';
-      const user = await legacyUserRepository.createNewSubUser({ sub, user_id: 'test_user_id' })
-      await legacyHiveAccountRepository.insertCreated({ account: 'username1', user_id: user!._id })
-      await expect(hiveService.vote({ votingAccount: 'username2', sub, network: 'hive', author: 'ned', user_id: user!._id, permlink: 'sa', weight: 10000 }))
-        .rejects
-        .toThrow(UnauthorizedException);
-    });
-
     it('Votes on a post when a hive user is logged in and attepts to vote from a linked account', async () => {
       const sub = 'singleton/ned/hive'
       const user = await legacyUserRepository.createNewSubUser({ sub, user_id: 'test_user_id' });
       await hiveService.insertCreated('username2', user!._id);
-      const response = await hiveService.vote({ votingAccount: 'username2', user_id: user!._id, sub, network: 'hive', author: 'ned', permlink: 'sa', weight: 10000 })
+      const response = await hiveService.vote({ votingAccount: 'username2', author: 'ned', permlink: 'sa', weight: 10000 })
       
       expect(response).toEqual({
         block_num: 123456,
@@ -138,10 +173,10 @@ describe('AuthController', () => {
     it('Throws an error when a vote weight is invalid', async () => {
       const sub = 'singleton/sisygoboom/hive';
       const user = await legacyUserRepository.createNewSubUser({ sub, user_id: 'test_user_id' });
-      await expect(hiveService.vote({ votingAccount: 'sisygoboom', sub, network: 'hive', author: 'ned', user_id: user!._id, permlink: 'sa', weight: 10001 }))
+      await expect(hiveService.vote({ votingAccount: 'sisygoboom', author: 'ned', permlink: 'sa', weight: 10001 }))
       .rejects
       .toThrow();
-      await expect(hiveService.vote({ votingAccount: 'sisygoboom', sub, network: 'hive', author: 'ned', user_id: user!._id, permlink: 'sa', weight: -10001 }))
+      await expect(hiveService.vote({ votingAccount: 'sisygoboom', author: 'ned', permlink: 'sa', weight: -10001 }))
       .rejects
       .toThrow();
     });

@@ -253,20 +253,17 @@ export class ApiController {
   @Post(`/hive/vote`)
   async votePost(@Body() data: VotePostDto, @Request() req: any) {
     const parsedRequest = parseAndValidateRequest(req, this.#logger);
-    const { author, permlink, weight, votingAccount } = data;
-
-    const user = await this.authService.getUserByUserId({ user_id: parsedRequest.user.user_id });
-
-    if (!user) throw new UnauthorizedException('User not found');
+    const votingAccount = await this.hiveService.parseHiveUsername(
+      parsedRequest,
+      data.votingAccount,
+    );
+    const { author, permlink, weight } = data;
 
     return await this.hiveService.vote({
-      sub: parsedRequest.user.sub,
       votingAccount,
       author,
       permlink,
       weight,
-      network: parsedRequest.user.network,
-      user_id: user._id,
     });
   }
 }

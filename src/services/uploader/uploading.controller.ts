@@ -16,7 +16,6 @@ import {
   Headers,
   Logger,
   UnauthorizedException,
-  BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor, MulterModule } from '@nestjs/platform-express';
@@ -29,7 +28,7 @@ import { StartEncodeDto } from './dto/start-encode.dto';
 import { UploadingService } from './uploading.service';
 import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.repository';
 import { Upload } from './uploading.types';
-import { parseAndValidateRequest, parseSub } from '../auth/auth.utils';
+import { parseAndValidateRequest } from '../auth/auth.utils';
 import { HiveService } from '../hive/hive.service';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { AuthService } from '../auth/auth.service';
@@ -89,10 +88,8 @@ export class UploadingController {
     @Body() body: CreateUploadDto,
   ) {
     const parsedRequest = parseAndValidateRequest(request, this.#logger);
-    const { account } = parseSub(parsedRequest.user.sub);
-    const hiveUsername =
-      body.username || parsedRequest.user.network === 'hive' ? account : undefined;
-    if (!hiveUsername) throw new BadRequestException('No username provided');
+    const hiveUsername = await this.hiveService.parseHiveUsername(parsedRequest, body.username);
+
     return this.uploadingService.createUpload({
       sub: parsedRequest.user.sub,
       username: hiveUsername,
@@ -105,13 +102,7 @@ export class UploadingController {
   @Post('start_encode')
   async startEncode(@Body() body: StartEncodeDto, @Request() req) {
     const request = parseAndValidateRequest(req, this.#logger);
-    const { account } = parseSub(request.user.sub);
-    const hiveUsername = body.username || (request.user.network === 'hive' ? account : undefined);
-    if (!hiveUsername) {
-      throw new BadRequestException(
-        'Must be signed in with a hive account or include a linked hive account in the request',
-      );
-    }
+    const hiveUsername = await this.hiveService.parseHiveUsername(request, body.username);
 
     const user = await this.authService.getUserByUserId({ user_id: request.user.user_id });
 
@@ -119,15 +110,6 @@ export class UploadingController {
       throw new UnauthorizedException('User not found');
     }
 
-    if (
-      !(await this.hiveService.isHiveAccountLinked({
-        account: hiveUsername,
-        user_id: user._id,
-      })) &&
-      !(account === hiveUsername && request.user.network === 'hive')
-    ) {
-      throw new UnauthorizedException('Your account is not linked to the requested hive account');
-    }
     const accountDetails = await this.hiveChainRepository.getAccount(hiveUsername);
     if (!accountDetails) throw new NotFoundException('Hive account could not be found');
 

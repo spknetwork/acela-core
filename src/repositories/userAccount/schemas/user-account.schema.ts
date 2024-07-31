@@ -6,13 +6,13 @@ export type LegacyUserDocument = mongoose.Document & LegacyUserAccount;
 
 @Schema()
 export class LegacyUserAccount {
-  @Prop({ type: String, required: false })
+  @Prop({ type: String, default: () => uuid() })
   confirmationCode?: string;
 
   @Prop({ type: Date, required: true, default: new Date() })
   createdAt?: Date;
 
-  @Prop({ type: String })
+  @Prop({ type: String, unique: true, sparse: true })
   email?: string;
 
   @Prop({ type: Boolean, required: true, default: false })
