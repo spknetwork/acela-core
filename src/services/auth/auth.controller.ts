@@ -119,16 +119,6 @@ export class AuthController {
       );
     }
 
-    if (!this.hiveRepository.verifyPostingAuth(accountDetails)) {
-      throw new HttpException(
-        {
-          reason: `Hive Account @${body.proof_payload.account} has not granted posting authority to @threespeak`,
-          errorType: 'MISSING_POSTING_AUTHORITY',
-        },
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
-
     return await this.authService.authenticateUser('singleton', body.proof_payload.account, 'hive');
   }
 
