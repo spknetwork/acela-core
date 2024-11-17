@@ -1,7 +1,7 @@
 export async function exponentialBackoff<T>(
   fn: () => Promise<T>,
   retries = 3,
-  delay = 1000,
+  delay = 500,
 ): Promise<T> {
   for (let i = 0; i < retries; i++) {
     try {

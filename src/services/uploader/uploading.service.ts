@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  LoggerService,
+  NotFoundException,
+} from '@nestjs/common';
 import { VideoRepository } from '../../repositories/video/video.repository';
 import { UploadRepository } from '../../repositories/upload/upload.repository';
 import { PublishingService } from '../../services/publishing/publishing.service';
@@ -12,6 +18,8 @@ import { HiveService } from '../hive/hive.service';
 
 @Injectable()
 export class UploadingService {
+  readonly #logger: LoggerService = new Logger(UploadingService.name);
+
   constructor(
     private readonly uploadRepository: UploadRepository,
     private readonly videoRepository: VideoRepository,
@@ -109,6 +117,7 @@ export class UploadingService {
       type: 'video',
     });
     if (!uploadJob) {
+      this.#logger.error('The upload job could not be located');
       throw new NotFoundException('The upload job could not be located');
     }
     if (uploadJob.immediatePublish) {
@@ -149,12 +158,15 @@ export class UploadingService {
 
   async handleTusdCallback(uploadMetaData: Upload) {
     if (uploadMetaData.authorization === 'TESTING') {
+      this.#logger.error('TestAuthorizationError');
       throw new Error('TestAuthorizationError');
     }
     if (uploadMetaData.Size >= 5000000000) {
+      this.#logger.error('File too big to be uploaded');
       throw new Error('File too big to be uploaded');
     }
     if (!uploadMetaData.Storage) {
+      this.#logger.error('Storage is undefined');
       throw new Error('Storage is undefined');
     }
     const info: ffmpeg.FfprobeData = await new Promise((resolve, reject) => {
