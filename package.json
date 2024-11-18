@@ -9,7 +9,7 @@
   "type": "module",
   "dependencies": {
     "@hiveio/dhive": "^1.1.0",
-    "@hiveio/hive-js": "^2.0.7",
+    "@hiveio/hive-js": "^2.0.8",
     "@magic-sdk/admin": "^2.1.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.2",

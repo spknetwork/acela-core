@@ -28,6 +28,7 @@ export class HiveChainRepository {
   readonly _hiveJs = hiveJsPackage;
   readonly _hive: Client = new Client(
     process.env.HIVE_HOST?.split(',') || [
+      'https://hive-api.web3telekom.xyz',
       'https://anyx.io',
       'https://hived.privex.io',
       'https://rpc.ausbit.dev',
@@ -62,7 +63,7 @@ export class HiveChainRepository {
 
   async hivePostExists({ author, permlink }: AuthorPerm): Promise<boolean> {
     const fetchContent = async (): Promise<boolean> => {
-      const content = await this._hiveJs.api.getContent(author, permlink);
+      const content = await this._hive.database.call('get_content', [author, permlink]);
       return typeof content === 'object' && !!content.body;
     };
 
