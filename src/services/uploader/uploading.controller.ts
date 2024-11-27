@@ -1,6 +1,5 @@
 import {
   UseGuards,
-  Get,
   Controller,
   FileTypeValidator,
   MaxFileSizeValidator,
@@ -80,12 +79,8 @@ export class UploadingController {
   @ApiOperation({ summary: 'Creates post metadata container' })
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(UserDetailsInterceptor)
-  @Get('create_upload')
-  async createUpload(
-    @Request()
-    request: unknown,
-    @Body() body: CreateUploadDto,
-  ) {
+  @Post('create_upload')
+  async createUpload(@Request() request: unknown, @Body() body: CreateUploadDto) {
     const parsedRequest = parseAndValidateRequest(request, this.#logger);
     const hiveUsername =
       body.username || parsedRequest.user.network === 'hive'

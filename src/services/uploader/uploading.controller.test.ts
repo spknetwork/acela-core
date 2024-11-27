@@ -129,19 +129,29 @@ describe('UploadingController', () => {
 
   describe('createUpload', () => {
     it('should create an upload document', async () => {
+      const jwtToken = 'test_jwt_token';
+
       await linkedAccountsRepository.linkHiveAccount('singleton/starkerz/hive', 'sisygoboom');
-      const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom' })
-      expect(response).toEqual({
+      //const response = await uploadingService.createUpload({ sub: 'singleton/starkerz/hive', username: 'sisygoboom' })
+      const response = await request(app.getHttpServer())
+        .post('/v1/upload/create_upload')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .send({
+          username: 'sisygoboom'
+        })
+        .expect(201)
+      
+      expect(response.body).toEqual({
         permlink: expect.any(String),
         upload_id: expect.any(String),
         video_id: expect.any(String)
       })
 
-      const upload = await uploadingService.getUploadByUploadId(response.upload_id)
+      const upload = await uploadingService.getUploadByUploadId(response.body.upload_id)
 
       expect(upload).toBeTruthy()
 
-      const video = await uploadingService.getVideoByVideoId(response.video_id)
+      const video = await uploadingService.getVideoByVideoId(response.body.video_id)
 
       expect(upload).toBeTruthy()
     });
