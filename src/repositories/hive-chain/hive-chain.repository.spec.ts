@@ -349,4 +349,16 @@ describe('HiveRepository', () => {
       expect(hiveRepository.verifyPostingAuth(account)).toBe(false);
     })
   })
+
+  describe('hivePostExists', () => {
+    it('Returns true if the post exists', async () => {
+      const exists = await hiveRepository.hivePostExists({ author: 'sisygoboom', permlink: 'my-prayers-have-been-answered' });
+      expect(exists).toBe(true);
+    })
+
+    it('Returns false if the post does not exist', async () => {
+      const exists = await hiveRepository.hivePostExists({ author: 'fake', permlink: 'pretend post' });
+      expect(exists).toBe(false);
+    })
+  })
 });
