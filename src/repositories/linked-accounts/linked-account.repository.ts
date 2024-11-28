@@ -12,12 +12,23 @@ export class LinkedAccountRepository {
   ) {}
 
   async linkHiveAccount(user_id: string, account: string) {
-    return await this.linkedAccountModel.create({
-      user_id,
-      account,
-      status: 'verified',
-      network: 'HIVE',
-    } satisfies LinkedAccount);
+    const result = await this.linkedAccountModel.findOneAndUpdate(
+      { user_id, account }, // Match condition
+      {
+        $setOnInsert: {
+          user_id,
+          account,
+          status: 'verified',
+          network: 'HIVE',
+        },
+      },
+      {
+        new: true, // Return the modified document
+        upsert: true, // Insert if no match is found
+      },
+    );
+
+    return result; // This will always include the `_id
   }
 
   async unlinkHiveAccount(user_id: string, account: string) {

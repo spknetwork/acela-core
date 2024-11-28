@@ -13,6 +13,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HiveModule } from '../hive/hive.module';
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { HiveAccountModule } from '../../repositories/hive-account/hive-account.module';
+import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { HiveAccountModule } from '../../repositories/hive-account/hive-account.
     HiveAccountModule,
     HiveChainModule,
     HiveAccountModule,
+    LinkedAccountModule,
     UserModule,
     HiveModule,
     EmailModule,

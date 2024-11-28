@@ -45,6 +45,7 @@ import { parseAndValidateRequest } from './auth.utils';
 import { RequestHiveAccountDto } from '../api/dto/RequestHiveAccount.dto';
 import { HiveService } from '../hive/hive.service';
 import { UserDetailsInterceptor } from '../api/utils';
+import { LinkedAccountRepository } from '../../repositories/linked-accounts/linked-account.repository';
 
 @Controller('/v1/auth')
 export class AuthController {
@@ -53,6 +54,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly hiveAccountRepository: HiveAccountRepository,
+    private readonly linkedAccountsRepository: LinkedAccountRepository,
     private readonly userRepository: UserRepository,
     private readonly hiveRepository: HiveChainRepository,
     private readonly hiveService: HiveService,
@@ -129,7 +131,18 @@ export class AuthController {
       );
     }
 
-    return await this.authService.authenticateUser('singleton', body.proof_payload.account, 'hive');
+    const authenticated = await this.authService.authenticateUser(
+      'singleton',
+      body.proof_payload.account,
+      'hive',
+    );
+
+    await this.linkedAccountsRepository.linkHiveAccount(
+      this.authService.generateSub('singleton', body.proof_payload.account, 'hive'),
+      body.proof_payload.account,
+    );
+
+    return authenticated;
   }
 
   //@UseGuards(AuthGuard('local'))

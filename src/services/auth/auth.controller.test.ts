@@ -25,6 +25,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveModule } from '../hive/hive.module';
+import { LinkedAccountModule } from '../../repositories/linked-accounts/linked-account.module';
 
 describe('AuthController', () => {
   let app: INestApplication
@@ -73,6 +74,7 @@ describe('AuthController', () => {
         UserAccountModule,
         SessionModule,
         HiveAccountModule,
+        LinkedAccountModule,
         UserModule,
         JwtModule.register({
           secretOrPrivateKey: process.env.JWT_PRIVATE_KEY,
