@@ -29,7 +29,6 @@ import {
 } from '@nestjs/swagger';
 import moment from 'moment';
 import { authenticator } from 'otplib';
-import { HiveClient } from '../../utils/hiveClient';
 import { LoginDto } from '../api/dto/Login.dto';
 import { LoginErrorResponseDto } from '../api/dto/LoginErrorResponse.dto';
 import { LoginResponseDto } from '../api/dto/LoginResponse.dto';
@@ -54,7 +53,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly hiveAccountRepository: LegacyHiveAccountRepository,
     private readonly userRepository: LegacyUserRepository,
-    private readonly hiveRepository: HiveChainRepository,
+    private readonly hiveChainRepository: HiveChainRepository,
     private readonly hiveService: HiveService,
     //private readonly delegatedAuthorityRepository: DelegatedAuthorityRepository,
     private readonly emailService: EmailService,
@@ -84,7 +83,7 @@ export class AuthController {
   })
   @Post('/login/singleton/hive')
   async loginSingletonHive(@Body() body: LoginSingletonHiveDto) {
-    const accountDetails = await this.hiveRepository.getAccount(body.proof_payload.account);
+    const accountDetails = await this.hiveChainRepository.getAccount(body.proof_payload.account);
 
     if (!accountDetails) {
       throw new HttpException(
@@ -96,7 +95,7 @@ export class AuthController {
       );
     }
 
-    await this.hiveRepository.verifyHiveMessage(
+    await this.hiveChainRepository.verifyHiveMessage(
       JSON.stringify(body.proof_payload),
       body.proof,
       accountDetails,
@@ -118,7 +117,7 @@ export class AuthController {
       );
     }
 
-    if (!this.hiveRepository.verifyPostingAuth(accountDetails)) {
+    if (!this.hiveChainRepository.verifyPostingAuth(accountDetails)) {
       throw new HttpException(
         {
           reason: `Hive Account @${body.proof_payload.account} has not granted posting authority to @threespeak`,
@@ -243,49 +242,9 @@ export class AuthController {
   @Post('/lite/register-initial')
   async registerLite(@Body() body: { username: string; otp_code: string; secret: string }) {
     const { username, otp_code } = body;
-    const output = await HiveClient.database.getAccounts([username]);
+    const output = await this.hiveChainRepository.getAccount(username);
 
-    if (output.length === 0) {
-      // const secret = authenticator.generateSecret(32)
-
-      if (
-        authenticator.verify({
-          token: otp_code,
-          secret: body.secret,
-        })
-      ) {
-        // const accountCreation = await createAccountWithAuthority(
-        //   username,
-        //   process.env.ACCOUNT_CREATOR
-        // )
-        await this.hiveAccountRepository.createLite(username, body.secret);
-
-        const sub = this.authService.generateSub('lite', username, 'hive');
-
-        const user_id = randomUUID();
-
-        await this.userRepository.createNewSubUser({ sub, user_id });
-
-        const jwt = this.authService.jwtSign({
-          sub,
-          network: 'hive',
-          user_id,
-        });
-
-        return {
-          // id: accountCreation.id,
-          access_token: jwt,
-        };
-      } else {
-        throw new HttpException(
-          {
-            reason: 'Invalid OTP code',
-            errorType: 'INVALID_OTP',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    } else {
+    if (output)
       throw new HttpException(
         {
           reason: 'Hive account with the requested name already exists',
@@ -293,7 +252,44 @@ export class AuthController {
         },
         HttpStatus.BAD_REQUEST,
       );
-    }
+
+    // const secret = authenticator.generateSecret(32)
+
+    if (
+      !authenticator.verify({
+        token: otp_code,
+        secret: body.secret,
+      })
+    )
+      throw new HttpException(
+        {
+          reason: 'Invalid OTP code',
+          errorType: 'INVALID_OTP',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    // const accountCreation = await createAccountWithAuthority(
+    //   username,
+    //   process.env.ACCOUNT_CREATOR
+    // )
+    await this.hiveAccountRepository.createLite(username, body.secret);
+
+    const sub = this.authService.generateSub('lite', username, 'hive');
+
+    const user_id = randomUUID();
+
+    await this.userRepository.createNewSubUser({ sub, user_id });
+
+    const jwt = this.authService.jwtSign({
+      sub,
+      network: 'hive',
+      user_id,
+    });
+
+    return {
+      // id: accountCreation.id,
+      access_token: jwt,
+    };
   }
   // @Post('/lite/register-initial')
   // async registerLiteFinish(@Body() body) {

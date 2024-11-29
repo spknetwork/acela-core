@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import hiveJsPackage from '@hiveio/hive-js';
 import { AuthorPerm, OperationsArray } from './types';
 import {
@@ -25,9 +31,20 @@ hiveJsPackage.config.set('rebranded_api', 'true');
 @Injectable()
 export class HiveChainRepository {
   readonly #logger: Logger = new Logger(HiveChainRepository.name);
-  readonly _hiveJs = hiveJsPackage;
-  readonly _hive: Client = new Client(
-    process.env.HIVE_HOST?.split(',') || [
+  readonly _hiveJs;
+  readonly _hive: Client;
+
+  constructor() {
+    this._hiveJs = hiveJsPackage;
+    this._hiveJs.api.setOptions({
+      useAppbaseApi: true,
+      rebranded_api: true,
+      url: `https://hive-api.web3telekom.xyz`,
+    });
+    this._hiveJs.config.set('rebranded_api', 'true');
+
+    this._hive = new Client([
+      ...(process.env.HIVE_HOST?.split(',') || []),
       'https://anyx.io',
       'https://hived.privex.io',
       'https://rpc.ausbit.dev',
@@ -35,14 +52,12 @@ export class HiveChainRepository {
       'https://api.openhive.network',
       'https://api.hive.blog',
       'https://api.c0ff33a.uk',
-    ],
-  );
-
-  constructor() {}
+    ]);
+  }
 
   async broadcastOperations(operations: OperationsArray): Promise<any> {
     const broadcast = async (): Promise<any> => {
-      return await this._hiveJs.broadcast.sendAsync(
+      return await hiveJsPackage.broadcast.sendAsync(
         {
           operations,
         },
@@ -53,7 +68,7 @@ export class HiveChainRepository {
     };
 
     try {
-      return await exponentialBackoff(broadcast);
+      return exponentialBackoff(broadcast);
     } catch (e) {
       this.#logger.error(`Error publishing operations to chain!`, operations, e);
       return e;
@@ -62,12 +77,12 @@ export class HiveChainRepository {
 
   async hivePostExists({ author, permlink }: AuthorPerm): Promise<boolean> {
     const fetchContent = async (): Promise<boolean> => {
-      const content = await this._hiveJs.api.getContent(author, permlink);
+      const content = await hiveJsPackage.api.getContent(author, permlink);
       return typeof content === 'object' && !!content.body;
     };
 
     try {
-      return await exponentialBackoff(fetchContent);
+      return exponentialBackoff(fetchContent);
     } catch (e) {
       this.#logger.error('Error checking Hive post existence after retries:', e);
       return false;
@@ -76,13 +91,13 @@ export class HiveChainRepository {
 
   async hasEnoughRC({ author }: { author: string }): Promise<boolean> {
     const checkRC = async (): Promise<boolean> => {
-      const rc = (await this._hive.rc.findRCAccounts([author])) as any[];
-      const rcInBillion = rc[0].rc_manabar.current_mana / 1_000_000_000;
+      const rc = await this._hive.rc.findRCAccounts([author]);
+      const rcInBillion = Number(rc[0].rc_manabar.current_mana) / 1_000_000_000;
       return rcInBillion > 6;
     };
 
     try {
-      return await exponentialBackoff(checkRC);
+      return exponentialBackoff(checkRC);
     } catch (e) {
       this.#logger.error('Error checking RC:', e);
       return false;
@@ -102,7 +117,7 @@ export class HiveChainRepository {
     };
 
     try {
-      return await exponentialBackoff(fetchCommentCount);
+      return exponentialBackoff(fetchCommentCount);
     } catch (e) {
       this.#logger.error('Error getting comment count:', e);
       return undefined;
@@ -116,7 +131,7 @@ export class HiveChainRepository {
     };
 
     try {
-      return await exponentialBackoff(fetchAccount);
+      return exponentialBackoff(fetchAccount);
     } catch (e) {
       this.#logger.error('Error getting Hive account:', e);
       return null;
@@ -187,7 +202,7 @@ export class HiveChainRepository {
     };
 
     try {
-      return await exponentialBackoff(createAccount);
+      return exponentialBackoff(createAccount);
     } catch (e) {
       this.#logger.error('Error creating Hive account with authority:', e);
       return null;
@@ -244,11 +259,54 @@ export class HiveChainRepository {
     };
 
     try {
-      return await exponentialBackoff(castVote);
+      return exponentialBackoff(castVote);
     } catch (e) {
       this.#logger.error(`Error voting on ${options.author}/${options.permlink}:`, e);
       throw new BadRequestException('Error voting on post');
     }
+  }
+
+  async isFollowing({ follower, following }: { follower: string; following: string }) {
+    const status = await this._hive.call('follow_api', 'get_following', [
+      follower,
+      following,
+      'blog',
+      1,
+    ]);
+    if (status.length > 0 && status[0].following == following) {
+      return true;
+    }
+    return false;
+  }
+
+  async follow({
+    data,
+    isFollowing,
+  }: {
+    data: {
+      required_auths: string[];
+      required_posting_auths: string[];
+      id: string;
+      json: string;
+    };
+    isFollowing: boolean;
+  }): Promise<{
+    action: string;
+    result: TransactionConfirmation;
+  }> {
+    return await this._hive.broadcast
+      .json(data, PrivateKey.fromString(process.env.DELEGATED_ACCOUNT_POSTING))
+      .then(
+        function (result) {
+          if (isFollowing) {
+            return { action: 'unfollowed', result };
+          }
+          return { action: 'followed', result };
+        },
+        function (error) {
+          throw new ServiceUnavailableException(error);
+        },
+      );
   }
 
   async getActiveVotes({ author, permlink }: { author: string; permlink: string }): Promise<any[]> {
@@ -257,7 +315,7 @@ export class HiveChainRepository {
     };
 
     try {
-      return await exponentialBackoff(fetchActiveVotes);
+      return exponentialBackoff(fetchActiveVotes);
     } catch (e) {
       this.#logger.error('Error getting active votes:', e);
       return [];
@@ -266,7 +324,10 @@ export class HiveChainRepository {
 
   decodeMessage(memo: string): any {
     try {
-      const decoded: string = this._hiveJs.memo.decode(process.env.DELEGATED_ACCOUNT_POSTING, memo);
+      const decoded: string = hiveJsPackage.memo.decode(
+        process.env.DELEGATED_ACCOUNT_POSTING,
+        memo,
+      );
       const message: unknown = JSON.parse(decoded.substr(1));
 
       return message;
@@ -278,7 +339,7 @@ export class HiveChainRepository {
 
   async getPublicKeys(memo: string): Promise<string[]> {
     const fetchPublicKeys = async (): Promise<string[]> => {
-      return this._hiveJs.memo.getPubKeys(memo);
+      return hiveJsPackage.memo.getPubKeys(memo);
     };
 
     try {

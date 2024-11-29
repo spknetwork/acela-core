@@ -18,7 +18,7 @@ import { HiveChainRepository } from '../../repositories/hive-chain/hive-chain.re
 import sharp from 'sharp';
 import { JwtModule } from '@nestjs/jwt';
 import crypto from 'crypto';
-import { MockHiveUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
+import { MockUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { HiveModule } from '../hive/hive.module';
 import { AuthService } from '../auth/auth.service';
 import { AuthModule } from '../auth/auth.module';
@@ -90,7 +90,7 @@ describe('UploadingController', () => {
         },
       })
       .overrideInterceptor(UserDetailsInterceptor)
-      .useClass(MockHiveUserDetailsInterceptor)
+      .useClass(MockUserDetailsInterceptor)
       .compile();
 
     uploadingService = moduleRef.get<UploadingService>(UploadingService);
@@ -122,6 +122,7 @@ describe('UploadingController', () => {
       return request(app.getHttpServer())
         .post('/v1/upload/thumbnail')
         .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
         .attach('file', semiTransparentRedPng, 'test-image.png')
         .field('video_id', 'test_video_id')
         .expect(201)
@@ -169,6 +170,7 @@ describe('UploadingController', () => {
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
         .send({
           upload_id: upload.upload_id,
           video_id: upload.video_id,
@@ -195,6 +197,7 @@ describe('UploadingController', () => {
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
         .send({ 
           username: 'sisygoboom',
           upload_id: upload.upload_id,
@@ -222,6 +225,7 @@ describe('UploadingController', () => {
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
         .send({ 
           username: 'sisygoboom',
           upload_id: upload.upload_id,
@@ -249,6 +253,7 @@ describe('UploadingController', () => {
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
         .send({ 
           username: 'sisygoboom',
           upload_id: 'random',
@@ -277,6 +282,7 @@ describe('UploadingController', () => {
       return request(app.getHttpServer())
         .post('/v1/upload/start_encode')
         .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
         .send({ 
           username: 'ned',
           upload_id: upload.upload_id,

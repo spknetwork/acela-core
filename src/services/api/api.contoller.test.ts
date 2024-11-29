@@ -16,7 +16,7 @@ import { HiveAccountModule } from '../../repositories/hive-account/hive-account.
 import { UserModule } from '../../repositories/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from '../auth/auth.module';
-import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
+import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from './utils';
 import { HiveChainModule } from '../../repositories/hive-chain/hive-chain.module';
 import { EmailModule } from '../email/email.module';
 import * as crypto from 'crypto';
@@ -92,7 +92,7 @@ describe('ApiController', () => {
       .overrideGuard(AuthGuard('jwt'))
       .useClass(MockAuthGuard)
       .overrideInterceptor(UserDetailsInterceptor)
-      .useClass(MockDidUserDetailsInterceptor)
+      .useClass(MockUserDetailsInterceptor)
       .compile();
 
     authService = moduleRef.get<AuthService>(AuthService);
@@ -231,6 +231,105 @@ describe('ApiController', () => {
               accounts: ['test-account', 'joop'],
             },
           );
+        });
+    });
+  });
+
+  describe('/POST /v1/hive/follow', () => {
+    it('should follow when account is linked', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      // Mock linking and verifying an account
+      const user = await authService.createDidUser('bob', 'test_user_id')
+      await authService.linkHiveAccount({ user_id: user._id, username: 'sisygoboom' })
+
+      return request(app.getHttpServer())
+        .post('/v1/hive/follow')
+        .send({follower: 'sisygoboom', following: 'starkerz'})
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(201)
+        .then(response => {
+          expect(response.body).toEqual({
+            action: "followed",
+            result: {
+              block_num: 1,
+              expired: false,
+              id: "id",
+              trx_num: 1,
+            },
+          });
+        });
+    });
+
+    it('should follow when logged into a hive account', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      // Mock linking and verifying an account
+      await authService.createHiveUser({ user_id: 'bob', hiveAccount: 'starkerz' })
+
+      return request(app.getHttpServer())
+        .post('/v1/hive/follow')
+        .send({following: 'ned'})
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
+        .expect(201)
+        .then(response => {
+          expect(response.body).toEqual({
+            action: "followed",
+            result: {
+              block_num: 1,
+              expired: false,
+              id: "id",
+              trx_num: 1,
+            },
+          });
+        });
+    });
+
+    it('should unfollow', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      // Mock linking and verifying an account
+      await authService.createHiveUser({ user_id: 'bob', hiveAccount: 'starkerz' })
+      process.env.TEST_IS_FOLLOWING = 'true';
+
+      return request(app.getHttpServer())
+        .post('/v1/hive/follow')
+        .send({following: 'ned'})
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
+        .expect(201)
+        .then(response => {
+          expect(response.body).toEqual({
+            action: "unfollowed",
+            result: {
+              block_num: 1,
+              expired: false,
+              id: "id",
+              trx_num: 1,
+            },
+          });
+        });
+    });
+
+    it('should not follow when attempting to follow itself', async () => {
+      const jwtToken = 'test_jwt_token';
+
+      // Mock linking and verifying an account
+      await authService.createHiveUser({ user_id: 'bob', hiveAccount: 'starkerz' })
+
+      return request(app.getHttpServer())
+        .post('/v1/hive/follow')
+        .send({following: 'starkerz'})
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .set('x-user-type', 'hive')
+        .expect(400)
+        .then(response => {
+          expect(response.body).toEqual({
+            error: "Bad Request",
+            message: "Can't follow yourself",
+            statusCode: 400,
+          });
         });
     });
   });

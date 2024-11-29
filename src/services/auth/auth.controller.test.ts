@@ -20,7 +20,7 @@ import * as KeyResolver from 'key-did-resolver';
 import crypto from 'crypto';
 import { PrivateKey } from '@hiveio/dhive';
 import { AuthGuard } from '@nestjs/passport';
-import { MockAuthGuard, MockDidUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
+import { MockAuthGuard, MockUserDetailsInterceptor, UserDetailsInterceptor } from '../api/utils';
 import { HiveService } from '../hive/hive.service';
 import { HiveModule } from '../hive/hive.module';
 import { LegacyUserRepository } from '../../repositories/user/user.repository';
@@ -99,7 +99,7 @@ describe('AuthController', () => {
     }).overrideGuard(AuthGuard('jwt'))
       .useClass(MockAuthGuard)
       .overrideInterceptor(UserDetailsInterceptor)
-      .useClass(MockDidUserDetailsInterceptor)
+      .useClass(MockUserDetailsInterceptor)
       .compile();
     
     authService = moduleRef.get<AuthService>(AuthService);
